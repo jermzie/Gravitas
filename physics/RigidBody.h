@@ -1,0 +1,144 @@
+#pragma once
+#ifndef RIGIDBODY_H
+#define RIGIDBODY_H
+
+
+#include <vector>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/scalar_multiplication.hpp>
+#include <glm/gtx/matrix_cross_product.hpp>
+
+#include "../inc/model.h"
+#include "../inc/mesh.h"
+#include "../inc/WorldTransform.hpp"
+#include "../inc/ray.h"
+
+#include "ConvexHull.h"
+#include "BoundingSphere.hpp"
+
+class RigidBody {
+private:
+	std::vector<Vertex>mesh;		// Polyhedron triangle mesh
+	std::vector<ConvexHull>hulls;	// Rigid body collision mesh
+
+
+
+	WorldTransform worldTrans;
+	Model rigidBodyModel;
+
+	glm::vec3 centreOfMass;
+	glm::vec3 linearVelocity;
+
+	glm::mat4 orientation = glm::mat4(1.0);
+	glm::vec3 angularVelocity;
+
+
+	glm::vec3 acceleration = glm::vec3(0.0, -0.005, 0.0);
+
+
+
+	double mass;
+	double inverseMass;
+	double friction;
+
+
+	bool fixed = false;
+
+
+	glm::mat3 inertiaTensor;
+
+public:
+
+
+	BoundingSphere collider;
+
+
+	RigidBody(Model model, double mass, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
+
+		// physics properties
+		this->rigidBodyModel = model;
+		this->mass = mass;
+		this->centreOfMass = position;
+		this->linearVelocity = velocity;
+		this->angularVelocity = omega;
+
+		// transformation matrices
+		worldTrans.SetPosition(centreOfMass);
+
+
+		// sphere centroid position
+		collider.ComputeBoundingSphere(model, worldTrans);
+	}
+
+
+	void accelerateLinearly(const glm::vec3 deltaVelocity) {
+
+		linearVelocity = linearVelocity + deltaVelocity;
+	}
+
+	void update(double deltaTime) {
+
+		/*
+		centreOfMass += linearVelocity * deltaTime;
+
+		orientation += glm::matrixCross4(angularVelocity) * orientation * deltaTime;
+	
+
+		worldMat4.SetPosition(centreOfMass);
+		worldMat4.SetRotate(orientation);
+		*/
+
+
+		// move collider centroid position alongside rigid body position
+		//collider.UpdateCentroid(worldTrans);
+
+	}
+
+	void Drag() {
+
+		// move rigidbody to newPos, following ray 
+
+
+		// track xyz offSets and deltaTime to accumulate velocity while dragging???
+	}
+
+	void Disable() {
+
+
+	}
+
+
+	WorldTransform& getWorldTransform() { 
+		return worldTrans; 
+	}
+
+	void setCentreOfMass(glm::vec3 position) {
+
+		centreOfMass = position;
+
+	}
+
+	glm::vec3 getCentreOfMass() {
+		return centreOfMass;
+	}
+
+	void Draw(Shader& shader) {
+		rigidBodyModel.Draw(shader);
+	}
+
+	bool RigidBody::collided(Ray& r) {
+		return collider.RaySphereIntersection(r);
+	}
+
+	BoundingSphere getBounds() {
+		return collider;
+	}
+
+};
+
+
+#endif // !RIGIDBODY_H
