@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MODEL_HPP
+#define MODEL_HPP
 
 #ifndef PROJECT_SOURCE_DIR
 #error "PROJECT_SOURCE_DIR is not defined"
@@ -7,7 +8,6 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-
 #include <glad/glad.h> 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -15,16 +15,16 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-
-#include "mesh.h"
-#include "shader.h"
-
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <map>
 #include <vector>
+
+#include "Mesh.hpp"
+#include "Shader.hpp"
+
 using namespace std;
 
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false);
@@ -56,7 +56,7 @@ public:
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void LoadModel(string const& modelName)
     {
-        string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/models/" + modelName;
+        string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + modelName;
 
         // read file via ASSIMP
         Assimp::Importer importer;
@@ -265,3 +265,5 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
 
     return textureID;
 }
+
+#endif

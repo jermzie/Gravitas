@@ -1,17 +1,18 @@
-#pragma once
+#ifndef CONVEXHULL_HPP
+#define CONVEXHULL_HPP
 
-#include "HalfEdgeMesh.hpp"
-#include "../inc/mesh.h"
-#include "../inc/model.h"
-#include "../inc/Plane.hpp"
+#include <glm/glm.hpp>
 
 #include <cmath>
 #include <vector>
 #include <algorithm>
 #include <array>
 #include <deque>
-#include <glm/glm.hpp>
 
+#include "../inc/Mesh.hpp"
+#include "../inc/Model.hpp"
+#include "../inc/Plane.hpp"
+#include "HalfEdgeMesh.hpp"
 /*
 * 
 Convex Hull w/ QuickHull Algo
@@ -83,4 +84,5 @@ public:
 	ConvexHull() = default;
 
 };
-	
+
+#endif

@@ -1,9 +1,5 @@
-#pragma once
-#ifndef RIGIDBODY_H
-#define RIGIDBODY_H
-
-
-#include <vector>
+#ifndef RIGIDBODY_HPP
+#define RIGIDBODY_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -12,18 +8,19 @@
 #include <glm/gtx/scalar_multiplication.hpp>
 #include <glm/gtx/matrix_cross_product.hpp>
 
-#include "../inc/model.h"
-#include "../inc/mesh.h"
-#include "../inc/WorldTransform.hpp"
-#include "../inc/ray.h"
+#include <vector>
 
-#include "ConvexHull.h"
+#include "../inc/Model.hpp"
+#include "../inc/Mesh.hpp"
+#include "../inc/WorldTransform.hpp"
+#include "../inc/Ray.hpp"
+// #include "ConvexHull.hpp"
 #include "BoundingSphere.hpp"
 
 class RigidBody {
 private:
 	std::vector<Vertex>mesh;		// Polyhedron triangle mesh
-	std::vector<ConvexHull>hulls;	// Rigid body collision mesh
+	//std::vector<ConvexHull>hulls;	// Rigid body collision mesh
 
 
 
@@ -130,7 +127,7 @@ public:
 		rigidBodyModel.Draw(shader);
 	}
 
-	bool RigidBody::collided(Ray& r) {
+	bool collided(Ray& r) {
 		return collider.RaySphereIntersection(r);
 	}
 
@@ -140,5 +137,4 @@ public:
 
 };
 
-
-#endif // !RIGIDBODY_H
+#endif

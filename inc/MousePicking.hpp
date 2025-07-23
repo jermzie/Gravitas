@@ -1,15 +1,14 @@
-#pragma once
-
 #ifndef MOUSEPICKING_HPP
 #define MOUSEPICKING_HPP
 
 #include <glm/glm.hpp>
+
 #include <iostream>
 
-#include "../physics/RigidBody.h"
+#include "../physics/RigidBody.hpp"
 #include "WorldTransform.hpp"
-#include "camera.h"
-#include "ray.h"
+#include "Camera.hpp"
+#include "Ray.hpp"
 
 class MousePicking {
 

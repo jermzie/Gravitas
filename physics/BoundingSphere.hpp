@@ -1,14 +1,13 @@
-﻿#pragma once
-#ifndef BOUNDINGSPHERE_HPP
-#define BOUNDINGSHPERE_HPP
+﻿#ifndef BOUNDINGSPHERE_HPP
+#define BOUNDINGSPHERE_HPP
 
 #include <glm/glm.hpp>
 
 #include "../inc/WorldTransform.hpp"
-#include "../inc/model.h"
-#include "../inc/camera.h"
-#include "../inc/ray.h"
-#include "RigidBody.h"
+#include "../inc/Model.hpp"
+#include "../inc/Camera.hpp"
+#include "../inc/Ray.hpp"
+#include "RigidBody.hpp"
 
 const float PI = 3.14159265358979323846f;
 
@@ -188,4 +187,4 @@ public:
 	}
 };
 
-#endif // !BOUNDINGSPHERE_HPP
+#endif

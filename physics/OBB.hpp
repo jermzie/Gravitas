@@ -1,11 +1,10 @@
-#pragma once
 #ifndef OBB_HPP
 #define OBB_HPP
 
 #include <glm/glm.hpp>
 
-#include "../inc/ray.h"
-#include "../inc/model.h"
+#include "../inc/Ray.hpp"
+#include "../inc/Model.hpp"
 
 class OBB {
 private:
@@ -76,4 +75,5 @@ public:
 
 	bool OBBCollisionDetection();
 };
-#endif // !OBB_HPP
+
+#endif

@@ -1,14 +1,14 @@
-#pragma once
+#ifndef MESH_HPP
+#define MESH_HPP
 
-#include <glad/glad.h> // holds all OpenGL type declarations
-
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "shader.h"
-
 #include <string>
 #include <vector>
+
+#include "Shader.hpp"
 
 using namespace std;
 
@@ -176,3 +176,5 @@ private:
         glBindVertexArray(0);
     }
 };
+
+#endif

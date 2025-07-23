@@ -1,14 +1,9 @@
-﻿#pragma once
-#ifndef PICKING_TEST_HPP
-#define PICKING_TEST_HPP
+﻿#ifndef GRAVITAS_HPP
+#define GRAVITAS_HPP
 
 #ifndef PROJECT_SOURCE_DIR
 #error "PROJECT_SOURCE_DIR is not defined"
 #endif
-
-
-#include <iostream>
-#include <vector>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -16,16 +11,18 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "../inc/model.h"
-#include "../inc/mesh.h"
-#include "../inc/camera.h"
-#include "../inc/shader.h"
-#include "../inc/use-imgui.h"
+#include <iostream>
+#include <vector>
+
+#include "../inc/Model.hpp"
+#include "../inc/Mesh.hpp"
+#include "../inc/Camera.hpp"
+#include "../inc/Shader.hpp"
+#include "../inc/ImGUI.hpp"
 #include "../inc/MousePicking.hpp"
-#include "../inc/Debugger.hpp"
 #include "../inc/Plane.hpp"
-#include "../physics/PhysicsEngine.h"
-#include "../physics/RigidBody.h"
+#include "../physics/PhysicsEngine.hpp"
+#include "../physics/RigidBody.hpp"
 
 class App {
 public:
@@ -58,14 +55,16 @@ private:
 	// mouse picking/dragging
 	MousePicking picker;
 	Plane dragPlane;
-	float dragSensitivity = 0.001f;
+	float dragSensitivity = 1.0f;
 
 	glm::vec4 objectViewSpacePos;
 
-	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y; } leftMouseButton, rightMouseButton;
+	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y, xOffset, yOffset; } leftMouseButton, rightMouseButton;
 
 	glm::vec3 initialIntersection;
 	glm::vec3 initialObjectPos;
+	glm::vec3 oldPos;
+	glm::vec3 newPos;
 	glm::vec3 initialHitPoint;
 	bool isDragging = false;
 	int selectedObjectId = -1;
@@ -74,7 +73,7 @@ private:
 
 	// rendering & scene
 	PhysicsEngine scene;
-	UseImGui gui;
+	ImGUI gui;
 	bool wireFrame = false;
 	bool defaultView = false;
 

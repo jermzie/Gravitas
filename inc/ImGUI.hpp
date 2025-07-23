@@ -1,4 +1,5 @@
-#pragma once
+#ifndef IMGUI_HPP
+#define IMGUI_HPP
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -6,12 +7,10 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include "Shader.hpp"
+// #include "../src/Gravitas.hpp"
 
-#include "shader.h"
-#include "../src/picking-test.hpp"
-
-
-class UseImGui {
+class ImGUI {
 
 public:
 	bool darkMode = false;
@@ -146,3 +145,5 @@ public:
 
 	}
 };
+
+#endif

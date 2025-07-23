@@ -1,12 +1,13 @@
-#pragma once
+#ifndef PHYSICSENGINE_HPP
+#define PHYSICSENGINE_HPP
 
 #include <glm/glm.hpp>
 
-#include "RigidBody.h"
-#include "ConvexHull.h"
+#include "../inc/Model.hpp"
+#include "RigidBody.hpp"
+//#include "ConvexHull.hpp"
 #include "BoundingSphere.hpp"
 
-#include "../inc/model.h"
 
 
 class PhysicsEngine {
@@ -44,3 +45,5 @@ public:
 		rigidBodies.clear();
 	}
 };
+
+#endif

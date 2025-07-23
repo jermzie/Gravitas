@@ -1,7 +1,5 @@
-#pragma once
-
-#ifndef RAY_H
-#define RAY_H
+#ifndef RAY_HPP
+#define RAY_HPP
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -17,7 +15,7 @@ public:
 
 
 	Ray() = default;
-	Ray(glm::vec3& origin, glm::vec3& direction) : origin(origin), direction(direction), invLengthSquared(1 / (glm::length2(distance))) {
+	Ray(glm::vec3& origin, glm::vec3& direction) : origin(origin), direction(direction), invLengthSquared(1 / (glm::length2(direction))) {
 	}
 };
 
@@ -35,5 +33,5 @@ inline float getSquaredDistanceToRay(const glm::vec3& p, const Ray& r) {
 }
 
 
-#endif // !RAY_H
+#endif
 

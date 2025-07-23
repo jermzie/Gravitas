@@ -1,6 +1,5 @@
-﻿#pragma once
-#ifndef PHYSICS_TEST_HPP
-#define PHYSICS_TEST_HPP
+﻿#ifndef GRAVITAS_HPP
+#define GRAVITAS_HPP
 
 #ifndef PROJECT_SOURCE_DIR
 #error "PROJECT_SOURCE_DIR is not defined"
@@ -22,6 +21,7 @@
 #include "../inc/shader.h"
 #include "../inc/use-imgui.h"
 #include "../inc/MousePicking.hpp"
+#include "../inc/Debugger.hpp"
 #include "../inc/Plane.hpp"
 #include "../physics/PhysicsEngine.h"
 #include "../physics/RigidBody.h"
@@ -57,16 +57,14 @@ private:
 	// mouse picking/dragging
 	MousePicking picker;
 	Plane dragPlane;
-	float dragSensitivity = 1.0f;
+	float dragSensitivity = 0.001f;
 
 	glm::vec4 objectViewSpacePos;
 
-	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y, xOffset, yOffset; } leftMouseButton, rightMouseButton;
+	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y; } leftMouseButton, rightMouseButton;
 
 	glm::vec3 initialIntersection;
 	glm::vec3 initialObjectPos;
-	glm::vec3 oldPos;
-	glm::vec3 newPos;
 	glm::vec3 initialHitPoint;
 	bool isDragging = false;
 	int selectedObjectId = -1;

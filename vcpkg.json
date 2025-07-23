@@ -2,12 +2,9 @@
   "dependencies": [
     "assimp",
     "bzip2",
-    "curl",
     "glad",
     "glfw3",
     "glm",
-    "libosmium",
-    "nlohmann-json",
     "zlib",
     "expat",
     "eigen3",

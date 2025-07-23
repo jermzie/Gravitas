@@ -1,6 +1,7 @@
-#pragma once
+#ifndef HALFEDGEMESH_HPP
+#define HALFEDGEMESH_HPP
 
-#include "../inc/Plane.hpp"
+#include <glm/glm.hpp>
 
 #include <vector>
 #include <limits>
@@ -9,7 +10,7 @@
 #include <memory>
 #include <cinttypes>
 
-#include <glm/glm.hpp>
+#include "../inc/Plane.hpp"
 
 // Container for half-edge representation of polygon mesh
 // Makes iterating over edges & faces easier
