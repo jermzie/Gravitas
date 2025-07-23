@@ -80,8 +80,6 @@ private:
 	Shader basicShader;
 	Shader pickingShader;
 	Shader outlineShader;
-	
-
 
 	// initialization
 	bool InitGLFW();

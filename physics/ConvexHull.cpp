@@ -1,18 +1,16 @@
-#include "ConvexHull.h"
-#include "HalfEdgeMesh.hpp"
-#pragma once
-
-#include "../inc/mesh.h"
-#include "../inc/model.h"
-#include "../inc/ray.h"
-
-#include <vector>
-#include <memory>
-#include <cassert>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 
+#include <vector>
+#include <memory>
+#include <cassert>
+
+#include "../inc/Mesh.hpp"
+#include "../inc/Model.hpp"
+#include "../inc/Ray.hpp"
+#include "ConvexHull.hpp"
+#include "HalfEdgeMesh.hpp"
 /*
 
 WRITE THIS SHIT FROM SCRATCH FIRST (DRAFT)

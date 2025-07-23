@@ -1,9 +1,10 @@
+#ifndef SHADER_H
+#define SHADER_H
+
 #ifndef PROJECT_SOURCE_DIR
 #error "PROJECT_SOURCE_DIR is not defined"
 #endif
 
-#ifndef SHADER_H
-#define SHADER_H
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>

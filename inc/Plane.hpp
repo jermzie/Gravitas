@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef PLANE_HPP
 #define PLANE_HPP
 
