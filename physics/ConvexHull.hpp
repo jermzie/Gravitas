@@ -14,7 +14,7 @@
 #include "../inc/Plane.hpp"
 #include "HalfEdgeMesh.hpp"
 /*
-* 
+*
 Convex Hull w/ QuickHull Algo
 
 High-level Steps:
@@ -31,58 +31,67 @@ High-level Steps:
 
 */
 
-class ConvexHull {
+class ConvexHull
+{
 private:
+	//
+	std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
+	std::vector<Vertex> vertices;
+	std::vector<int> indices;
 
-
-	float epsilon;
-	float epsilonSquared;
-	float scale;
+	float epsilon, epsilonSquared, scale;
 	bool isPlanar;
 
 	HalfEdgeMesh mesh;
 
-	const std::vector<Vertex>vertices;
-	const std::vector<glm::vec3>vertexData;			// Vertex data is unchanged
+	const std::vector<glm::vec3> vertexData;
 
+	std::array<size_t, 6> extremaIndices;
+	std::vector<std::unique_ptr<std::vector<size_t>>> conflictListsPool; // Assigned points pool
 
-	std::array<size_t, 6>extremaIndices;
-	std::vector < std::unique_ptr<std::vector<size_t>>> conflictListsPool;		// Assigned points pool
+	std::vector<size_t> visibleFaces; // All faces visibles from given point
+	std::vector<size_t> horizonEdges; // Loop of connected edges
 
-	std::vector<size_t>visibleFaces;				// All faces visibles from given point
-	std::vector<size_t>horizonEdges;				// Loop of connected edges
+	std::vector<size_t> newFaces;
+	std::vector<size_t> newHalfEdges;
+	std::vector<std::unique_ptr<std::vector<size_t>>> disabledFaceConflictLists;
 
-
-	struct FaceData {
+	struct FaceData
+	{
 		size_t faceIndex;
-		size_t enteredFromHalfEdge;					// Mark as horizon edge if face is not visible
+		size_t enteredFromHalfEdge; // Mark as horizon edge if face is not visible
 	};
 
 	std::vector<FaceData> possibleVisibleFaces;
-	std::deque<size_t>faceStack;						// Face stack
+	std::deque<size_t> faceStack;
 
+	void buildMesh(const std::vector<glm::vec3> &pointCloud, float defaultEps);
+	void createConvexHalfEdgeMesh();
 
 	void setupInitialTetrahedron();
+
+	void getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CCW, bool useOriginalIndices);
+
 	std::array<size_t, 6> getExtrema();
+
 	float getScale();
-	bool addPointToFace(HalfEdgeMesh::Face& face, size_t pointIdx);
 
+	bool connectHorizonEdges(std::vector<size_t> &horizonEdges);
 
-	void buildMesh(const std::vector<glm::vec3>& pointCloud);								// Constructs 
-	void createConvexHalfEdgeMesh();														// Updates mesh; creates ConvexHull obj. that getConvexHull() returns
-	void getConvexHull();							
+	bool addPointToFace(HalfEdgeMesh::Face &face, size_t pointIdx);
 
-	bool connectHorizonEdges();
+	inline std::unique_ptr<std::vector<size_t>> getConflictList();
 
-	inline std::unique_ptr<std::vector<size_t>> getConflictList();							// Shifts ownership of "outside" set 
-	inline void reclaimConflictList(std::unique_ptr < std::vector<size_t>>& ptr);			// When a face is disabled, we reclaim its assigned points for future usage
-
+	inline void reclaimConflictList(std::unique_ptr<std::vector<size_t>> &ptr);
 
 public:
-
-
 	ConvexHull() = default;
 
+	//
+	std::vector<Vertex> &getVertices();
+	std::vector<int> &getIndices();
+	void writeOBJ(const std::string &fileName, const std::string &objectName = "quickhull") const;
+	// void getConvexHullAsMesh();
 };
 
 #endif
