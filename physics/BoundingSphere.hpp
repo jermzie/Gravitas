@@ -7,7 +7,6 @@
 #include "../inc/Model.hpp"
 #include "../inc/Camera.hpp"
 #include "../inc/Ray.hpp"
-#include "RigidBody.hpp"
 
 const float PI = 3.14159265358979323846f;
 
@@ -69,8 +68,8 @@ public:
 
 		radius = std::sqrt(maxDistSq);
 
-		glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-		worldCentroid = glm::vec3(worldCentroidTrans);
+		glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+		worldCentroid = glm::vec3(objectWorldTrans);
 
 
 		// scale sphere model to correct dims. of bounding sphere 
@@ -145,7 +144,7 @@ public:
 		return true;
 	}
 
-	void UpdateCentroid(WorldTransform objectTrans) {
+	void updateCentroid(WorldTransform objectTrans) {
 
 
 		// cannot do objectTrans.GetPosition() bc that returns the object COM, which is diff from the worldCentroid position

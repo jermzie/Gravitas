@@ -12,9 +12,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -24,6 +21,7 @@
 
 #include "Mesh.hpp"
 #include "Shader.hpp"
+#include "stb_image.h"
 
 using namespace std;
 
@@ -37,12 +35,14 @@ public:
     vector<Mesh> meshes;
     string directory;
     bool gammaCorrection;
+    string fileName;
 
     Model() = default;
 
     // constructor, expects a filepath to a 3D model.
     Model(string const& modelName, bool gamma = false) : gammaCorrection(gamma)
     {
+        fileName = modelName;
         LoadModel(modelName);
     }
 
@@ -226,7 +226,7 @@ private:
 };
 
 // retrieve texture
-unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
+inline unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
 {
     string filename = string(path);
     filename = directory + '/' + filename;

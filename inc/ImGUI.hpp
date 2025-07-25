@@ -8,6 +8,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include "Shader.hpp"
+#include "Sandbox.hpp"
 // #include "../src/Gravitas.hpp"
 
 class ImGUI {

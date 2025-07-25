@@ -131,7 +131,7 @@ public:
 	HalfEdgeMesh() = default;
 
 	// Build inital tetrahedron from vertex indices
-	size_t setup(size_t a, size_t b, size_t c, size_t d) {
+	void setup(size_t a, size_t b, size_t c, size_t d) {
 
 		faces.clear();
 		halfEdges.clear();
@@ -255,6 +255,7 @@ public:
 		
 	}
 
+
 	std::array<size_t, 3> getFaceVertices(const Face& f) const {
 
 		std::array<size_t, 3> v;
@@ -283,4 +284,11 @@ public:
 		return { he.vert, halfEdges[he.twin].vert };
 
 	}
+	
+	void getHalfEdgeMesh(){
+
+
+	}
 };
+
+#endif

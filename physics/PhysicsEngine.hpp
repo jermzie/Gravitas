@@ -32,8 +32,8 @@ public:
 		}
 	}
 
-	void addRigidBody(RigidBody body) {
-		rigidBodies.push_back(body);
+	void addRigidBody(RigidBody&& body) {
+		rigidBodies.push_back(std::move(body));
 
 	}
 

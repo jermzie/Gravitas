@@ -40,7 +40,7 @@ private:
 	// window & context
 	GLFWwindow* window = nullptr;
 	const char* glsl_version = "#version 330 core";
-	const unsigned int SCREEN_WIDTH, SCREEN_HEIGHT;
+	unsigned int SCREEN_WIDTH, SCREEN_HEIGHT;
 
 	// timing
 	float deltaTime = 0.0f;

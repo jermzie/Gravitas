@@ -1,16 +1,4 @@
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <glm/gtx/norm.hpp>
-
-#include <vector>
-#include <memory>
-#include <cassert>
-
-#include "../inc/Mesh.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Ray.hpp"
 #include "ConvexHull.hpp"
-#include "HalfEdgeMesh.hpp"
 /*
 
 WRITE THIS SHIT FROM SCRATCH FIRST (DRAFT)
@@ -34,10 +22,115 @@ High-level Steps:
 
 */
 
-/* DOING */
+
+ConvexHull::ConvexHull(std::string fileName, const std::vector<glm::vec3> &vertexData){
+	
+	// Build convex hull as half-edge mesh structure
+	buildMesh(vertexData);
+
+	// Build convex hull vertices & indices
+	getConvexHull(vertexData);
+
+	// For rendering and transformations
+	computeCentroid();
+
+	size_t dot = fileName.find_last_of(".");
+	std::string name = fileName.substr(0, dot);
+	std::string ext = fileName.substr(dot);
+	modelName = name + "_convexhull" + ext;
+
+	writeOBJ(modelName, name);
+	convexhullModel.LoadModel(modelName);
+}
+
+void ConvexHull::computeConvexHull(std::string fileName, const std::vector<glm::vec3> &vertexData, WorldTransform objectTrans){
+
+	// Build convex hull as half-edge mesh structure
+	buildMesh(vertexData);
+
+	// Build convex hull vertices & indices
+	getConvexHull(vertexData);
+
+	// Compute local and world coordinates for rendering and transformations
+	localCentroid = computeCentroid();
+	glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+	worldCentroid = glm::vec3(objectWorldTrans);
+
+
+	size_t dot = fileName.find_last_of(".");
+	std::string name = fileName.substr(0, dot);
+	std::string ext = fileName.substr(dot);
+	modelName = name + "_convexhull" + ext;
+
+	writeOBJ(modelName, name);
+	convexhullModel.LoadModel(modelName);
+}
+
+
+glm::vec3 ConvexHull::computeCentroid() {
+
+	unsigned int num = 0;
+	glm::vec3 centroid(0.0f, 0.0f, 0.0f);
+
+	for(auto& v : vertices){
+		
+		centroid += v;
+		num++;
+	}
+
+	return centroid /= static_cast<float>(num);
+}
+
+bool ConvexHull::computeRayIntersection(const Ray &r, float &t){
+	
+	/*
+	 GENERAL IDEA
+	 go through all faces (non-diabled) and test ray-plane intersections lol
+	*/
+	for(auto& f : mesh.faces) {
+		
+		if(!f.isDisabled()){
+
+	        	// Calculate ray-plane intersection
+        		float denom = glm::dot(f.P.normal, r.direction);
+	
+		        // Check if ray is not parallel to plane -- avoid zero division
+				if (std::abs(denom) < 1e-6) {
+					return false;
+				}
+
+
+	        	t = glm::dot(f.P.normal, f.P.point - r.origin) / denom;
+
+			//return t >= 0;
+
+		
+			// min max intersect distances
+			return (t >= 0.1f && t < 50.0f);
+		}
+	}
+
+	return false;
+}
+
+void ConvexHull::updateCentroid(WorldTransform objectTrans){
+
+
+	worldTrans = objectTrans;
+
+	// Apply the object's transformation to the centroid
+	glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+	worldCentroid = glm::vec3(worldCentroidTrans);
+}
+
+/* DONE */
 void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CCW, bool useOriginalIndices)
 {
-
+	
+	if(!useOriginalIndices) {
+		optimizedVBO.reset(new std::vector<glm::vec3>());
+	}
+	
 	std::vector<bool> faceProcessed(mesh.faces.size(), false);
 	std::vector<size_t> faceStack;
 	std::unordered_map<size_t, size_t> mapVertexIndex;
@@ -58,7 +151,7 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 	}
 
 	const size_t isCCW = CCW ? 1 : 0;
-	const size_t faceCount;
+	const size_t faceCount = mesh.faces.size() - mesh.disabledFaces.size();
 	indices.reserve(faceCount * 3);
 
 	while (faceStack.size())
@@ -104,7 +197,7 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 						// vertices stored as std::vector<Vertex> vertices ???s
 						optimizedVBO->push_back(pointCloud[v]);
 						mapVertexIndex[v] = optimizedVBO->size() - 1;
-						v = optimizedVBO->size() - 1;
+	
 					}
 					else
 					{
@@ -113,12 +206,19 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 				}
 			}
 			indices.push_back(vertices[0]);
-			indices.push_back(vertices[1 + iCCW]);
-			indices.push_back(vertices[2 - iCCW]);
+			indices.push_back(vertices[1 + isCCW]);
+			indices.push_back(vertices[2 - isCCW]);
 		}
+	}
+	if(!useOriginalIndices){
+		vertices = std::vector<glm::vec3>(*optimizedVBO);
+	}
+	else {
+		vertices = pointCloud;
 	}
 }
 
+/* DONE */
 void ConvexHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defaultEps)
 {
 
@@ -144,17 +244,26 @@ void ConvexHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defau
 	createConvexHalfEdgeMesh(); // Iteratively update mesh until ...
 	if (isPlanar)
 	{
+		const size_t newPointIdx = tempPlanarVertices.size() - 1;
+		for(auto& he : mesh.halfEdges){
+			if(he.vert == newPointIdx) {
+				
+				he.vert = 0;
+			}
+		}
+		vertexData = pointCloud;
+		tempPlanarVertices.clear();
 	}
 }
 
-/*DOING*/
+/*DONE*/
 // Forms inital hull from extreme values
 void ConvexHull::setupInitialTetrahedron()
 {
 
 	const size_t vertexCount = vertexData.size();
 
-	// Degenerate case -- just return degenerate tetrahedron
+	// 0. Degenerate case -- just return degenerate tetrahedron
 	if (vertexCount <= 4)
 	{
 		size_t v[4] = {0, std::min((size_t)1, vertexCount - 1), std::min((size_t)2, vertexCount - 1), std::min((size_t)3, vertexCount - 1)};
@@ -165,13 +274,13 @@ void ConvexHull::setupInitialTetrahedron()
 		// normal should point outwards away from tetrahedrons
 		if (trianglePlane.isPointAbovePlane(vertexData[v[3]]))
 		{
-			std::swap(v[0].v[1]);
+			std::swap(v[0], v[1]);
 		}
 
 		return mesh.setup(v[0], v[1], v[2], v[3]);
 	}
 
-	// 1. Form a line between two furthest extrema vertices
+	// 1a. Form a line between two furthest extrema vertices
 	float maxDist = epsilonSquared;
 	std::pair<size_t, size_t> selectedPoints;
 
@@ -180,7 +289,7 @@ void ConvexHull::setupInitialTetrahedron()
 		for (int j = i + 1; j < 6; j++)
 		{
 
-			const float dist = glm::distance2(vertexData[extremaIndices[i]], vertexData[extremaIndices[j]);	// get squared distance between extreme values
+			const float dist = glm::distance2(vertexData[extremaIndices[i]], vertexData[extremaIndices[j]]);	// get squared distance between extreme values
 
 			if (dist > maxDist)
 			{
@@ -190,19 +299,18 @@ void ConvexHull::setupInitialTetrahedron()
 		}
 	}
 
-	// Degenerate case -- point cloud seems to consist of a single point
+	// 1b. Degenerate case -- point cloud seems to consist of a single point
 	if (maxDist == epsilonSquared)
 	{
-
 		return mesh.setup(0, std::min((size_t)1, vertexCount - 1), std::min((size_t)2, vertexCount - 1), std::min((size_t)3, vertexCount - 1));
 	}
 	assert(selectedPoints.first != selectedPoints.second);
 
-	// 2. Find point furthest from the line (forms a triangle face)
+	// 2a. Find point furthest from the line -- forms a triangle face
 	maxDist = epsilonSquared;
 	size_t maxIdx = std::numeric_limits<size_t>::max();
 
-	const Ray r(vertexData[selectedPoints.first], (vertexData[selectedPoints.second] - vertexData[selectedPoints.first]));
+	Ray r(vertexData[selectedPoints.first], (vertexData[selectedPoints.second] - vertexData[selectedPoints.first]));
 
 	for (int i = 0; i < vertexCount; i++)
 	{
@@ -216,27 +324,26 @@ void ConvexHull::setupInitialTetrahedron()
 		}
 	}
 
-	// Degenerate case -- point cloud seems to belong to 1D subspace of R^3
+	// 2b. Degenerate case -- point cloud seems to belong to 1D subspace of R^3
 	if (maxDist == epsilonSquared)
 	{
 
 		// Pick any distinct point and return a thin triangle
-		auto it = std::find_if(m_vertexData.begin(), m_vertexData.end(), [&](const vec3 &ve)
-							   { return ve != m_vertexData[selectedPoints.first] && ve != m_vertexData[selectedPoints.second]; });
+		auto it = std::find_if(vertexData.begin(), vertexData.end(), [&](const glm::vec3 &ve)
+							   { return ve != vertexData[selectedPoints.first] && ve != vertexData[selectedPoints.second]; });
+		
+		const size_t thirdPoint = (it == vertexData.end()) ? selectedPoints.first : std::distance(vertexData.begin(), it);
 
-		const size_t thirdPoint = (it == m_vertexData.end()) ? selectedPoints.first : std::distance(m_vertexData.begin(), it);
+		it = std::find_if(vertexData.begin(), vertexData.end(), [&](const glm::vec3 &ve)
+						  { return ve != vertexData[selectedPoints.first] && ve != vertexData[selectedPoints.second] && ve != vertexData[thirdPoint]; });
 
-		it = std::find_if(m_vertexData.begin(), m_vertexData.end(), [&](const vec3 &ve)
-						  { return ve != m_vertexData[selectedPoints.first] && ve != m_vertexData[selectedPoints.second] && ve != m_vertexData[thirdPoint]; });
-
-		const size_t fourthPoint = (it == m_vertexData.end()) ? selectedPoints.first : std::distance(m_vertexData.begin(), it);
-		return m_mesh.setup(selectedPoints.first, selectedPoints.second, thirdPoint, fourthPoint);
-
+		const size_t fourthPoint = (it == vertexData.end()) ? selectedPoints.first : std::distance(vertexData.begin(), it);
+	
 		return mesh.setup(selectedPoints.first, selectedPoints.second, thirdPoint, fourthPoint);
 	}
 	assert(maxIdx != selectedPoints.first && maxIdx != selectedPoints.second);
 
-	// Forms base triangle for tetrahedron
+	// 2c. Forms base triangle for tetrahedron
 	std::array<glm::vec3, 3> baseTriangle{
 		vertexData[selectedPoints.first],
 		vertexData[selectedPoints.second],
@@ -247,10 +354,9 @@ void ConvexHull::setupInitialTetrahedron()
 		selectedPoints.second,
 		maxIdx};
 
-	// 3. Find point furthest from the plane (forms a tetrahedron)
+	// 3a. Find point furthest from the plane (forms a tetrahedron)
 	maxDist = epsilonSquared;
 	maxIdx = 0;
-
 	const glm::vec3 normal = getTriangleNormal(baseTriangle[0], baseTriangle[1], baseTriangle[2]);
 	const Plane p(normal, baseTriangle[0]);
 	for (int i = 0; i < vertexCount; i++)
@@ -265,22 +371,30 @@ void ConvexHull::setupInitialTetrahedron()
 		}
 	}
 
-	// Degenerate case -- point cloud seems to lie on 2D subspace of R^3
+	// 3b. Degenerate case -- point cloud seems to lie on 2D subspace of R^3
 	if (maxDist == epsilonSquared)
 	{
 
-		planar = true;
-		const glm::vec3 n = getTriangleNormal(baseTriangle[1], baseTriangle[2], baseTriangle[0]);
+		isPlanar = true;
+		const glm::vec3 tempNormal = getTriangleNormal(baseTriangle[1], baseTriangle[2], baseTriangle[0]);
+
+		tempPlanarVertices.clear();
+		tempPlanarVertices.insert(tempPlanarVertices.begin(), vertexData.begin(), vertexData.end());
+
+		const glm::vec3 newPoint = tempNormal + vertexData[0];
+		tempPlanarVertices.push_back(newPoint);
+		maxIdx = tempPlanarVertices.size() - 1;
+		vertexData = tempPlanarVertices;
 	}
 
 	// Enforce CCW winding -- OpenGL considers all CCW polygons to be front-facing by default
 	const Plane trianglePlane(normal, baseTriangle[0]);
-	if (trianglePlane.isPointAbovePlane(vertexData[maxIdx]) {
+	if (trianglePlane.isPointAbovePlane(vertexData[maxIdx])) {
 		std::swap(baseTriangleIndices[0], baseTriangleIndices[1]);
 	}
 
 
-	// Create iniial tetrahedron half edge mesh
+	// 3c. Create initial tetrahedron half edge mesh
 	mesh.setup(baseTriangleIndices[0], baseTriangleIndices[1], baseTriangleIndices[2], maxIdx);
 
 	// Compute planes defined by each triangle face
@@ -297,11 +411,10 @@ void ConvexHull::setupInitialTetrahedron()
 		
 	}
 
-	// 4. Assign points to each face if "outside" (vertices inside tetrahedron are ignored)
+	// 4. Assign points to each face if "outside" -- vertices inside tetrahedron are ignored
 	for (int i = 0; i < vertexCount; i++) {
 		for (auto &f : mesh.faces)
 		{
-
 			if (addPointToFace(f, i))
 			{
 				break;
@@ -343,7 +456,7 @@ void ConvexHull::createConvexHalfEdgeMesh()
 	while (!faceStack.empty())
 	{
 		it++;
-		if (it == std : numeric_limits<size_t>::max())
+		if (it == std::numeric_limits<size_t>::max())
 		{
 
 			it = 0;
@@ -358,7 +471,7 @@ void ConvexHull::createConvexHalfEdgeMesh()
 		assert(!topFace.pointsOnPositiveSide || topFace.pointsOnPositiveSide->size() > 0);
 
 		// Ignore faces with empty conflict lists or disabled faces
-		if (!topFace.pointsOnPositiveSide || topFace.isDisabled)
+		if (!topFace.pointsOnPositiveSide || topFace.isDisabled())
 		{
 
 			continue;
@@ -374,7 +487,7 @@ void ConvexHull::createConvexHalfEdgeMesh()
 
 		// Find all faces visible to eye point
 		// Build a list of horizon edges
-		possibleVisibleFaces.emplace_back(topFace, std::numeric_limits<size_t>::max());
+		possibleVisibleFaces.emplace_back(topIdx, std::numeric_limits<size_t>::max());
 		while (possibleVisibleFaces.size())
 		{
 
@@ -464,35 +577,55 @@ void ConvexHull::createConvexHalfEdgeMesh()
 
 				reclaimConflictList(topFace.pointsOnPositiveSide);
 			}
-
 			continue;
 		}
 
-		// Disable all visible faces & half-edges, we resuse their
+
+		newFaces.clear();
+		newHalfEdges.clear();
+		disabledFaceConflictLists.clear();
+		size_t disabledCount = 0;
+
+		// Disable all visible faces & half-edges, we resuse their conflict lists
 		for (auto faceIdx : visibleFaces)
 		{
 
 			auto &disabledFace = mesh.faces[faceIdx];
 			auto halfEdges = mesh.getFaceHalfEdges(disabledFace);
 
+			// disable all half edges part associated with face
 			for (size_t j = 0; j < 3; j++)
 			{
-
-				// disable all half edges except horizon half edge
+				// exclude horizon half edge -- part of final convex hull
 				if ((disabledFace.horizonEdgesOnCurrentIteration & (1 << j)) == 0)
 				{
-					if ()
+					if (disabledCount < horizonEdgesCount * 2)
 					{
+						newHalfEdges.push_back(halfEdges[j]);
+						disabledCount++;
 					}
 					else
 					{
-
+						// disable half edge for future reuse
 						mesh.disableHalfEdge(halfEdges[j]);
 					}
 				}
 			}
 
-			// Dsiable face but ..
+			// Disable face
+			auto ptr = mesh.disableFace(faceIdx);
+			if(ptr){
+		 		
+				// Retain pointer to conflict list for reassignment to new faces
+				assert(ptr->size());
+				disabledFaceConflictLists.push_back(std::move(ptr));
+			}
+		}
+		if(disabledCount < horizonEdgesCount * 2){
+			const size_t newHalfEdgesNeeded = horizonEdgesCount*2 - disabledCount;
+			for(size_t i = 0;i < newHalfEdgesNeeded;i++){
+				newHalfEdges.push_back(mesh.addHalfEdge());
+			}
 		}
 
 		// Build new faces with horizon edges
@@ -603,7 +736,7 @@ bool ConvexHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
 		const size_t endVertex = mesh.halfEdges[horizonEdges[i]].vert;
 
 		bool foundNext = false;
-		for (size_t j = i + 1; i < horizonEdgeCount; j++)
+		for (size_t j = i + 1; j < horizonEdgeCount; j++)
 		{
 
 			// end vertex for twin edge (pointing in opposite direction to current edge)
@@ -628,7 +761,6 @@ bool ConvexHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
 	// final vertex must match initial vertex
 	assert(mesh.halfEdges[horizonEdges[horizonEdgeCount - 1]].vert == mesh.halfEdges[mesh.halfEdges[horizonEdges[0]].twin].vert);
 	return true;
-	s
 }
 
 /*DONE*/
@@ -637,7 +769,7 @@ std::array<size_t, 6> ConvexHull::getExtrema()
 {
 
 	std::array<size_t, 6> outIndices{0, 0, 0, 0, 0, 0};
-	extremeValues{vertexData[0].x, vertexData[0].x, vertexData[0].y, vertexData[0].y, vertexData[0].z, vertexData[0].z};
+	std::array<float, 6> extremeValues{vertexData[0].x, vertexData[0].x, vertexData[0].y, vertexData[0].y, vertexData[0].z, vertexData[0].z};
 
 	for (int i = 0; i < vertexData.size(); i++)
 	{
@@ -765,7 +897,7 @@ std::unique_ptr<std::vector<size_t>> ConvexHull::getConflictList()
 void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>> &ptr)
 {
 
-	const size_t ize = ptr->size();
+	const size_t size = ptr->size();
 
 	//
 	if ((size + 1) * 128 < ptr->capacity())
@@ -778,21 +910,23 @@ void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>> &ptr)
 	conflictListsPool.push_back(std::move(ptr));
 }
 
-/*DOING*/
+/* DONE */
 void ConvexHull::writeOBJ(const std::string &fileName, const std::string &objectName) const
 {
 
+
+    string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + fileName;
 	std::ofstream objFile;
-	objFile.open(fileName);
+	objFile.open(path);
 	objFile << "o " << objectName << "\n";
-	for (const auto &v : getConvexHullVertices())
+	for (const auto &v : getVertices())
 	{
 
 		// WRONG LOGIC
 		// vertices stored as std::vector<Vertex>vertices ???
 		objFile << "v " << v.x << " " << v.y << " " << v.z << "\n";
 	}
-	const auto &indBuf = getConvexHullIndices();
+	const auto &indBuf = getIndices();
 	size_t triangleCount = indBuf.size() / 3;
 	for (size_t i = 0; i < triangleCount; i++)
 	{
@@ -801,16 +935,40 @@ void ConvexHull::writeOBJ(const std::string &fileName, const std::string &object
 	objFile.close();
 }
 
+void ConvexHull::Draw(Shader &shader)
+{
+	convexhullModel.Draw(shader);
+}
+
 /* DONE */
-std::vector<Vertex> ConvexHull::getVertices()
+std::vector<glm::vec3>& ConvexHull::getVertices()
 {
 
 	return vertices;
 }
 
 /* DONE */
-std::vector<int> ConvexHull::getIndices()
+std::vector<int>& ConvexHull::getIndices()
 {
 
 	return indices;
+}
+
+/* DONE */
+const std::vector<glm::vec3>& ConvexHull::getVertices() const
+{
+
+	return vertices;
+}
+
+/* DONE */
+const std::vector<int>& ConvexHull::getIndices() const
+{
+
+	return indices;
+}
+
+/* DONE */
+WorldTransform& ConvexHull::getWorldTransform() {
+	return worldTrans;
 }

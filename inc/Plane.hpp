@@ -17,7 +17,7 @@ public:
 	}
 
 	Plane() = default;
-	Plane(const glm::vec3& n, const glm::vec3& p) : normal(n), distance(glm::dot(-n, p)), normLengthSq(normal.x* normal.x + normal.y * normal.y + normal.z * normal.z) {}
+	Plane(const glm::vec3& n, const glm::vec3& p) : normal(n), point(p), distance(glm::dot(-n, p)), normLengthSq(normal.x* normal.x + normal.y * normal.y + normal.z * normal.z) {}
 };
 
 inline float getSignedDistanceToPlane(const glm::vec3& v, const Plane& p) {

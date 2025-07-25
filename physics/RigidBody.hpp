@@ -14,15 +14,12 @@
 #include "../inc/Mesh.hpp"
 #include "../inc/WorldTransform.hpp"
 #include "../inc/Ray.hpp"
-// #include "ConvexHull.hpp"
+#include "ConvexHull.hpp"
 #include "BoundingSphere.hpp"
 
 class RigidBody {
 private:
 	std::vector<Vertex>mesh;		// Polyhedron triangle mesh
-	//std::vector<ConvexHull>hulls;	// Rigid body collision mesh
-
-
 
 	WorldTransform worldTrans;
 	Model rigidBodyModel;
@@ -51,8 +48,8 @@ private:
 public:
 
 
-	BoundingSphere collider;
-
+	// BoundingSphere collider;
+	ConvexHull collider;
 
 	RigidBody(Model model, double mass, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
 
@@ -63,12 +60,16 @@ public:
 		this->linearVelocity = velocity;
 		this->angularVelocity = omega;
 
-		// transformation matrices
+		// set inital transformation matrices
 		worldTrans.SetPosition(centreOfMass);
 
 
 		// sphere centroid position
-		collider.ComputeBoundingSphere(model, worldTrans);
+		//collider.ComputeBoundingSphere(model, worldTrans);
+	
+		// Returns std::vector<glm::vec3>
+		const std::vector<glm::vec3> pointCloud = model.GetVertexData();
+		collider.computeConvexHull(model.fileName, pointCloud, worldTrans);
 	}
 
 
@@ -128,12 +129,14 @@ public:
 	}
 
 	bool collided(Ray& r) {
-		return collider.RaySphereIntersection(r);
+
+		float t;
+		return collider.computeRayIntersection(r, t);
 	}
 
-	BoundingSphere getBounds() {
-		return collider;
-	}
+	// BoundingSphere getBounds() {
+	// 	//return collider;
+	// }
 
 };
 
