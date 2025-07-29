@@ -85,7 +85,7 @@ public:
 		if (disabledFaces.size()) {
 			size_t idx = disabledFaces.back();
 
-			Face& f = faces[idx];
+			auto& f = faces[idx];
 			assert(f.isDisabled());
 			assert(!f.pointsOnPositiveSide);
 
@@ -103,6 +103,7 @@ public:
 
 	size_t addHalfEdge() {
 		if (disabledHalfEdges.size()) {
+
 			size_t idx = disabledHalfEdges.back();
 			disabledHalfEdges.pop_back();
 			return idx;
@@ -115,7 +116,7 @@ public:
 	// Return pointer to all vertices in "outside" set
 	std::unique_ptr<std::vector<size_t>> disableFace(size_t faceIdx) {
 
-		Face& f = faces[faceIdx];
+		auto& f = faces[faceIdx];
 		f.disable();
 		disabledFaces.push_back(faceIdx);
 		return std::move(f.pointsOnPositiveSide);
@@ -123,7 +124,7 @@ public:
 
 	void disableHalfEdge(size_t heIdx) {
 
-		HalfEdge& he = halfEdges[heIdx];
+		auto& he = halfEdges[heIdx];
 		he.disable();
 		disabledHalfEdges.push_back(heIdx);
 	}
@@ -142,23 +143,6 @@ public:
 		faces.reserve(4);
 		halfEdges.reserve(12);
 
-		// create initial faces
-		// --------------------
-		Face ABC;
-		ABC.he = 0;
-		faces.push_back(std::move(ABC));
-
-		Face ACD;
-		ACD.he = 3;
-		faces.push_back(std::move(ACD));
-
-		Face BAD;
-		BAD.he = 6;
-		faces.push_back(std::move(BAD));
-
-		Face CBD;
-		CBD.he = 9;
-		faces.push_back(std::move(CBD));
 
 		// create initial halfedges
 		// ------------------------
@@ -252,6 +236,25 @@ public:
 		DC.face = 3;
 		DC.next = 9;
 		halfEdges.push_back(DC); // halfEdges[11]
+
+
+		// create initial faces
+		// --------------------
+		Face ABC;
+		ABC.he = 0;
+		faces.push_back(std::move(ABC));
+
+		Face ACD;
+		ACD.he = 3;
+		faces.push_back(std::move(ACD));
+
+		Face BAD;
+		BAD.he = 6;
+		faces.push_back(std::move(BAD));
+
+		Face CBD;
+		CBD.he = 9;
+		faces.push_back(std::move(CBD));
 		
 	}
 
@@ -281,7 +284,7 @@ public:
 
 	std::array<size_t, 2> getHalfEdgeVertices(const HalfEdge& he) const {
 
-		return { he.vert, halfEdges[he.twin].vert };
+		return { halfEdges[he.twin].vert, he.vert };
 
 	}
 	
@@ -289,6 +292,7 @@ public:
 
 
 	}
+
 };
 
 #endif

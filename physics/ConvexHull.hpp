@@ -9,7 +9,10 @@
 #error "PROJECT_SOURCE_DIR is not defined"
 #endif
 
+
+#include <iostream>
 #include <string>
+#include <regex>
 #include <memory>
 #include <cassert>
 #include <cmath>
@@ -50,10 +53,18 @@ private:
 	// rendering stuffs
 	std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
 	std::vector<glm::vec3> vertices;
-	std::vector<int> indices;
+	std::vector<size_t> indices;
 
 	Model convexhullModel;
-	std::string modelName;
+	std::string convexhullName;
+
+	struct Vec3Compare {
+		bool operator()(const glm::vec3& a, const glm::vec3& b) const {
+			if (a.x != b.x) return a.x < b.x;
+			if (a.y != b.y) return a.y < b.y;
+			return a.z < b.z;
+		}
+	};
 
 	WorldTransform worldTrans;
 	glm::vec3 localCentroid;
@@ -80,11 +91,11 @@ private:
 	std::vector<glm::vec3> tempPlanarVertices;
 	struct FaceData
 	{
-		size_t faceIndex;
+		size_t faceIdx;
 		size_t enteredFromHalfEdge; // Mark as horizon edge if face is not visible
 		
 		FaceData() = default;
-		FaceData(size_t face, size_t he) : faceIndex(face), enteredFromHalfEdge(he) {}
+		FaceData(size_t face, size_t he) : faceIdx(face), enteredFromHalfEdge(he) {}
 	};
 
 	std::vector<FaceData> possibleVisibleFaces;
@@ -112,31 +123,36 @@ private:
 	glm::vec3 computeCentroid();	
 
 public:
+
 	ConvexHull() = default;
 
-	ConvexHull(string fileName, const std::vector<glm::vec3> &vertexData);
+	ConvexHull(const Model &model, WorldTransform objectTrans);
 
-	void computeConvexHull(string fileName, const std::vector<glm::vec3> &vertexData, WorldTransform worldTrans);
+	void computeConvexHull(const Model &model, WorldTransform objectTrans);
 
 	bool computeRayIntersection(const Ray &r, float &t);
 
-	void updateCentroid(WorldTransform objectTrans);
+	void updateCentroid(glm::vec3 displacement);
 
 	std::vector<glm::vec3> &getVertices();
 	
-	std::vector<int> &getIndices();
+	std::vector<size_t> &getIndices();
 
 	WorldTransform &getWorldTransform();
         
 	const std::vector<glm::vec3> &getVertices() const;
 	
-	const std::vector<int> &getIndices() const;
+	const std::vector<size_t> &getIndices() const;
 	
 	void writeOBJ(const std::string &fileName, const std::string &objectName = "quickhull") const;
 	
 	// void getConvexHullAsMesh();
 
 	void Draw(Shader &shader);
+
+	void debugPrintState() const;
+
+	void debugPrintUniqueVertices(std::vector<glm::vec3>vertices) const;
 };
 
 #endif

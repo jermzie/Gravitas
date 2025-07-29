@@ -74,7 +74,7 @@ public:
         processNode(scene->mRootNode, scene);
     }
 
-    vector<glm::vec3> GetVertexData() {
+    vector<glm::vec3> GetVertexData() const {
 
         vector<glm::vec3>vertexData;
         for (auto& mesh : meshes) {

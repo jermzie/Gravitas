@@ -2,6 +2,6 @@ vcpkg/
 build/
 CMakeCache.txt
 CMakeFiles/
-
+quickhull/
 compile_commands.json
 .cache/
