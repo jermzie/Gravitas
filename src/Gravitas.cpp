@@ -135,6 +135,7 @@ void App::InitScene() {
     Model cylinderModel("cilindru.obj");
     Model suzanneModel("suzanne.obj");
     Model teapotModel("teapot.obj");
+    Model bunnyModel("stanford-bunny.obj");
 
     
     //Model cubeTestModel("cube_convexhull.obj");
@@ -147,9 +148,9 @@ void App::InitScene() {
     //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody cyl(cylinderModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody teapot(teapotModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-
+    //RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody teapot(teapotModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody bunny(bunnyModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     
     //RigidBody cubeTest(cubeTestModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody cylTest(cylTestModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
@@ -160,8 +161,9 @@ void App::InitScene() {
     //scene.addRigidBody(std::move(cube));
     //scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
-    scene.addRigidBody(std::move(suzanne));
-    //scene.addRigidBody(std::move(teapot));
+    //scene.addRigidBody(std::move(suzanne));
+    scene.addRigidBody(std::move(teapot));
+    scene.addRigidBody(std::move(bunny));
 
     
     //scene.addRigidBody(std::move(cubeTest));

@@ -23,17 +23,33 @@ High-level Steps:
 
 */
 
-ConvexHull::ConvexHull(const Model &objectModel, WorldTransform objectTrans){
+void ConvexHull::computeConvexHull(const Model &objectModel, WorldTransform objectTrans){
 
-	// Get verticess
-	vertexData = objectModel.GetVertexData();
-	
-	// Build half-edge mesh structure
+	std::cout << objectModel.fileName << std::endl;
+
+
+	// Get unique vertices
+	std::vector<glm::vec3> modelVertices = objectModel.GetVertexData();
+	std::set<glm::vec3, Vec3Compare> uniqueVert(modelVertices.begin(), modelVertices.end());
+	vertexData.assign(uniqueVert.begin(), uniqueVert.end());
+
+
+	// Build convex hull as half-edge mesh structure
 	buildMesh(vertexData);
 
 	// Build convex hull vertices & indices
 	getConvexHull(vertexData);
 
+
+	// Debug info
+	// debugPrintUniqueVertices();
+
+	// debugMissingVertices(vertexData, vertices);
+
+	// debugPrintState();
+
+
+	// Rendering & Writing
 	// Compute convex hull centroid for rendering & transformations
 	localCentroid = computeCentroid();
 	glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
@@ -46,113 +62,13 @@ ConvexHull::ConvexHull(const Model &objectModel, WorldTransform objectTrans){
 	convexhullName = name + "_convexhull" + ext;
 
 	writeOBJ(convexhullName, name);
+
 	//convexhullModel.LoadModel(modelName);
 }
 
-void ConvexHull::computeConvexHull(const Model &objectModel, WorldTransform objectTrans){
-
-	std::cout << "============================" << std::endl;
-	std::cout << objectModel.fileName << std::endl;
-	// Get vertices
-	std::vector<glm::vec3> modelVertices = objectModel.GetVertexData();
-	std::set<glm::vec3, Vec3Compare> uniqueVert(modelVertices.begin(), modelVertices.end());
-	vertexData.assign(uniqueVert.begin(), uniqueVert.end());
-
-	std::cout << "Unique Model Vertices \n";
-	debugPrintUniqueVertices(vertexData);
-
-	// Build convex hull as half-edge mesh structure
-	buildMesh(vertexData, 1e-8f);
-
-	// Build convex hull vertices & indices
-	getConvexHull(vertexData);
-
-	std::cout << objectModel.fileName << std::endl;
-	debugPrintState();
-
-	std::cout << "Convex Hull Vertices \n";
-	debugPrintUniqueVertices(vertices);
-
-	// Compute convex hull centroid for rendering & transformations
-	localCentroid = computeCentroid();
-	glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-	worldCentroid = glm::vec3(objectWorldTrans);
-
-	std::string objectName = objectModel.fileName;
-	size_t dotPos = objectName.find_last_of(".");
-	std::string name = objectName.substr(0, dotPos);
-	std::string ext = objectName.substr(dotPos);
-	convexhullName = name + "_convexhull" + ext;
-
-	writeOBJ(convexhullName, name);
-	//convexhullModel.LoadModel(modelName);
-}
-
-
-glm::vec3 ConvexHull::computeCentroid() {
-
-	unsigned int num = 0;
-	glm::vec3 centroid(0.0f, 0.0f, 0.0f);
-
-	for(auto& v : vertices){
-		
-		centroid += v;
-		num++;
-	}
-
-	return centroid /= static_cast<float>(num);
-}
-
-/* TODO */
-bool ConvexHull::computeRayIntersection(const Ray &r, float &t){
-	
-	/*
-	 GENERAL IDEA
-	 go through all faces (non-diabled) and test ray-plane intersections lol
-	*/
-	for(auto& f : mesh.faces) {
-		
-		if(!f.isDisabled()){
-
-	        	// Calculate ray-plane intersection
-        		float denom = glm::dot(f.P.normal, r.direction);
-	
-		        // Check if ray is not parallel to plane -- avoid zero division
-				if (std::abs(denom) < 1e-6) {
-					return false;
-				}
-
-
-	        	t = glm::dot(f.P.normal, f.P.point - r.origin) / denom;
-
-			//return t >= 0;
-
-		
-			// min max intersect distances
-			return (t >= 0.1f && t < 50.0f);
-		}
-	}
-
-	return false;
-}
-
-void ConvexHull::updateCentroid(glm::vec3 displacement){
-
-	/*
-	worldTrans = objectTrans;
-
-	// Apply the object's transformation to the centroid
-	glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-	worldCentroid = glm::vec3(worldCentroidTrans);
-	*/
-
-	worldCentroid += displacement;
-}
-
-/* DEBBUG */
+/* DEBUG */
 void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CCW, bool useOriginalIndices)
-{
-	
+{	
 	if(!useOriginalIndices) {
 		optimizedVBO.reset(new std::vector<glm::vec3>());
 	}
@@ -168,7 +84,6 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 
 		if (!mesh.faces[i].isDisabled())
 		{
-
 			faceStack.push_back(i);
 			break;
 		}
@@ -182,6 +97,7 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 	const size_t faceCount = mesh.faces.size() - mesh.disabledFaces.size();
 	indices.reserve(faceCount * 3);
 
+	size_t i = 0;
 	while (faceStack.size())
 	{
 
@@ -221,8 +137,10 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 					{
 
 						optimizedVBO->push_back(pointCloud[v]);
-						mapVertex2Index[v] = optimizedVBO->size() - 1;
-						v = optimizedVBO->size() - 1;
+						size_t newIndex = optimizedVBO->size() - 1;
+						mapVertex2Index[v] = newIndex;
+						hullIndexToModelIndex[newIndex] = v;
+						v = newIndex;
 
 					}
 					else
@@ -232,6 +150,7 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 				}
 			}
 
+			/*
 			if (faceVertices[0] != faceVertices[1 + isCCW] &&
 				faceVertices[0] != faceVertices[2 - isCCW] &&
 				faceVertices[1 + isCCW] != faceVertices[2 - isCCW]) {
@@ -240,16 +159,28 @@ void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CC
 				indices.push_back(faceVertices[1 + isCCW]);
 				indices.push_back(faceVertices[2 - isCCW]);
 			}
+			*/
 
-			//indices.push_back(faceVertices[0]);
-			//indices.push_back(faceVertices[1 + isCCW]);
-			//indices.push_back(faceVertices[2 - isCCW]);
+			indices.push_back(faceVertices[0]);
+			indices.push_back(faceVertices[1 + isCCW]);
+			indices.push_back(faceVertices[2 - isCCW]);
 		}
 	}
 
 	if(!useOriginalIndices){
 		vertices = std::vector<glm::vec3>(*optimizedVBO);
 	}
+	else {
+		vertices = pointCloud;
+	}
+
+	std::cout << "============================" << std::endl;
+	std::cout << "Hull index to Model index mapping:\n";
+	for (const auto& [hullIdx, modelIdx] : hullIndexToModelIndex) {
+		std::cout << "Hull index " << hullIdx << " --> Model index " << modelIdx << "\n";
+	}
+	std::cout << "============================" << std::endl;
+
 }
 
 
@@ -284,7 +215,8 @@ void ConvexHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defau
 		const size_t newPointIdx = tempPlanarVertices.size() - 1;
 		for(auto& he : mesh.halfEdges){
 			if(he.vert == newPointIdx) {
-				
+
+				// Points to first vertex
 				he.vert = 0;
 			}
 		}
@@ -294,7 +226,7 @@ void ConvexHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defau
 	}
 }
 
-/* DOING */
+/* DONE */
 // Forms inital hull from extreme values
 void ConvexHull::setupInitialTetrahedron()
 {
@@ -480,6 +412,8 @@ void ConvexHull::setupInitialTetrahedron()
 	for (int i = 0; i < vertexCount; i++) {
 		for (auto &f : mesh.faces)
 		{
+
+			// what if Point is coplanar???
 			if (addPointToFace(f, i))
 			{
 				break;
@@ -489,7 +423,8 @@ void ConvexHull::setupInitialTetrahedron()
 
 }
 
-
+/* DEBUG */
+// Iterative hull construction
 void ConvexHull::createConvexHalfEdgeMesh()
 {
 
@@ -526,6 +461,7 @@ void ConvexHull::createConvexHalfEdgeMesh()
 	// Iterate over face stack until no "outside" points exist
 	// Mark visited faces with current iteration counter
 	size_t iter = 0;
+	size_t i = 0;
 	while (!faceStack.empty())
 	{
 		iter++;
@@ -591,7 +527,7 @@ void ConvexHull::createConvexHalfEdgeMesh()
 				const float dist = getSignedDistanceToPlane(eyePoint, P);
 
 				// Point is visible if outside plane
-				if (dist > 0)
+				if (dist >= 0)
 				{
 
 					testFace.isVisibleFaceOnCurrentIteration = 1;
@@ -798,12 +734,17 @@ void ConvexHull::createConvexHalfEdgeMesh()
 				}
 			}
 		}
+
+
+		/*getConvexHull(vertexData);
+		std::string tmp = std::to_string(i++);
+		writeOBJ(tmp + ".obj");*/
 	}
 
 	conflictListsPool.clear();
 }
 
-
+/* DEBUG */
 // Check if horizon edges form connected loop
 bool ConvexHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
 {
@@ -844,18 +785,79 @@ bool ConvexHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
 	
 }
 
+/* DEBUG */
+void ConvexHull::writeOBJ(const std::string &fileName, const std::string &objectName) const
+{
+
+
+    string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + fileName;
+	std::ofstream objFile;
+	objFile.open(path);
+	objFile << "o " << objectName << "\n";
+	for (const auto &v : getVertices())
+	{
+
+		objFile << "v " << v.x << " " << v.y << " " << v.z << "\n";
+	}
+
+	const auto &indBuf = getIndices();
+	size_t triangleCount = indBuf.size() / 3;
+	for (size_t i = 0; i < triangleCount; i++)
+	{
+		size_t a = indBuf[i * 3];
+		size_t b = indBuf[i * 3 + 1];
+		size_t c = indBuf[i * 3 + 2];
+
+		if (a != b && b != c && a != c) {
+			objFile << "f " << a + 1 << " " << b + 1 << " " << c + 1 << "\n";
+		}
+
+
+		//objFile << "f " << indBuf[i * 3] + 1 << " " << indBuf[i * 3 + 1] + 1 << " " << indBuf[i * 3 + 2] + 1 << "\n";
+	}
+	objFile.close();
+}
+
+
+
+std::vector<glm::vec3>& ConvexHull::getVertices()
+{
+
+	return vertices;
+}
+
+std::vector<size_t>& ConvexHull::getIndices()
+{
+
+	return indices;
+}
+
+const std::vector<glm::vec3>& ConvexHull::getVertices() const
+{
+
+	return vertices;
+}
+
+const std::vector<size_t>& ConvexHull::getIndices() const
+{
+
+	return indices;
+}
+
+
+// HELPER FUNCTIONS
 
 // Returns indices to extreme values
 std::array<size_t, 6> ConvexHull::getExtrema()
 {
 
-	std::array<size_t, 6> outIndices{0, 0, 0, 0, 0, 0};
-	std::array<float, 6> extremeValues{vertexData[0].x, vertexData[0].x, vertexData[0].y, vertexData[0].y, vertexData[0].z, vertexData[0].z};
+	std::array<size_t, 6> outIndices{ 0, 0, 0, 0, 0, 0 };
+	std::array<float, 6> extremeValues{ vertexData[0].x, vertexData[0].x, vertexData[0].y, vertexData[0].y, vertexData[0].z, vertexData[0].z };
 
-	for (size_t i = 0; i < vertexData.size(); i++)
+	for (size_t i = 1; i < vertexData.size(); i++)
 	{
 
-		const glm::vec3 &pos = vertexData[i];
+		const glm::vec3& pos = vertexData[i];
 
 		// X-axis
 		if (pos.x > extremeValues[0])
@@ -908,7 +910,7 @@ float ConvexHull::getScale()
 	for (int i = 0; i < 6; i++)
 	{
 		// raw pointer to ith extrema vertex data
-		const float *v = (const float *)(&vertexData[extremaIndices[i]]);
+		const float* v = (const float*)(&vertexData[extremaIndices[i]]);
 
 		// pointer offset for desired component of vertex  data -- [0, 1] (x-component), [2, 3] (y-component), [4, 5] (z-component)
 		v += i / 2;
@@ -919,9 +921,8 @@ float ConvexHull::getScale()
 	return s;
 }
 
-
 // Adds point if above face plane and above epsilon tolerance
-bool ConvexHull::addPointToFace(HalfEdgeMesh::Face &face, size_t pointIdx)
+bool ConvexHull::addPointToFace(HalfEdgeMesh::Face& face, size_t pointIdx)
 {
 
 	// Negative dist means point is inside the hull
@@ -950,11 +951,10 @@ bool ConvexHull::addPointToFace(HalfEdgeMesh::Face &face, size_t pointIdx)
 
 		return true;
 	}
-	
+
 
 	return false;
 }
-
 
 // Reuse discarded conflict list memory
 std::unique_ptr<std::vector<size_t>> ConvexHull::getConflictList()
@@ -975,9 +975,8 @@ std::unique_ptr<std::vector<size_t>> ConvexHull::getConflictList()
 	return conflictListPtr;
 }
 
-
 // Recycle conflict list memory to pool when face is removed
-void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>> &ptr)
+void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>>& ptr)
 {
 
 	const size_t size = ptr->size();
@@ -993,80 +992,81 @@ void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>> &ptr)
 	conflictListsPool.push_back(std::move(ptr));
 }
 
-/* DONE */
-void ConvexHull::writeOBJ(const std::string &fileName, const std::string &objectName) const
-{
 
+/* RENDERING & DEBUGGING */
 
-    string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + fileName;
-	std::ofstream objFile;
-	objFile.open(path);
-	objFile << "o " << objectName << "\n";
-	for (const auto &v : getVertices())
-	{
+glm::vec3 ConvexHull::computeCentroid() {
 
-		objFile << "v " << v.x << " " << v.y << " " << v.z << "\n";
+	unsigned int num = 0;
+	glm::vec3 centroid(0.0f, 0.0f, 0.0f);
+
+	for (auto& v : vertices) {
+
+		centroid += v;
+		num++;
 	}
 
-	const auto &indBuf = getIndices();
-	size_t triangleCount = indBuf.size() / 3;
-	for (size_t i = 0; i < triangleCount; i++)
-	{
-		size_t a = indBuf[i * 3];
-		size_t b = indBuf[i * 3 + 1];
-		size_t c = indBuf[i * 3 + 2];
-
-		if (a != b && b != c && a != c) {
-			objFile << "f " << a + 1 << " " << b + 1 << " " << c + 1 << "\n";
-		}
-
-
-		//objFile << "f " << indBuf[i * 3] + 1 << " " << indBuf[i * 3 + 1] + 1 << " " << indBuf[i * 3 + 2] + 1 << "\n";
-	}
-	objFile.close();
+	return centroid /= static_cast<float>(num);
 }
 
-void ConvexHull::Draw(Shader &shader)
+void ConvexHull::updateCentroid(glm::vec3 displacement) {
+
+	/*
+	worldTrans = objectTrans;
+
+	// Apply the object's transformation to the centroid
+	glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+	worldCentroid = glm::vec3(worldCentroidTrans);
+	*/
+
+	worldCentroid += displacement;
+}
+
+/* TODO */
+bool ConvexHull::computeRayIntersection(const Ray& r, float& t) {
+
+	/*
+	 GENERAL IDEA
+	 go through all faces (non-diabled) and test ray-plane intersections lol
+	*/
+	for (auto& f : mesh.faces) {
+
+		if (!f.isDisabled()) {
+
+			// Calculate ray-plane intersection
+			float denom = glm::dot(f.P.normal, r.direction);
+
+			// Check if ray is not parallel to plane -- avoid zero division
+			if (std::abs(denom) < 1e-6) {
+				return false;
+			}
+
+
+			t = glm::dot(f.P.normal, f.P.point - r.origin) / denom;
+
+			//return t >= 0;
+
+
+			// min max intersect distances
+			return (t >= 0.1f && t < 50.0f);
+		}
+	}
+
+	return false;
+}
+
+void ConvexHull::Draw(Shader& shader)
 {
 	convexhullModel.Draw(shader);
 }
 
-/* DONE */
-std::vector<glm::vec3>& ConvexHull::getVertices()
-{
-
-	return vertices;
-}
-
-/* DONE */
-std::vector<size_t>& ConvexHull::getIndices()
-{
-
-	return indices;
-}
-
-/* DONE */
-const std::vector<glm::vec3>& ConvexHull::getVertices() const
-{
-
-	return vertices;
-}
-
-/* DONE */
-const std::vector<size_t>& ConvexHull::getIndices() const
-{
-
-	return indices;
-}
-
-/* DONE */
 WorldTransform& ConvexHull::getWorldTransform() {
 	return worldTrans;
 }
 
-
 void ConvexHull::debugPrintState() const
 {
+	std::cout << "=============================" << std::endl;
 	std::cout << "=== ConvexHull Debug Info ===" << std::endl;
 	std::cout << "vertexData.size(): " << vertexData.size() << std::endl;
 	std::cout << "mesh.faces.size(): " << mesh.faces.size() << std::endl;
@@ -1078,7 +1078,7 @@ void ConvexHull::debugPrintState() const
 	std::cout << std::endl;
 	std::cout << "scale: " << scale << std::endl;
 	std::cout << "epsilon: " << epsilon << std::endl;
-	std::cout << "hull vertices: \n";
+	/*std::cout << "hull vertices: \n";
 	for (size_t i = 0; i < vertices.size(); i++) {
 		std::cout << "idx: " << i << " " << vertices[i].x << " " << vertices[i].y << " " << vertices[i].z << "\n";
 	}
@@ -1086,14 +1086,67 @@ void ConvexHull::debugPrintState() const
 	for (size_t i = 0; i < indices.size(); i++) {
 		std::cout << indices[i] << " ";
 	}
-	std::cout << std::endl;
+	std::cout << std::endl;*/
 	std::cout << "============================" << std::endl;
 }
 
-void ConvexHull::debugPrintUniqueVertices(std::vector<glm::vec3> vertices) const
+void ConvexHull::debugPrintUniqueVertices() const
 {
 
-	std::set<glm::vec3, Vec3Compare> uniqueVert(vertices.begin(), vertices.end());
-	std::cout << uniqueVert.size() << std::endl;
+	std::cout << "============================" << std::endl;
+	std::cout << "Unique Model Vertices \n";
+
+
+	std::set<glm::vec3, Vec3Compare> uniqueModelVert(vertexData.begin(), vertexData.end());
+	std::cout << "Total Vertices: " << uniqueModelVert.size() << std::endl;
+
+	size_t i = 0;
+	for (auto& v : uniqueModelVert) {
+		std::cout << "v" << i++ << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
+	}
+
+	std::cout << "============================" << std::endl;
+	std::cout << "Convex Hull Vertices \n";
+
+	std::set<glm::vec3, Vec3Compare> uniqueHullVert(vertices.begin(), vertices.end());
+	std::cout << "Total Vertices: " << uniqueHullVert.size() << std::endl;
+
+	size_t j = 0;
+	for (auto& v : uniqueHullVert) {
+
+		size_t map = (hullIndexToModelIndex.count(j)) ? hullIndexToModelIndex.at(j) : j;
+		std::cout << "v" << map << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
+		j++;
+	}
+
+
+
+	std::cout << "============================" << std::endl;
+
+
+}
+
+void ConvexHull::debugMissingVertices(std::vector<glm::vec3> modelVertices, std::vector<glm::vec3> hullVertices) const
+{
+	std::set<glm::vec3, Vec3Compare> v1(modelVertices.begin(), modelVertices.end());
+	std::set<glm::vec3, Vec3Compare> v2(hullVertices.begin(), hullVertices.end());
+
+	std::vector<glm::vec3>missingPoints;
+
+	std::cout << "============================" << std::endl;
+
+	size_t i = 0;
+	std::cout << "Missing vertices from hull:\n";
+	for (const auto& v : v1) {
+		if (v2.find(v) == v2.end()) {
+			std::cout << "v" << i << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
+			missingPoints.push_back(v);
+		}
+
+		i++;
+	}
+
+	std::cout << "============================" << std::endl;
+
 
 }

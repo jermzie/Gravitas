@@ -50,13 +50,22 @@ High-level Steps:
 class ConvexHull
 {
 private:
-	// rendering stuffs
+
+	// Writing Convex Hull as OBJ Model
+	Model convexhullModel;
+	std::string convexhullName;
+
+	std::unordered_map<size_t, size_t> hullIndexToModelIndex;
+
+	// Rendering 
 	std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
 	std::vector<glm::vec3> vertices;
 	std::vector<size_t> indices;
 
-	Model convexhullModel;
-	std::string convexhullName;
+	WorldTransform worldTrans;
+	glm::vec3 localCentroid;
+	glm::vec3 worldCentroid;
+
 
 	struct Vec3Compare {
 		bool operator()(const glm::vec3& a, const glm::vec3& b) const {
@@ -66,9 +75,6 @@ private:
 		}
 	};
 
-	WorldTransform worldTrans;
-	glm::vec3 localCentroid;
-	glm::vec3 worldCentroid;
 
 	// algo stuffs
 	float epsilon, epsilonSquared, scale;
@@ -77,20 +83,17 @@ private:
 	HalfEdgeMesh mesh;
 
 	std::vector<glm::vec3> vertexData;
-
 	std::array<size_t, 6> extremaIndices;
-	std::vector<std::unique_ptr<std::vector<size_t>>> conflictListsPool; // Assigned points pool
+	std::vector<glm::vec3> tempPlanarVertices;
+	std::vector<std::unique_ptr<std::vector<size_t>>> conflictListsPool;
 
-	std::vector<size_t> visibleFaces; // All faces visibles from given point
-	std::vector<size_t> horizonEdges; // Loop of connected edges
-
+	// Temporary variables used during iteration process
 	std::vector<size_t> newFaces;
 	std::vector<size_t> newHalfEdges;
 	std::vector<std::unique_ptr<std::vector<size_t>>> disabledFaceConflictLists;
-
-	std::vector<glm::vec3> tempPlanarVertices;
-	struct FaceData
-	{
+	std::vector<size_t> visibleFaces;
+	std::vector<size_t> horizonEdges;
+	struct FaceData {
 		size_t faceIdx;
 		size_t enteredFromHalfEdge; // Mark as horizon edge if face is not visible
 		
@@ -102,6 +105,7 @@ private:
 	std::deque<size_t> faceStack;
 
 	void buildMesh(const std::vector<glm::vec3> &pointCloud, float defaultEps = 0.0001f);
+
 	void createConvexHalfEdgeMesh();
 
 	void setupInitialTetrahedron();
@@ -126,7 +130,7 @@ public:
 
 	ConvexHull() = default;
 
-	ConvexHull(const Model &model, WorldTransform objectTrans);
+	//ConvexHull(const Model &model, WorldTransform objectTrans);
 
 	void computeConvexHull(const Model &model, WorldTransform objectTrans);
 
@@ -152,7 +156,9 @@ public:
 
 	void debugPrintState() const;
 
-	void debugPrintUniqueVertices(std::vector<glm::vec3>vertices) const;
+	void debugPrintUniqueVertices() const;
+
+	void debugMissingVertices(std::vector<glm::vec3> modelVertices, std::vector<glm::vec3> hullVertices) const;
 };
 
 #endif

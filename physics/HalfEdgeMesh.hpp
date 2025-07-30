@@ -90,8 +90,6 @@ public:
 			assert(!f.pointsOnPositiveSide);
 
 			f.furthestPointDist = 0.0f;
-
-
 			disabledFaces.pop_back();
 			return idx;
 
@@ -287,6 +285,16 @@ public:
 		return { halfEdges[he.twin].vert, he.vert };
 
 	}
+
+	bool isPointOnFace(const Face& f, const glm::vec3& p, std::vector<glm::vec3>vertexData, float epsilon) const {
+
+		auto& faceVerts = getFaceVertices(f);
+
+		bool isCoplanar = f.P.isPointAbovePlane(p);
+
+
+
+	}
 	
 	void getHalfEdgeMesh(){
 
@@ -294,5 +302,6 @@ public:
 	}
 
 };
+
 
 #endif
