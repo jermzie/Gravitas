@@ -10,19 +10,17 @@
 
 #include <vector>
 
+#include "../quickhull/QuickHull.hpp"
 #include "../inc/Model.hpp"
 #include "../inc/Mesh.hpp"
 #include "../inc/WorldTransform.hpp"
 #include "../inc/Ray.hpp"
-// #include "ConvexHull.hpp"
+#include "ConvexHull.hpp"
 #include "BoundingSphere.hpp"
 
 class RigidBody {
 private:
 	std::vector<Vertex>mesh;		// Polyhedron triangle mesh
-	//std::vector<ConvexHull>hulls;	// Rigid body collision mesh
-
-
 
 	WorldTransform worldTrans;
 	Model rigidBodyModel;
@@ -52,7 +50,8 @@ public:
 
 
 	BoundingSphere collider;
-
+	//quickhull::QuickHull<float>qh;
+	ConvexHull hull;
 
 	RigidBody(Model model, double mass, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
 
@@ -63,12 +62,27 @@ public:
 		this->linearVelocity = velocity;
 		this->angularVelocity = omega;
 
-		// transformation matrices
+		// set inital transformation matrices
 		worldTrans.SetPosition(centreOfMass);
 
 
 		// sphere centroid position
-		collider.ComputeBoundingSphere(model, worldTrans);
+		collider.computeBoundingSphere(model, worldTrans);
+	
+		hull.computeConvexHull(model, worldTrans);
+
+		/*
+		std::vector<glm::vec3>pointCloud = model.GetVertexData();
+		auto hull = qh.getConvexHull(&pointCloud[0].x, pointCloud.size(), true, false);
+
+		std::string objectName = model.fileName;
+		size_t dotPos = objectName.find_last_of(".");
+		std::string name = objectName.substr(0, dotPos);
+		std::string ext = objectName.substr(dotPos);
+		std::string convexhullName = name + "_quickhull" + ext;
+
+		hull.writeWaveformOBJ(convexhullName);
+		*/
 	}
 
 
@@ -78,6 +92,9 @@ public:
 	}
 
 	void update(double deltaTime) {
+
+
+		
 
 		/*
 		centreOfMass += linearVelocity * deltaTime;
@@ -95,10 +112,11 @@ public:
 
 	}
 
-	void Drag() {
+	void Drag(glm::vec3 displacement) {
 
 		// move rigidbody to newPos, following ray 
 
+		centreOfMass += displacement;
 
 		// track xyz offSets and deltaTime to accumulate velocity while dragging???
 	}
@@ -127,13 +145,14 @@ public:
 		rigidBodyModel.Draw(shader);
 	}
 
-	bool collided(Ray& r) {
-		return collider.RaySphereIntersection(r);
+	bool collided(Ray& r, float &t) {
+
+		return collider.computeRayIntersection(r, t);
 	}
 
-	BoundingSphere getBounds() {
-		return collider;
-	}
+	// BoundingSphere getBounds() {
+	// 	//return collider;
+	// }
 
 };
 

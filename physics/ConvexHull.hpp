@@ -1,20 +1,36 @@
 #ifndef CONVEXHULL_HPP
 #define CONVEXHULL_HPP
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/norm.hpp>
 
+#ifndef PROJECT_SOURCE_DIR
+#error "PROJECT_SOURCE_DIR is not defined"
+#endif
+
+
+#include <iostream>
+#include <string>
+#include <regex>
+#include <memory>
+#include <cassert>
 #include <cmath>
 #include <vector>
 #include <algorithm>
 #include <array>
 #include <deque>
+#include <unordered_map>
 
+#include "../inc/Shader.hpp"
 #include "../inc/Mesh.hpp"
 #include "../inc/Model.hpp"
 #include "../inc/Plane.hpp"
+#include "../inc/Ray.hpp"
+#include "../inc/WorldTransform.hpp"
 #include "HalfEdgeMesh.hpp"
 /*
-* 
+*
 Convex Hull w/ QuickHull Algo
 
 High-level Steps:
@@ -31,58 +47,118 @@ High-level Steps:
 
 */
 
-class ConvexHull {
+class ConvexHull
+{
 private:
 
+	// Writing Convex Hull as OBJ Model
+	Model convexhullModel;
+	std::string convexhullName;
 
-	float epsilon;
-	float epsilonSquared;
-	float scale;
+	std::unordered_map<size_t, size_t> hullIndexToModelIndex;
+
+	// Rendering 
+	std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
+	std::vector<glm::vec3> vertices;
+	std::vector<size_t> indices;
+
+	WorldTransform worldTrans;
+	glm::vec3 localCentroid;
+	glm::vec3 worldCentroid;
+
+
+	struct Vec3Compare {
+		bool operator()(const glm::vec3& a, const glm::vec3& b) const {
+			if (a.x != b.x) return a.x < b.x;
+			if (a.y != b.y) return a.y < b.y;
+			return a.z < b.z;
+		}
+	};
+
+
+	// algo stuffs
+	float epsilon, epsilonSquared, scale;
 	bool isPlanar;
 
 	HalfEdgeMesh mesh;
 
-	const std::vector<Vertex>vertices;
-	const std::vector<glm::vec3>vertexData;			// Vertex data is unchanged
+	std::vector<glm::vec3> vertexData;
+	std::array<size_t, 6> extremaIndices;
+	std::vector<glm::vec3> tempPlanarVertices;
+	std::vector<std::unique_ptr<std::vector<size_t>>> conflictListsPool;
 
-
-	std::array<size_t, 6>extremaIndices;
-	std::vector < std::unique_ptr<std::vector<size_t>>> conflictListsPool;		// Assigned points pool
-
-	std::vector<size_t>visibleFaces;				// All faces visibles from given point
-	std::vector<size_t>horizonEdges;				// Loop of connected edges
-
-
+	// Temporary variables used during iteration process
+	std::vector<size_t> newFaces;
+	std::vector<size_t> newHalfEdges;
+	std::vector<std::unique_ptr<std::vector<size_t>>> disabledFaceConflictLists;
+	std::vector<size_t> visibleFaces;
+	std::vector<size_t> horizonEdges;
 	struct FaceData {
-		size_t faceIndex;
-		size_t enteredFromHalfEdge;					// Mark as horizon edge if face is not visible
+		size_t faceIdx;
+		size_t enteredFromHalfEdge; // Mark as horizon edge if face is not visible
+		
+		FaceData() = default;
+		FaceData(size_t face, size_t he) : faceIdx(face), enteredFromHalfEdge(he) {}
 	};
 
 	std::vector<FaceData> possibleVisibleFaces;
-	std::deque<size_t>faceStack;						// Face stack
+	std::deque<size_t> faceStack;
 
+	void buildMesh(const std::vector<glm::vec3> &pointCloud, float defaultEps = 0.0001f);
+
+	void createConvexHalfEdgeMesh();
 
 	void setupInitialTetrahedron();
+
+	void getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CCW = true, bool useOriginalIndices = false);
+
 	std::array<size_t, 6> getExtrema();
+
 	float getScale();
-	bool addPointToFace(HalfEdgeMesh::Face& face, size_t pointIdx);
 
+	bool connectHorizonEdges(std::vector<size_t> &horizonEdges);
 
-	void buildMesh(const std::vector<glm::vec3>& pointCloud);								// Constructs 
-	void createConvexHalfEdgeMesh();														// Updates mesh; creates ConvexHull obj. that getConvexHull() returns
-	void getConvexHull();							
+	bool addPointToFace(HalfEdgeMesh::Face &face, size_t pointIdx);
 
-	bool connectHorizonEdges();
+	inline std::unique_ptr<std::vector<size_t>> getConflictList();
 
-	inline std::unique_ptr<std::vector<size_t>> getConflictList();							// Shifts ownership of "outside" set 
-	inline void reclaimConflictList(std::unique_ptr < std::vector<size_t>>& ptr);			// When a face is disabled, we reclaim its assigned points for future usage
+	inline void reclaimConflictList(std::unique_ptr<std::vector<size_t>> &ptr);
 
+	glm::vec3 computeCentroid();	
 
 public:
 
-
 	ConvexHull() = default;
 
+	//ConvexHull(const Model &model, WorldTransform objectTrans);
+
+	void computeConvexHull(const Model &model, WorldTransform objectTrans);
+
+	bool computeRayIntersection(const Ray &r, float &t);
+
+	void updateCentroid(glm::vec3 displacement);
+
+	std::vector<glm::vec3> &getVertices();
+	
+	std::vector<size_t> &getIndices();
+
+	WorldTransform &getWorldTransform();
+        
+	const std::vector<glm::vec3> &getVertices() const;
+	
+	const std::vector<size_t> &getIndices() const;
+	
+	void writeOBJ(const std::string &fileName, const std::string &objectName = "quickhull") const;
+	
+	// void getConvexHullAsMesh();
+
+	void Draw(Shader &shader);
+
+	void debugPrintState() const;
+
+	void debugPrintUniqueVertices() const;
+
+	void debugMissingVertices(std::vector<glm::vec3> modelVertices, std::vector<glm::vec3> hullVertices) const;
 };
 
 #endif

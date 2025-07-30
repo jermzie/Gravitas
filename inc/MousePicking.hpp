@@ -96,7 +96,7 @@ public:
 
 		
 		// min max intersect distances
-		return (t >= 0.1f && t < 50.0f);
+	return (t >= 0.1f && t < 50.0f);
 		
     }
   

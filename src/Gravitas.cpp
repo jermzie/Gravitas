@@ -129,19 +129,48 @@ void App::InitScene() {
     pickingShader.init("pickingColor.vert", "pickingColor.frag");
     outlineShader.init("stencilOutline.vert", "stencilOutline.frag");
 
+    Model tetraModel("tetrahedron.obj");
     Model cubeModel("cube.obj");
     Model ballModel("ball.obj");
     Model cylinderModel("cilindru.obj");
+    Model suzanneModel("suzanne.obj");
+    Model teapotModel("teapot.obj");
+    Model bunnyModel("stanford-bunny.obj");
+
+    
+    //Model cubeTestModel("cube_convexhull.obj");
+    //Model cylTestModel("cilindru_convexhull.obj");
+    //Model suzanneTestModel("suzanne_convexhull.obj");
+    
 
 
-    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody cyl(cylinderModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody tetra(tetraModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody cyl(cylinderModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody teapot(teapotModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody bunny(bunnyModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    
+    //RigidBody cubeTest(cubeTestModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody cylTest(cylTestModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody suzanneTest(suzanneTestModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    
 
-    scene.addRigidBody(cube);
-    scene.addRigidBody(cyl);
-    //scene.addRigidBody(ball);
+    //scene.addRigidBody(std::move(tetra));
+    //scene.addRigidBody(std::move(cube));
+    //scene.addRigidBody(std::move(cyl));
+    //scene.addRigidBody(std::move(ball));
+    //scene.addRigidBody(std::move(suzanne));
+    scene.addRigidBody(std::move(teapot));
+    scene.addRigidBody(std::move(bunny));
 
+    
+    //scene.addRigidBody(std::move(cubeTest));
+    //scene.addRigidBody(std::move(cylTest));
+    //scene.addRigidBody(std::move(suzanneTest));
+    
+    
 }
 
 void App::ProcessInput()
@@ -214,9 +243,21 @@ void App::Update() {
                 glm::vec3 displacement = newPos - oldPos;
                 displacement *= dragSensitivity;
 
+		// update object and collider transformations
                 WorldTransform& objectTrans = scene.rigidBodies[selectedObjectId].getWorldTransform();
                 objectTrans.SetPosition(displacement);
-                scene.rigidBodies[selectedObjectId].collider.UpdateCentroid(objectTrans);
+
+                WorldTransform& colliderTrans = scene.rigidBodies[selectedObjectId].collider.getWorldTransform();
+                colliderTrans.SetPosition(displacement);
+
+                scene.rigidBodies[selectedObjectId].collider.updateCentroid(displacement);
+                scene.rigidBodies[selectedObjectId].Drag(displacement);
+
+                //glm::vec3 objectPos = scene.rigidBodies[selectedObjectId].getCentreOfMass();
+                //glm::vec3 colliderPos = scene.rigidBodies[selectedObjectId].collider.GetCentroid();
+                //std::cout << "OBJECT: " << objectPos.x << " " << objectPos.y << " " << objectPos.z << "           " << "COLLIDER: " << colliderPos.x << " " << colliderPos.y << " " << colliderPos.z << std::endl;
+                
+                // scene.rigidBodies[selectedObjectId].collider.updateCentroid(objectTrans);
 
 
                 oldPos = newPos;
@@ -233,19 +274,23 @@ void App::Update() {
             for (int i = 0; i < scene.rigidBodies.size(); ++i) {
 
                 // chek for collisions
-                if (scene.rigidBodies[i].collided(ray)) {
+                float t;
+                if (scene.rigidBodies[i].collided(ray, t)) {
 
                     selectedObjectId = i;
                     isDragging = true;
 
 
+
+                    glm::vec3 hitPoint = ray.origin + ray.direction * t;
+
                     // record initial object pos
                     initialObjectPos = scene.rigidBodies[i].getCentreOfMass();
-                    oldPos = initialObjectPos;
+                    oldPos = hitPoint;
 
                     // define drag plane @ object pos
                     dragPlane.normal = -camera.Front;
-                    dragPlane.point = initialObjectPos;
+                    dragPlane.point = hitPoint;
 
 
 
@@ -300,18 +345,19 @@ void App::Render() {
         glm::vec3 position = objectTrans.GetPosition();
         //std::cout << "Object " << i << " Position: " << position.x << " " << position.y << " " << position.z << "\n";
 
-         // outline selected object
+        // outline selected object
 
-         // first pass -- render object normally & write to the stencil buffer
-         //glStencilFunc(GL_ALWAYS, 1, 0xFF);
-         //glStencilMask(0xFF);
+        // first pass -- render object normally & write to the stencil buffer
+	//glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        //glStencilMask(0xFF);
 
          
-         pickingShader.use();
-         WorldTransform& colliderTrans = scene.rigidBodies[i].collider.getWorldTransform();
-         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
-         scene.rigidBodies[i].collider.Draw(pickingShader);
+        pickingShader.use();
+        WorldTransform& colliderTrans = scene.rigidBodies[i].collider.getWorldTransform();
+        pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
+        //scene.rigidBodies[i].collider.Draw(pickingShader);
          
+	 	
 
         if (i == selectedObjectId) {
 
@@ -351,9 +397,16 @@ void App::Render() {
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);
 
-            basicShader.use();
-            basicShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-            scene.rigidBodies[i].Draw(basicShader);
+            if (i < 1) {
+                basicShader.use();
+                basicShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
+                scene.rigidBodies[i].Draw(basicShader);
+            }
+            else {
+                pickingShader.use();
+                pickingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
+                scene.rigidBodies[i].Draw(pickingShader);
+            }
 
 
         }
@@ -368,7 +421,16 @@ void App::Render() {
     }
 }
 
-void App::OnFramebufferSize(int width, int height) { glViewport(0, 0, width, height); }
+void App::OnFramebufferSize(int width, int height) { 
+
+	SCREEN_WIDTH = width;
+	SCREEN_HEIGHT = height;
+	glViewport(0, 0, width, height);
+	
+	// BAD Solution for dynamic window resizing
+	// Render();
+}
+
 void App::OnScroll(double xOffset, double yOffset) { camera.ProcessMouseScroll(static_cast<float>(yOffset)); }
 void App::OnKey(int key, int scancode, int action, int mods) {
 

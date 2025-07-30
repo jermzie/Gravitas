@@ -7,7 +7,6 @@
 #include "../inc/Model.hpp"
 #include "../inc/Camera.hpp"
 #include "../inc/Ray.hpp"
-#include "RigidBody.hpp"
 
 const float PI = 3.14159265358979323846f;
 
@@ -51,7 +50,7 @@ public:
 	}
 
 	// Init
-	void ComputeBoundingSphere(Model model, WorldTransform objectTrans) {
+	void computeBoundingSphere(Model model, WorldTransform objectTrans) {
 
 		// find bounding sphere
 		float maxDistSq = 0.0f;
@@ -69,8 +68,9 @@ public:
 
 		radius = std::sqrt(maxDistSq);
 
-		glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-		worldCentroid = glm::vec3(worldCentroidTrans);
+		glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+		worldCentroid = glm::vec3(objectWorldTrans);
+		worldTrans.SetPosition(worldCentroid);
 
 
 		// scale sphere model to correct dims. of bounding sphere 
@@ -92,7 +92,7 @@ public:
 	// Update
 	
 
-	bool RaySphereIntersection(Ray& r) {
+	bool computeRayIntersection(Ray& r, float &t) {
 
 		// Equation of sphere w/ radius r, at some point P = (x, y, z), centered at C = (C_x, C_y, C_z):
 		// In vector form:
@@ -125,7 +125,7 @@ public:
 
 
 		// three cases -- two roots (discrim. > 0), one root (discrim. = 0), no solution (discrim. < 0)
-		float t = (b - sqrtd) / a;
+		t = (b - sqrtd) / a;
 		
 		if (t <= tMin || t >= tMax)
 		{
@@ -145,7 +145,7 @@ public:
 		return true;
 	}
 
-	void UpdateCentroid(WorldTransform objectTrans) {
+	void updateCentroid(glm::vec3 displacement) {
 
 
 		// cannot do objectTrans.GetPosition() bc that returns the object COM, which is diff from the worldCentroid position
@@ -158,12 +158,13 @@ public:
 
 		*/
 
-		worldTrans = objectTrans;
-		worldTrans.SetScale(scale);
+		//worldTrans = objectTrans;
+		//worldTrans.SetScale(scale);
 
 		// Apply the object's transformation to the centroid
-		glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-		worldCentroid = glm::vec3(worldCentroidTrans);
+		//glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+		worldCentroid += displacement;
+		//worldTrans.SetPosition(worldCentroid);
 	}
 
 
