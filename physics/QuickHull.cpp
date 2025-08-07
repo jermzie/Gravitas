@@ -1,5 +1,5 @@
-#include "ConvexHull.hpp"
-#include <set>
+#include "QuickHull.hpp"
+
 /*
 
 WRITE THIS SHIT FROM SCRATCH FIRST (DRAFT)
@@ -23,175 +23,26 @@ High-level Steps:
 
 */
 
-void ConvexHull::computeConvexHull(const Model &objectModel, WorldTransform objectTrans){
-
-	std::cout << objectModel.fileName << std::endl;
-
-
-	// Get unique vertices
-	std::vector<glm::vec3> modelVertices = objectModel.GetVertexData();
-	std::set<glm::vec3, Vec3Compare> uniqueVert(modelVertices.begin(), modelVertices.end());
-	vertexData.assign(uniqueVert.begin(), uniqueVert.end());
-
-
-	// Build convex hull as half-edge mesh structure
-	buildMesh(vertexData);
-
-	// Build convex hull vertices & indices
-	getConvexHull(vertexData);
-
-
-	// Debug info
-	// debugPrintUniqueVertices();
-
-	// debugMissingVertices(vertexData, vertices);
-
-	// debugPrintState();
-
-
-	// Rendering & Writing
-	// Compute convex hull centroid for rendering & transformations
-	localCentroid = computeCentroid();
-	glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-	worldCentroid = glm::vec3(objectWorldTrans);
-
-	std::string objectName = objectModel.fileName;
-	size_t dotPos = objectName.find_last_of(".");
-	std::string name = objectName.substr(0, dotPos);
-	std::string ext = objectName.substr(dotPos);
-	convexhullName = name + "_convexhull" + ext;
-
-	writeOBJ(convexhullName, name);
-
-	//convexhullModel.LoadModel(modelName);
-}
-
-/* DEBUG */
-void ConvexHull::getConvexHull(const std::vector<glm::vec3> &pointCloud, bool CCW, bool useOriginalIndices)
-{	
-	if(!useOriginalIndices) {
-		optimizedVBO.reset(new std::vector<glm::vec3>());
-	}
+ConvexHull QuickHull::getConvexHull(const std::vector<glm::vec3>& pointCloud, bool CCW, bool useOriginalIndices, float epsilon) {
 	
-	std::vector<bool> faceProcessed(mesh.faces.size(), false);
-	std::vector<size_t> faceStack;
-	std::unordered_map<size_t, size_t> mapVertex2Index;
-
-	indices.clear();
-
-	for (size_t i = 0; i < mesh.faces.size(); i++)
-	{
-
-		if (!mesh.faces[i].isDisabled())
-		{
-			faceStack.push_back(i);
-			break;
-		}
-	}
-	if (faceStack.size() == 0)
-	{
-		return;
-	}
-
-	const size_t isCCW = CCW ? 1 : 0;
-	const size_t faceCount = mesh.faces.size() - mesh.disabledFaces.size();
-	indices.reserve(faceCount * 3);
-
-	size_t i = 0;
-	while (faceStack.size())
-	{
-
-		auto itf = faceStack.end() - 1;
-		size_t topIdx = *itf;
-		assert(!mesh.faces[topIdx].isDisabled());
-		faceStack.erase(itf);
-
-		if (faceProcessed[topIdx])
-		{
-			continue;
-		}
-		else
-		{
-
-			faceProcessed[topIdx] = true;
-			auto he = mesh.getFaceHalfEdges(mesh.faces[topIdx]);
-
-			// Push neighboring faces onto stack
-			size_t adjacentFaces[] = {mesh.halfEdges[mesh.halfEdges[he[0]].twin].face, mesh.halfEdges[mesh.halfEdges[he[1]].twin].face, mesh.halfEdges[mesh.halfEdges[he[2]].twin].face};
-			for (auto f : adjacentFaces)
-			{
-				if (!faceProcessed[f] && !mesh.faces[f].isDisabled())
-				{
-					faceStack.push_back(f);
-				}
-			}
-
-			// Process face vertices
-			auto faceVertices = mesh.getFaceVertices(mesh.faces[topIdx]);
-			if (!useOriginalIndices)
-			{
-				for (auto &v : faceVertices)
-				{
-					auto itv = mapVertex2Index.find(v);
-					if (itv == mapVertex2Index.end())
-					{
-
-						optimizedVBO->push_back(pointCloud[v]);
-						size_t newIndex = optimizedVBO->size() - 1;
-						mapVertex2Index[v] = newIndex;
-						hullIndexToModelIndex[newIndex] = v;
-						v = newIndex;
-
-					}
-					else
-					{
-						v = itv->second;
-					}
-				}
-			}
-
-			/*
-			if (faceVertices[0] != faceVertices[1 + isCCW] &&
-				faceVertices[0] != faceVertices[2 - isCCW] &&
-				faceVertices[1 + isCCW] != faceVertices[2 - isCCW]) {
-
-				indices.push_back(faceVertices[0]);
-				indices.push_back(faceVertices[1 + isCCW]);
-				indices.push_back(faceVertices[2 - isCCW]);
-			}
-			*/
-
-			indices.push_back(faceVertices[0]);
-			indices.push_back(faceVertices[1 + isCCW]);
-			indices.push_back(faceVertices[2 - isCCW]);
-		}
-	}
-
-	if(!useOriginalIndices){
-		vertices = std::vector<glm::vec3>(*optimizedVBO);
-	}
-	else {
-		vertices = pointCloud;
-	}
-
-	std::cout << "============================" << std::endl;
-	std::cout << "Hull index to Model index mapping:\n";
-	for (const auto& [hullIdx, modelIdx] : hullIndexToModelIndex) {
-		std::cout << "Hull index " << hullIdx << " --> Model index " << modelIdx << "\n";
-	}
-	std::cout << "============================" << std::endl;
-
+	buildMesh(pointCloud, epsilon);
+	//debugState();
+	return ConvexHull(mesh, vertexData, CCW, useOriginalIndices);
 }
 
+HalfEdgeMesh QuickHull::getHalfEdgeMesh(const std::vector<glm::vec3>& pointCloud, bool CCW, float epsilon) {
 
-/* DONE */
-void ConvexHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defaultEps)
+	buildMesh(pointCloud, epsilon);
+	return HalfEdgeMesh(mesh, vertexData);
+}
+
+void QuickHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defaultEps)
 {
 
 	if (pointCloud.size() == 0)
 	{
 
-		mesh = HalfEdgeMesh();
+		mesh = MeshBuilder();
 		return;
 	}
 	vertexData = pointCloud;
@@ -226,9 +77,8 @@ void ConvexHull::buildMesh(const std::vector<glm::vec3> &pointCloud, float defau
 	}
 }
 
-/* DONE */
 // Forms inital hull from extreme values
-void ConvexHull::setupInitialTetrahedron()
+void QuickHull::setupInitialTetrahedron()
 {
 
 	const size_t vertexCount = vertexData.size();
@@ -384,13 +234,7 @@ void ConvexHull::setupInitialTetrahedron()
 
 
 	// 3c. Create initial tetrahedron half edge mesh
-	std::cout << "Creating tetrahedron with vertices: " << baseTriangleIndices[0]
-		<< ", " << baseTriangleIndices[1] << ", " << baseTriangleIndices[2]
-		<< ", " << maxIdx << std::endl;
-
 	mesh.setup(baseTriangleIndices[0], baseTriangleIndices[1], baseTriangleIndices[2], maxIdx);
-
-	std::cout << "Tetrahedron created with " << mesh.faces.size() << " faces" << std::endl;
 
 
 	// Compute planes defined by each triangle face
@@ -423,9 +267,8 @@ void ConvexHull::setupInitialTetrahedron()
 
 }
 
-/* DEBUG */
 // Iterative hull construction
-void ConvexHull::createConvexHalfEdgeMesh()
+void QuickHull::createConvexHalfEdgeMesh()
 {
 
 	visibleFaces.clear();
@@ -572,7 +415,7 @@ void ConvexHull::createConvexHalfEdgeMesh()
 		if (!connectHorizonEdges(horizonEdges))
 		{
 
-			std::cerr << convexhullModel.fileName << ": Failed to solve horizon edge." << std::endl;
+			std::cerr << "Failed to solve horizon edge." << std::endl;
 
 			// Eye point is invalid and we don't add to convex hull
 			auto it = std::find(topFace.pointsOnPositiveSide->begin(),
@@ -744,9 +587,8 @@ void ConvexHull::createConvexHalfEdgeMesh()
 	conflictListsPool.clear();
 }
 
-/* DEBUG */
 // Check if horizon edges form connected loop
-bool ConvexHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
+bool QuickHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
 {
 
 	const size_t horizonEdgeCount = horizonEdges.size();
@@ -785,70 +627,11 @@ bool ConvexHull::connectHorizonEdges(std::vector<size_t> &horizonEdges)
 	
 }
 
-/* DEBUG */
-void ConvexHull::writeOBJ(const std::string &fileName, const std::string &objectName) const
-{
-
-
-    string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + fileName;
-	std::ofstream objFile;
-	objFile.open(path);
-	objFile << "o " << objectName << "\n";
-	for (const auto &v : getVertices())
-	{
-
-		objFile << "v " << v.x << " " << v.y << " " << v.z << "\n";
-	}
-
-	const auto &indBuf = getIndices();
-	size_t triangleCount = indBuf.size() / 3;
-	for (size_t i = 0; i < triangleCount; i++)
-	{
-		size_t a = indBuf[i * 3];
-		size_t b = indBuf[i * 3 + 1];
-		size_t c = indBuf[i * 3 + 2];
-
-		if (a != b && b != c && a != c) {
-			objFile << "f " << a + 1 << " " << b + 1 << " " << c + 1 << "\n";
-		}
-
-
-		//objFile << "f " << indBuf[i * 3] + 1 << " " << indBuf[i * 3 + 1] + 1 << " " << indBuf[i * 3 + 2] + 1 << "\n";
-	}
-	objFile.close();
-}
-
-
-
-std::vector<glm::vec3>& ConvexHull::getVertices()
-{
-
-	return vertices;
-}
-
-std::vector<size_t>& ConvexHull::getIndices()
-{
-
-	return indices;
-}
-
-const std::vector<glm::vec3>& ConvexHull::getVertices() const
-{
-
-	return vertices;
-}
-
-const std::vector<size_t>& ConvexHull::getIndices() const
-{
-
-	return indices;
-}
-
 
 // HELPER FUNCTIONS
 
 // Returns indices to extreme values
-std::array<size_t, 6> ConvexHull::getExtrema()
+std::array<size_t, 6> QuickHull::getExtrema()
 {
 
 	std::array<size_t, 6> outIndices{ 0, 0, 0, 0, 0, 0 };
@@ -903,7 +686,7 @@ std::array<size_t, 6> ConvexHull::getExtrema()
 }
 
 // Returns scale for computing epsilon
-float ConvexHull::getScale()
+float QuickHull::getScale()
 {
 
 	float s = 0.0f;
@@ -922,7 +705,7 @@ float ConvexHull::getScale()
 }
 
 // Adds point if above face plane and above epsilon tolerance
-bool ConvexHull::addPointToFace(HalfEdgeMesh::Face& face, size_t pointIdx)
+bool QuickHull::addPointToFace(MeshBuilder::Face& face, size_t pointIdx)
 {
 
 	// Negative dist means point is inside the hull
@@ -957,7 +740,7 @@ bool ConvexHull::addPointToFace(HalfEdgeMesh::Face& face, size_t pointIdx)
 }
 
 // Reuse discarded conflict list memory
-std::unique_ptr<std::vector<size_t>> ConvexHull::getConflictList()
+std::unique_ptr<std::vector<size_t>> QuickHull::getConflictList()
 {
 
 	// Allocate new memory if pool is empty
@@ -976,7 +759,7 @@ std::unique_ptr<std::vector<size_t>> ConvexHull::getConflictList()
 }
 
 // Recycle conflict list memory to pool when face is removed
-void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>>& ptr)
+void QuickHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>>& ptr)
 {
 
 	const size_t size = ptr->size();
@@ -992,85 +775,15 @@ void ConvexHull::reclaimConflictList(std::unique_ptr<std::vector<size_t>>& ptr)
 	conflictListsPool.push_back(std::move(ptr));
 }
 
-
-/* RENDERING & DEBUGGING */
-
-glm::vec3 ConvexHull::computeCentroid() {
-
-	unsigned int num = 0;
-	glm::vec3 centroid(0.0f, 0.0f, 0.0f);
-
-	for (auto& v : vertices) {
-
-		centroid += v;
-		num++;
-	}
-
-	return centroid /= static_cast<float>(num);
-}
-
-void ConvexHull::updateCentroid(glm::vec3 displacement) {
-
-	/*
-	worldTrans = objectTrans;
-
-	// Apply the object's transformation to the centroid
-	glm::vec4 worldCentroidTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
-	worldCentroid = glm::vec3(worldCentroidTrans);
-	*/
-
-	worldCentroid += displacement;
-}
-
-/* TODO */
-bool ConvexHull::computeRayIntersection(const Ray& r, float& t) {
-
-	/*
-	 GENERAL IDEA
-	 go through all faces (non-diabled) and test ray-plane intersections lol
-	*/
-	for (auto& f : mesh.faces) {
-
-		if (!f.isDisabled()) {
-
-			// Calculate ray-plane intersection
-			float denom = glm::dot(f.P.normal, r.direction);
-
-			// Check if ray is not parallel to plane -- avoid zero division
-			if (std::abs(denom) < 1e-6) {
-				return false;
-			}
-
-
-			t = glm::dot(f.P.normal, f.P.point - r.origin) / denom;
-
-			//return t >= 0;
-
-
-			// min max intersect distances
-			return (t >= 0.1f && t < 50.0f);
-		}
-	}
-
-	return false;
-}
-
-void ConvexHull::Draw(Shader& shader)
-{
-	convexhullModel.Draw(shader);
-}
-
-WorldTransform& ConvexHull::getWorldTransform() {
-	return worldTrans;
-}
-
-void ConvexHull::debugPrintState() const
+void QuickHull::debugState() const
 {
 	std::cout << "=============================" << std::endl;
-	std::cout << "=== ConvexHull Debug Info ===" << std::endl;
+	std::cout << "=== QuickHull Debug Info ===" << std::endl;
 	std::cout << "vertexData.size(): " << vertexData.size() << std::endl;
 	std::cout << "mesh.faces.size(): " << mesh.faces.size() << std::endl;
 	std::cout << "mesh.halfEdges.size() : " << mesh.halfEdges.size() << std::endl;
+	std::cout << "mesh.disabledFaces.size(): " << mesh.disabledFaces.size() << std::endl;
+	std::cout << "mesh.disabledHalfEdges.size() : " << mesh.disabledHalfEdges.size() << std::endl;
 	std::cout << "extremaIndices: ";
 	for (size_t i = 0; i < 6; i++) {
 		std::cout << extremaIndices[i] << " ";
@@ -1078,75 +791,5 @@ void ConvexHull::debugPrintState() const
 	std::cout << std::endl;
 	std::cout << "scale: " << scale << std::endl;
 	std::cout << "epsilon: " << epsilon << std::endl;
-	/*std::cout << "hull vertices: \n";
-	for (size_t i = 0; i < vertices.size(); i++) {
-		std::cout << "idx: " << i << " " << vertices[i].x << " " << vertices[i].y << " " << vertices[i].z << "\n";
-	}
-	std::cout << "hull indices: ";
-	for (size_t i = 0; i < indices.size(); i++) {
-		std::cout << indices[i] << " ";
-	}
-	std::cout << std::endl;*/
 	std::cout << "============================" << std::endl;
-}
-
-void ConvexHull::debugPrintUniqueVertices() const
-{
-
-	std::cout << "============================" << std::endl;
-	std::cout << "Unique Model Vertices \n";
-
-
-	std::set<glm::vec3, Vec3Compare> uniqueModelVert(vertexData.begin(), vertexData.end());
-	std::cout << "Total Vertices: " << uniqueModelVert.size() << std::endl;
-
-	size_t i = 0;
-	for (auto& v : uniqueModelVert) {
-		std::cout << "v" << i++ << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
-	}
-
-	std::cout << "============================" << std::endl;
-	std::cout << "Convex Hull Vertices \n";
-
-	std::set<glm::vec3, Vec3Compare> uniqueHullVert(vertices.begin(), vertices.end());
-	std::cout << "Total Vertices: " << uniqueHullVert.size() << std::endl;
-
-	size_t j = 0;
-	for (auto& v : uniqueHullVert) {
-
-		size_t map = (hullIndexToModelIndex.count(j)) ? hullIndexToModelIndex.at(j) : j;
-		std::cout << "v" << map << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
-		j++;
-	}
-
-
-
-	std::cout << "============================" << std::endl;
-
-
-}
-
-void ConvexHull::debugMissingVertices(std::vector<glm::vec3> modelVertices, std::vector<glm::vec3> hullVertices) const
-{
-	std::set<glm::vec3, Vec3Compare> v1(modelVertices.begin(), modelVertices.end());
-	std::set<glm::vec3, Vec3Compare> v2(hullVertices.begin(), hullVertices.end());
-
-	std::vector<glm::vec3>missingPoints;
-
-	std::cout << "============================" << std::endl;
-
-	size_t i = 0;
-	std::cout << "Missing vertices from hull:\n";
-	for (const auto& v : v1) {
-		if (v2.find(v) == v2.end()) {
-			std::cout << "v" << i << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
-			missingPoints.push_back(v);
-		}
-
-		i++;
-	}
-
-	std::cout << "============================" << std::endl;
-
-
 }

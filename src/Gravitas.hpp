@@ -42,6 +42,9 @@ private:
 	const char* glsl_version = "#version 330 core";
 	unsigned int SCREEN_WIDTH, SCREEN_HEIGHT;
 
+	// 1 m in physics => 0.01 OpenGL units
+	const float PHYSICS_SCALE = 0.01f;
+
 	// timing
 	float deltaTime = 0.0f;
 	float currentFrame= 0.0f;
@@ -67,6 +70,7 @@ private:
 	glm::vec3 newPos;
 	glm::vec3 initialHitPoint;
 	bool isDragging = false;
+	bool isRotating = false;
 	int selectedObjectId = -1;
 
 
@@ -80,6 +84,8 @@ private:
 	Shader basicShader;
 	Shader pickingShader;
 	Shader outlineShader;
+	Shader lightingShader;
+	Shader defaultShader;
 
 	// initialization
 	bool InitGLFW();

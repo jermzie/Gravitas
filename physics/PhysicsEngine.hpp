@@ -27,7 +27,7 @@ public:
 
 		for (auto& body : rigidBodies) {
 
-			//body.accelerateLinearly(gravityAccel);
+			body.accelerateLinearly(gravityAccel);
 			body.update(timeStep);
 		}
 	}

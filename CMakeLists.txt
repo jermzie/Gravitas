@@ -12,7 +12,7 @@ endif()
 project (Gravitas)
 set(EXECUTABLE_NAME gravitas)
 add_compile_definitions(PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-add_executable (${EXECUTABLE_NAME} "./src/Gravitas.cpp" "./src/stb_image.cpp" "./physics/ConvexHull.cpp" "./quickhull/QuickHull.cpp")
+add_executable (${EXECUTABLE_NAME} "./src/Gravitas.cpp" "./src/stb_image.cpp" "./physics/QuickHull.cpp")
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 17)
 
