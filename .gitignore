@@ -5,3 +5,4 @@ CMakeFiles/
 quickhull/
 compile_commands.json
 .cache/
+.vs/

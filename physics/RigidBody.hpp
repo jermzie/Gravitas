@@ -10,12 +10,12 @@
 
 #include <vector>
 
-#include "../quickhull/QuickHull.hpp"
 #include "../inc/Model.hpp"
 #include "../inc/Mesh.hpp"
 #include "../inc/WorldTransform.hpp"
 #include "../inc/Ray.hpp"
 #include "ConvexHull.hpp"
+#include "QuickHull.hpp"
 #include "BoundingSphere.hpp"
 
 class RigidBody {
@@ -41,7 +41,7 @@ private:
 	double friction;
 
 
-	bool fixed = false;
+	bool isDragging = false;
 
 
 	glm::mat3 inertiaTensor;
@@ -50,7 +50,6 @@ public:
 
 
 	BoundingSphere collider;
-	//quickhull::QuickHull<float>qh;
 	ConvexHull hull;
 
 	RigidBody(Model model, double mass, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
@@ -63,53 +62,45 @@ public:
 		this->angularVelocity = omega;
 
 		// set inital transformation matrices
-		worldTrans.SetPosition(centreOfMass);
+		worldTrans.SetPosition(position);
 
+		QuickHull qh;
+		hull = qh.getConvexHull(model.GetVertexData());
+		hull.computeConvexHull(model, worldTrans);
 
 		// sphere centroid position
 		collider.computeBoundingSphere(model, worldTrans);
-	
-		hull.computeConvexHull(model, worldTrans);
 
-		/*
-		std::vector<glm::vec3>pointCloud = model.GetVertexData();
-		auto hull = qh.getConvexHull(&pointCloud[0].x, pointCloud.size(), true, false);
-
-		std::string objectName = model.fileName;
-		size_t dotPos = objectName.find_last_of(".");
-		std::string name = objectName.substr(0, dotPos);
-		std::string ext = objectName.substr(dotPos);
-		std::string convexhullName = name + "_quickhull" + ext;
-
-		hull.writeWaveformOBJ(convexhullName);
-		*/
 	}
 
 
 	void accelerateLinearly(const glm::vec3 deltaVelocity) {
 
-		linearVelocity = linearVelocity + deltaVelocity;
+		linearVelocity += deltaVelocity;
 	}
 
 	void update(double deltaTime) {
 
-
-		
-
-		/*
-		centreOfMass += linearVelocity * deltaTime;
-
-		orientation += glm::matrixCross4(angularVelocity) * orientation * deltaTime;
-	
-
-		worldMat4.SetPosition(centreOfMass);
-		worldMat4.SetRotate(orientation);
-		*/
+		if (isDragging) {
 
 
-		// move collider centroid position alongside rigid body position
-		//collider.UpdateCentroid(worldTrans);
+		}
+		else {
 
+			centreOfMass += linearVelocity * deltaTime;
+
+			//orientation += glm::matrixCross4(angularVelocity) * orientation * deltaTime;
+
+
+			worldTrans.SetPosition(centreOfMass);
+			//worldMat4.SetRotate(orientation);
+
+
+
+			// move collider centroid position alongside rigid body position
+			//collider.UpdateCentroid(worldTrans);
+
+		}
 	}
 
 	void Drag(glm::vec3 displacement) {
@@ -145,9 +136,25 @@ public:
 		rigidBodyModel.Draw(shader);
 	}
 
-	bool collided(Ray& r, float &t) {
+	bool collided(Ray& worldRay, glm::vec3& hitPoint) {
 
-		return collider.computeRayIntersection(r, t);
+		glm::mat4 inverseModelMatrix = glm::inverse(worldTrans.GetMatrix());
+		glm::vec4 rayOrig_local = inverseModelMatrix * glm::vec4(worldRay.origin, 1.0f);
+		glm::vec4 rayDir_local = inverseModelMatrix * glm::vec4(worldRay.direction, 0.0f);
+
+		Ray localRay;
+		localRay.origin = glm::vec3(rayOrig_local);
+		localRay.direction = glm::vec3(rayDir_local);
+		
+		// t in local space
+		float t;
+		int res = hull.computeRayIntersection(localRay, t);
+
+		glm::vec3 hitLocal = localRay.origin + localRay.direction * t;
+		glm::vec4 hitWorld4 = hull.getWorldTransform().GetMatrix() * glm::vec4(hitLocal, 1.0f);
+		hitPoint = glm::vec3(hitWorld4);
+
+		return res;
 	}
 
 	// BoundingSphere getBounds() {
