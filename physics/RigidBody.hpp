@@ -83,6 +83,8 @@ public:
 
 		if (isDragging) {
 
+			std::cout << "Hello?\n";
+
 
 		}
 		else {
@@ -92,7 +94,8 @@ public:
 			//orientation += glm::matrixCross4(angularVelocity) * orientation * deltaTime;
 
 
-			worldTrans.SetPosition(centreOfMass);
+			worldTrans.SetPosition(linearVelocity * deltaTime);
+			hull.getWorldTransform().SetPosition(linearVelocity * deltaTime);
 			//worldMat4.SetRotate(orientation);
 
 
@@ -114,6 +117,9 @@ public:
 
 	void Disable() {
 
+		isDragging = true;
+
+		linearVelocity = glm::vec3(0.0f);
 
 	}
 
@@ -126,6 +132,11 @@ public:
 
 		centreOfMass = position;
 
+	}
+
+	void setLinearVelocity(glm::vec3 velocity) {
+
+		linearVelocity = velocity;
 	}
 
 	glm::vec3 getCentreOfMass() {

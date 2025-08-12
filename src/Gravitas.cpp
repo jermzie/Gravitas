@@ -51,6 +51,9 @@ void App::Run() {
         gui.Render();
 
         glfwSwapBuffers(window);
+
+        // VSYNC disabled; limits fps to refresh rate (144hz)
+        glfwSwapInterval(1);
     }
 }
 
@@ -140,22 +143,25 @@ void App::InitScene() {
     Model bunnyModel("stanford-bunny.obj");
 
     RigidBody light(cubeModel, 0.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody cyl(cylinderModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody suzanne2(suzanneModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody suzanne3(suzanneModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody teapot(teapotModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody bunny(bunnyModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     
     
     scene.addRigidBody(std::move(light));
-    scene.addRigidBody(std::move(tetra));
-    scene.addRigidBody(std::move(cube));
+    //scene.addRigidBody(std::move(tetra));
+    //scene.addRigidBody(std::move(cube));
     //scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
     scene.addRigidBody(std::move(suzanne));
+    //scene.addRigidBody(std::move(suzanne2));
+    //scene.addRigidBody(std::move(suzanne3));
     //scene.addRigidBody(std::move(teapot));
     //scene.addRigidBody(std::move(bunny));
 
@@ -273,7 +279,7 @@ void App::Update() {
             for (int i = 0; i < scene.rigidBodies.size(); ++i) {
 
                 // chek for collisions
-                float t;
+                //float t;
                 glm::vec3 hitPoint;
                 if (scene.rigidBodies[i].collided(ray, hitPoint)) {
 
@@ -290,6 +296,7 @@ void App::Update() {
                     else {
 
                         isDragging = true;
+                        scene.rigidBodies[i].Disable();
                         //glm::vec3 hitPoint = ray.origin + ray.direction * t;
 
                         // record initial object pos
@@ -314,8 +321,14 @@ void App::Update() {
 
     }
 
+ 
+
+    // use fixed timesteps for consistency
+    float physicsDT = std::clamp(deltaTime, 1.0f / 300.0f, 1.0f / 60.0f);
+
     // update physics
-    //scene.step(deltaTime);
+    scene.step(physicsDT);
+
 }
 
 
@@ -429,6 +442,7 @@ void App::Render() {
         
         // probably make a imgui toggle for this
         // draw wireframe collision mesh
+        
         
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         pickingShader.use();

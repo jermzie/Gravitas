@@ -304,138 +304,6 @@ public:
 		return indices;
 	}
 
-	/*
-	// DOESNT WORK
-	// Möller–Trumbore intersection algorithm
-	bool ConvexHull::computeRayIntersection(const Ray& r, float& t) {
-
-		for (auto& f : mesh.faces) {
-
-			auto faceVertices = mesh.getFaceVertices(f);
-
-			float t = 0, u = 0, v = 0;
-
-			size_t v0 = faceVertices[0];
-			size_t v1 = faceVertices[1];
-			size_t v2 = faceVertices[2];
-
-			glm::vec3 v0v1 = vertices[v1] - vertices[v0];
-			glm::vec3 v0v2 = vertices[v2] - vertices[v0];
-			glm::vec3 pvec = glm::cross(r.direction, v0v2);
-			float det = glm::dot(v0v1, pvec);
-
-			float eps = std::numeric_limits<float>::epsilon();
-
-			// triangle is backfacing if determinant is negative
-			if (det < eps) {
-
-				continue;
-			}
-
-			// ray and triangle are parallel
-			if (std::abs(det) < eps) {
-
-				std::cerr << "parallel\n";
-				continue;
-			}
-
-			float invDet = 1 / det;
-
-			glm::vec3 tvec = r.origin - vertices[v0];
-			u = glm::dot(tvec, pvec) * invDet;
-			if (u < 0 || u > 1) {
-
-				std::cerr << "u\n";
-				continue;
-			}
-
-			glm::vec3 qvec = glm::cross(tvec, v0v1);
-			v = glm::dot(r.direction, qvec) * invDet;
-			if (v < 0 || u + v > 1) {
-
-				std::cerr << "v\n";
-				continue;
-			}
-
-			t = glm::dot(v0v2, qvec) * invDet;
-
-			std::cerr << "hit\n";
-			return true;
-		}
-
-		std::cerr << "miss\n";
-		return false;
-	}
-	*/
-	
-
-	/*
-	// DOESNT WORK
-	bool ConvexHull::computeRayIntersection(const Ray& r, float& outT) {
-		const float EPS = 1e-6f;
-
-		float tEnter = -std::numeric_limits<float>::infinity();
-		float tExit = std::numeric_limits<float>::infinity();
-		size_t enterFace = SIZE_MAX;
-
-		for (size_t i = 0; i < mesh.faces.size(); ++i) {
-			const auto& F = mesh.faces[i];
-			const Plane& P = F.P;  // assume P.normal is unit‐length, P.distance = –dot(P.normal, a known point on the plane)
-
-			float denom = glm::dot(P.normal, r.direction);
-			float numer = glm::dot(P.normal, r.origin) + P.distance;
-
-			if (std::abs(denom) < EPS) {
-				// Ray nearly parallel: if origin is outside (numer>0) -> no hit at all
-				if (numer > 0.0f) {
-					std::cerr << " PARALLEL MISS on face " << i << "\n";
-					return false;
-				}
-				// otherwise no constraint from this plane
-				continue;
-			}
-
-			float tHit = -numer / denom;
-			if (denom < 0.0f) {
-				// entering
-				if (tHit > tEnter) {
-					tEnter = tHit;
-					enterFace = i;
-				}
-			}
-			else {
-				// exiting
-				if (tHit < tExit) {
-					tExit = tHit;
-				}
-			}
-
-			// early‐out if the intervals no longer overlap
-			if (tEnter > tExit) {
-				std::cerr << " EARLY MISS on face " << i << "\n";
-				return false;
-			}
-		}
-
-		// At this point intervals [tEnter, tExit] overlap.
-		// Two cases:
-		//  1) tEnter >= 0: ray hits from outside at tEnter
-		//  2) tEnter < 0 <= tExit: ray starts inside, so “hit” is at tExit
-		if (tExit < 0.0f) {
-			std::cerr << " MISS: both entry and exit behind the ray\n";
-			return false;
-		}
-
-		// Choose the first positive intersection
-		outT = (tEnter >= EPS ? tEnter : tExit);
-		std::cerr << " HIT at t=" << outT
-			<< " on face " << enterFace
-			<< (tEnter < 0.0f ? " (origin inside, exiting)" : " (entering)")
-			<< "\n";
-		return true;
-	}
-	*/
-
 	// same tmax as far plane from perspective matrix???
 	int ConvexHull::computeRayIntersection(const Ray& r, float& t, float tmax = 500.0f) {
 
@@ -460,7 +328,7 @@ public:
 			if (std::abs(vd) < eps) {
 
 				if (vn > 0.0) {
-					std::cerr << "a\n";
+					//std::cerr << "a\n";
 					return 0;
 				}
 				continue;
@@ -472,7 +340,7 @@ public:
 				// front facing
 				if (vd < 0.0f) {
 
-					std::cerr << "b\n";
+					//std::cerr << "b\n";
 					if (t > tfar) return 0;
 					if (t > tnear) {
 
@@ -483,7 +351,7 @@ public:
 				// back facing
 				else {
 
-					std::cerr << "c\n";
+					//std::cerr << "c\n";
 					if (t < tnear) return 0;
 					if (t < tfar) {
 
@@ -497,7 +365,7 @@ public:
 		if (tnear >= eps) {
 
 			t = tnear;
-			std::cerr << "HIT\n";
+			//std::cerr << "HIT\n";
 			return 1;
 		}
 		else {
@@ -505,12 +373,12 @@ public:
 			if (tfar < tmax) {
 
 				t = tfar;
-				std::cerr << "HIT\n";
+				//std::cerr << "HIT\n";
 				return -1;
 			}
 			else {
 
-				std::cerr << "d\n";
+				//std::cerr << "d\n";
 				return 0;
 			}
 		}
@@ -564,6 +432,12 @@ public:
 		std::cout << "vertices.size(): " << vertices.size() << std::endl;
 		std::cout << "indices.size(): " << indices.size() << std::endl;
 		std::cout << "============================" << std::endl;
+	}
+
+
+	void computeMassProperties(double density) {
+
+
 	}
 
 };

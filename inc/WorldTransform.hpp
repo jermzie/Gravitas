@@ -24,10 +24,29 @@ public:
 	WorldTransform() {}
 
 
+	void SetAbsolutePos(glm::vec3 position) {
+		translateMat4 = glm::translate(glm::mat4(1.0), position);
+		this->position = position;
+	}
+
 	void SetPosition(glm::vec3 position) {
 		translateMat4 = glm::translate(translateMat4, position);
 		this->position = position;
 	}
+
+	/*
+	// Absolute position in world space
+	void SetPosition(glm::vec3 position) {
+		translateMat4 = glm::translate(glm::mat4(1.0), position);
+		this->position = position;
+	}
+
+	// Relative position; adding to current postion
+	void Translate(glm::vec3 delta) {
+		translateMat4 = glm::translate(translateMat4, delta);
+		this->position += delta;
+	}
+	*/
 
 	void SetScale(glm::vec3 scale) {
 		scaleMat4 = glm::scale(scaleMat4, scale);

@@ -12,6 +12,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
+#include <algorithm>
 #include <vector>
 
 #include "../inc/Model.hpp"
@@ -51,7 +52,7 @@ private:
 	float lastFrame = 0.0f;
 
 	// camera & input
-	Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f) };    // initial camera pos.
+	Camera camera{ glm::vec3(0.0f, 0.0f, 20.0f) };    // initial camera pos.
 	bool firstMouse = true;
 	float lastX, lastY;
 
