@@ -13,10 +13,6 @@
 
 class PhysicsEngine {
 private:
-	const glm::vec3 gravity = glm::vec3(0.0, -9.81, 0.0);
-
-	Plane floor = Plane(glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, -10.0, 0.0));
-	Plane ceil = Plane(glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 10.0, 0.0));
 
 	double timeStep;
 
@@ -43,14 +39,12 @@ public:
 				WorldTransform& bodyTrans = body.getWorldTransform();
 				bodyTrans.SetAbsolutePos(glm::vec3(position.x, 50.0f, position.z));
 
-				WorldTransform& colliderTrans = body.collider.getWorldTransform();
-				colliderTrans.SetAbsolutePos(glm::vec3(position.x, 50.0f, position.z));
+				WorldTransform& hullTrans = body.hull.getWorldTransform();
+				hullTrans.SetAbsolutePos(glm::vec3(position.x, 50.0f, position.z));
 
-				body.setLinearVelocity(glm::vec3(0.0f));
+				body.reset(glm::vec3(0.0f));
 			}
 
-
-			body.accelerateLinearly(gravity * static_cast<float>(timeStep));
 			body.update(timeStep);
 		}
 	}

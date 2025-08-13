@@ -28,7 +28,7 @@ private:
 	glm::vec3 centreOfMass;
 	glm::vec3 linearVelocity;
 
-	glm::mat4 orientation = glm::mat4(1.0);
+	glm::mat3 orientation = glm::mat3(1.0);
 	glm::vec3 angularVelocity;
 
 
@@ -36,47 +36,49 @@ private:
 
 
 
-	double mass;
-	double inverseMass;
-	double friction;
+	float mass;
+	float density;
+	float inverseMass;
+	float friction;
 
 
 	bool isDragging = false;
 
 
-	glm::mat3 inertiaTensor;
+	glm::mat3 inertiaTensor = glm::mat3(1.0);
 
 public:
 
 
-	BoundingSphere collider;
+	BoundingSphere sphere;
 	ConvexHull hull;
 
-	RigidBody(Model model, double mass, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
+	RigidBody(Model model, float rho, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
 
-		// physics properties
-		this->rigidBodyModel = model;
-		this->mass = mass;
-		this->centreOfMass = position;
-		this->linearVelocity = velocity;
-		this->angularVelocity = omega;
-
-		// set inital transformation matrices
-		worldTrans.SetPosition(position);
+		// basic physics properties
+		rigidBodyModel = model;
+		density = rho;
+		linearVelocity = velocity;
+		angularVelocity = omega;
 
 		QuickHull qh;
 		hull = qh.getConvexHull(model.GetVertexData());
-		hull.computeConvexHull(model, worldTrans);
 
 		// sphere centroid position
-		collider.computeBoundingSphere(model, worldTrans);
+		// sphere.computeBoundingSphere(model, worldTrans);
 
+		// com
+		hull.computeMassProperties(density, mass, centreOfMass, inertiaTensor);
+
+		// set inital transformation matrices
+		worldTrans.SetAbsolutePos(centreOfMass);
+		worldTrans.SetPosition(position);
+
+		hull.computeConvexHull(model, worldTrans);
 	}
 
+	void applyForces() {
 
-	void accelerateLinearly(const glm::vec3 deltaVelocity) {
-
-		linearVelocity += deltaVelocity;
 	}
 
 	void update(double deltaTime) {
@@ -96,6 +98,8 @@ public:
 
 			worldTrans.SetPosition(linearVelocity * deltaTime);
 			hull.getWorldTransform().SetPosition(linearVelocity * deltaTime);
+
+			applyForces();
 			//worldMat4.SetRotate(orientation);
 
 
@@ -106,16 +110,22 @@ public:
 		}
 	}
 
-	void Drag(glm::vec3 displacement) {
+	void drag(glm::vec3 displacement) {
 
-		// move rigidbody to newPos, following ray 
+		// update model transformations
+		worldTrans.SetPosition(displacement);
+		WorldTransform& hullTrans = hull.getWorldTransform();
+		hullTrans.SetPosition(displacement);
 
+
+		// update COM positiosn
+		hull.updateCentroid(displacement);
 		centreOfMass += displacement;
 
 		// track xyz offSets and deltaTime to accumulate velocity while dragging???
 	}
 
-	void Disable() {
+	void disable() {
 
 		isDragging = true;
 
@@ -123,28 +133,9 @@ public:
 
 	}
 
+	void reset() {
 
-	WorldTransform& getWorldTransform() { 
-		return worldTrans; 
-	}
 
-	void setCentreOfMass(glm::vec3 position) {
-
-		centreOfMass = position;
-
-	}
-
-	void setLinearVelocity(glm::vec3 velocity) {
-
-		linearVelocity = velocity;
-	}
-
-	glm::vec3 getCentreOfMass() {
-		return centreOfMass;
-	}
-
-	void Draw(Shader& shader) {
-		rigidBodyModel.Draw(shader);
 	}
 
 	bool collided(Ray& worldRay, glm::vec3& hitPoint) {
@@ -168,9 +159,17 @@ public:
 		return res;
 	}
 
-	// BoundingSphere getBounds() {
-	// 	//return collider;
-	// }
+	void draw(Shader& shader) {
+		rigidBodyModel.Draw(shader);
+	}
+
+	WorldTransform& getWorldTransform() {
+		return worldTrans;
+	}
+
+	glm::vec3 getCentreOfMass() {
+		return centreOfMass;
+	}z
 
 };
 

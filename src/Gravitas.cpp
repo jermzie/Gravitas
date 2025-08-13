@@ -144,7 +144,7 @@ void App::InitScene() {
 
     RigidBody light(cubeModel, 0.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody cyl(cylinderModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
@@ -156,7 +156,7 @@ void App::InitScene() {
     
     scene.addRigidBody(std::move(light));
     //scene.addRigidBody(std::move(tetra));
-    //scene.addRigidBody(std::move(cube));
+    scene.addRigidBody(std::move(cube));
     //scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
     scene.addRigidBody(std::move(suzanne));
@@ -228,67 +228,45 @@ void App::Update() {
     // update picking & dragging
     if (leftMouseButton.isDown) {
 
-        // compute 2d mouse coords as world space coords
+        // convert 2D mouse coords to world space coords
         Ray ray = picker.ScreenToWorldRay(leftMouseButton.x, leftMouseButton.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
 
-
-        // CURRENTLY dragging
         if (isDragging && selectedObjectId != -1) {
 
-            // compute intersection w/ drag plane
+            // find ray-plane intersection
             float t;
             if (picker.RayPlaneIntersection(ray, dragPlane.normal, dragPlane.point, t)) {
 
-                // point of intersection
+                // new point of intersection
                 newPos = ray.origin + ray.direction * t;
-
-             
                 glm::vec3 displacement = newPos - oldPos;
-                displacement *= dragSensitivity;
-
-		        // update object and collider model transformations
-                WorldTransform& objectTrans = scene.rigidBodies[selectedObjectId].getWorldTransform();
-                objectTrans.SetPosition(displacement);
-
-                WorldTransform& colliderTrans = scene.rigidBodies[selectedObjectId].collider.getWorldTransform();
-                colliderTrans.SetPosition(displacement);
-
-                WorldTransform& hullTrans = scene.rigidBodies[selectedObjectId].hull.getWorldTransform();
-                hullTrans.SetPosition(displacement);
-                
-                // update object and collider COM positiosn
-                scene.rigidBodies[selectedObjectId].collider.updateCentroid(displacement);
-                scene.rigidBodies[selectedObjectId].hull.updateCentroid(displacement);
-                scene.rigidBodies[selectedObjectId].Drag(displacement);
+            
+                // update positions + velocities???
+                scene.rigidBodies[selectedObjectId].drag(displacement);
 
                 oldPos = newPos;
-
             }
-
-
-
         }
 
         else if (isRotating && selectedObjectId != -1) {
 
         }
 
-        // NOT alr dragging
         else {
 
-            for (int i = 0; i < scene.rigidBodies.size(); ++i) {
+            // check ray-hull intersections for all bodies
+            for (size_t i = 0; i < scene.rigidBodies.size(); ++i) {
 
-                // chek for collisions
-                //float t;
                 glm::vec3 hitPoint;
                 if (scene.rigidBodies[i].collided(ray, hitPoint)) {
 
                     selectedObjectId = i;
+
                     if (isRotating) {
 
                         // rotate model w/ mouse
                         // 1. initial model selection w/ mouse picking
-                        // 2. as long as 'R' key pressed, no dragging/ray-model intersections, rotate same selected model
+                        // 2. as long as 'R' key pressed, no picking/dragging/ray-model intersections, rotate same selected model
                         // 3. 
                         // how to choose rotation axis??
 
@@ -296,29 +274,21 @@ void App::Update() {
                     else {
 
                         isDragging = true;
-                        scene.rigidBodies[i].Disable();
-                        //glm::vec3 hitPoint = ray.origin + ray.direction * t;
+                        scene.rigidBodies[i].disable();
 
                         // record initial object pos
                         initialObjectPos = scene.rigidBodies[i].getCentreOfMass();
                         oldPos = hitPoint;
 
-                        // define drag plane @ object pos
+                        // define drag plane
                         dragPlane.normal = -camera.Front;
                         dragPlane.point = hitPoint;
                     }
-
-
-                
-                    //std::cout << "PICKED OBJECT: " << i << std::endl;
-                    // glm::vec3 hitPoint = ray.origin + ray.direction * ray.t;
-                    //std::cout << "HITPOINT: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
 
                     break;
                 }
             }
         }
-
     }
 
  
@@ -351,33 +321,15 @@ void App::Render() {
     for (int i = 0; i < scene.rigidBodies.size(); ++i) {
 
 
-        // WorldTransform world shit
-        // just do 
-        // glm::mat4 world = rigidBodies[i].GetMatrix()
-        // setMat4("WVP", world * proj * view)
-
-
-   
         WorldTransform& objectTrans = scene.rigidBodies[i].getWorldTransform();
-        glm::vec3 position = objectTrans.GetPosition();
-        //objectTrans.SetPosition(position * PHYSICS_SCALE);
-
-        //std::cout << "Object " << i << " Position: " << position.x << " " << position.y << " " << position.z << "\n";
-
-        // outline selected object
-
-        // first pass -- render object normally & write to the stencil buffer
-	//glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        //glStencilMask(0xFF);
-
-        
-         
-        //std::cout << "Collider " << i << " Position: " << colliderPosition.x << " " << colliderPosition.y << " " << colliderPosition.z << "\n";
+        //glm::vec3 position = objectTrans.GetPosition();
+ 
 
 
         if (i == selectedObjectId) {
 
-            // render object normally & write to stencil buffer
+            
+            // first pass -- render object normally & write to stencil buffer
             glStencilFunc(GL_ALWAYS, 1, 0xFF);
             glStencilMask(0xFF);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
@@ -413,12 +365,14 @@ void App::Render() {
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);
 
+            // light source
             if (i == 0) {
                 lightingShader.use();
                 lightingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
                 scene.rigidBodies[i].Draw(lightingShader);
 
             }
+
             else {
 
                 defaultShader.use();
@@ -442,12 +396,10 @@ void App::Render() {
         
         // probably make a imgui toggle for this
         // draw wireframe collision mesh
-        
-        
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         pickingShader.use();
         WorldTransform& colliderTrans = scene.rigidBodies[i].hull.getWorldTransform();
-        glm::vec3 colliderPosition = colliderTrans.GetPosition();
+        //glm::vec3 colliderPosition = colliderTrans.GetPosition();
         //colliderTrans.SetPosition(colliderPosition * PHYSICS_SCALE);
         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
         scene.rigidBodies[i].hull.Draw(pickingShader);
