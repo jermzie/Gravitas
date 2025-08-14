@@ -336,7 +336,7 @@ void App::Render() {
 
             pickingShader.use();
             pickingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-            scene.rigidBodies[i].Draw(pickingShader);
+            scene.rigidBodies[i].draw(pickingShader);
 
 
             // draw outline
@@ -351,7 +351,7 @@ void App::Render() {
             glm::mat4 outlineMat4 = glm::scale(orginalMat4, glm::vec3(1.05f));
 
             outlineShader.setMat4("gWVP", projection * view * outlineMat4);
-            scene.rigidBodies[i].Draw(outlineShader);
+            scene.rigidBodies[i].draw(outlineShader);
 
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);
@@ -369,7 +369,7 @@ void App::Render() {
             if (i == 0) {
                 lightingShader.use();
                 lightingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-                scene.rigidBodies[i].Draw(lightingShader);
+                scene.rigidBodies[i].draw(lightingShader);
 
             }
 
@@ -389,7 +389,7 @@ void App::Render() {
                 defaultShader.setVec3("lightPos", scene.rigidBodies[0].getCentreOfMass());
                 defaultShader.setVec3("viewPos", camera.Position);
 
-                scene.rigidBodies[i].Draw(defaultShader);
+                scene.rigidBodies[i].draw(defaultShader);
 
             }
         }
@@ -402,7 +402,7 @@ void App::Render() {
         //glm::vec3 colliderPosition = colliderTrans.GetPosition();
         //colliderTrans.SetPosition(colliderPosition * PHYSICS_SCALE);
         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
-        scene.rigidBodies[i].hull.Draw(pickingShader);
+        scene.rigidBodies[i].hull.draw(pickingShader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         
 
@@ -536,6 +536,7 @@ void App::OnMouseButton(int button, int action, int mods) {
             leftMouseButton.isDown = false;
 
             isDragging = false; // stop dragging on release
+	    scene.rigidBodies[selectedObjectId].isDragging = false;
             leftMouseButton.firstMouse = true;
             selectedObjectId = -1;  // reset selected object index on release
 

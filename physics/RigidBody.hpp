@@ -25,31 +25,36 @@ private:
 	WorldTransform worldTrans;
 	Model rigidBodyModel;
 
+	// gravity
+	const glm::vec3 gravity = glm::vec3(0.0, -9.81f, 0.0);
+
+	// linear motion
 	glm::vec3 centreOfMass;
 	glm::vec3 linearVelocity;
+	glm::vec3 linearMomentum;
 
+	// angular motion
 	glm::mat3 orientation = glm::mat3(1.0);
 	glm::vec3 angularVelocity;
-
-
-	glm::vec3 acceleration = glm::vec3(0.0, -0.005, 0.0);
-
+	glm::vec3 angularMomentum;
+	glm::mat3 inertia = glm::mat3(1.0);
+	glm::mat3 invInertia = glm::mat3(1.0);
 
 
 	float mass;
+	float invMass;
 	float density;
-	float inverseMass;
 	float friction;
 
+	glm::vec3 dragVelocity;
 
-	bool isDragging = false;
 
 
-	glm::mat3 inertiaTensor = glm::mat3(1.0);
 
 public:
 
 
+	bool isDragging = false;
 	BoundingSphere sphere;
 	ConvexHull hull;
 
@@ -61,6 +66,9 @@ public:
 		linearVelocity = velocity;
 		angularVelocity = omega;
 
+
+
+
 		QuickHull qh;
 		hull = qh.getConvexHull(model.GetVertexData());
 
@@ -68,7 +76,7 @@ public:
 		// sphere.computeBoundingSphere(model, worldTrans);
 
 		// com
-		hull.computeMassProperties(density, mass, centreOfMass, inertiaTensor);
+		//hull.computeMassProperties(density, mass, centreOfMass, inertiaTensor);
 
 		// set inital transformation matrices
 		worldTrans.SetAbsolutePos(centreOfMass);
@@ -84,16 +92,18 @@ public:
 	void update(double deltaTime) {
 
 		if (isDragging) {
-
-			std::cout << "Hello?\n";
+			
+			linearVelocity += dragVelocity * deltaTime;
+			printVec(linearVelocity);
 
 
 		}
 		else {
 
+			linearVelocity += gravity * deltaTime;
 			centreOfMass += linearVelocity * deltaTime;
 
-			//orientation += glm::matrixCross4(angularVelocity) * orientation * deltaTime;
+			orientation += glm::matrixCross3(angularVelocity) * orientation * deltaTime;
 
 
 			worldTrans.SetPosition(linearVelocity * deltaTime);
@@ -112,8 +122,10 @@ public:
 
 	void drag(glm::vec3 displacement) {
 
+		dragVelocity = 100.0f * displacement;
 		// update model transformations
 		worldTrans.SetPosition(displacement);
+
 		WorldTransform& hullTrans = hull.getWorldTransform();
 		hullTrans.SetPosition(displacement);
 
@@ -128,13 +140,14 @@ public:
 	void disable() {
 
 		isDragging = true;
-
 		linearVelocity = glm::vec3(0.0f);
 
 	}
 
-	void reset() {
+	void reset(glm::vec3 v) {
 
+		centreOfMass = v;
+		linearVelocity = glm::vec3(0.0f);
 
 	}
 
@@ -162,6 +175,10 @@ public:
 	void draw(Shader& shader) {
 		rigidBodyModel.Draw(shader);
 	}
+	
+	void printVec(glm::vec3 v){
+		std::cout << v.x << " " << v.y << " " << v.z << "\n";
+	}
 
 	WorldTransform& getWorldTransform() {
 		return worldTrans;
@@ -169,7 +186,7 @@ public:
 
 	glm::vec3 getCentreOfMass() {
 		return centreOfMass;
-	}z
+	}
 
 };
 

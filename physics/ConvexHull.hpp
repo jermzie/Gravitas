@@ -418,7 +418,7 @@ public:
 	}
 
 
-	void Draw(Shader& shader)
+	void draw(Shader& shader)
 	{
 		convexhullModel.Draw(shader);
 	}
@@ -523,21 +523,21 @@ public:
 		glm::vec3 col1(
 			density * (intg[5] + intg[6] - vol * (com.y * com.y + com.z * com.z)),
 			density * -(intg[7] - vol * (com.y * com.x)),
-			density * -(intg[9] - vol * (com.z * com.x)),
+			density * -(intg[9] - vol * (com.z * com.x))
 		);
 		
 		// xy, yy, zy
 		glm::vec3 col2(
 			-(intg[7] - vol * (com.x * com.y)),
 			intg[4] + intg[6] - vol * (com.z * com.z + com.x * com.x),
-			-(intg[8] - vol * (com.z * com.y)),
+			-(intg[8] - vol * (com.z * com.y))
 		);
 
 		// xz, yz, zz
 		glm::vec3 col3(
 			-(intg[9] - vol * (com.x * com.z)),
 			-(intg[8] - vol * (com.y * com.z)),
-			intg[4] + intg[5] - vol * (com.x * com.x + com.y * com.y),
+			intg[4] + intg[5] - vol * (com.x * com.x + com.y * com.y)
 		);
 
 		inertia = glm::mat3(col1, col2, col3);
