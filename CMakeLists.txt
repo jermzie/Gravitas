@@ -16,32 +16,27 @@ add_executable (${EXECUTABLE_NAME} "./src/Gravitas.cpp" "./src/stb_image.cpp" ".
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 17)
 
+# path for cmake config files
+# set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/build/vcpkg_installed/x64-windows/share")
 
 find_package(assimp REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(BZip2 REQUIRED)
 find_package(EXPAT REQUIRED)
-find_package(glad REQUIRED)
-find_package(glm REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(imgui REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(glad CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
-
-# path for cmake config files
-# set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/build/vcpkg_installed/x64-windows/share")
-
-target_link_libraries(${EXECUTABLE_NAME}
-  PRIVATE
-    assimp::assimp
-    ZLIB::ZLIB
-    BZip2::BZip2
-    EXPAT::EXPAT
-    glad::glad
-    glm::glm
-    glfw
-    imgui::imgui
-    Eigen3::Eigen
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE
+  assimp::assimp
+  ZLIB::ZLIB
+  BZip2::BZip2
+  EXPAT::EXPAT
+  glad::glad
+  glm::glm
+  glfw
+  imgui::imgui
 )
 
-target_include_directories(${EXECUTABLE_NAME} PRIVATE include)
+# target_include_directories(${EXECUTABLE_NAME} PRIVATE include)

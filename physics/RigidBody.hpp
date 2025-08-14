@@ -7,6 +7,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/scalar_multiplication.hpp>
 #include <glm/gtx/matrix_cross_product.hpp>
+#include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/orthonormalize.hpp>
 
 #include <vector>
 
@@ -22,62 +24,72 @@ class RigidBody {
 private:
 	std::vector<Vertex>mesh;		// Polyhedron triangle mesh
 
-	WorldTransform worldTrans;
+	WorldTransform bodyTrans;
 	Model rigidBodyModel;
 
+	const glm::vec3 gravity = glm::vec3(0.0f, -9.81f, 0.0f);
+
+	// linear motion
 	glm::vec3 centreOfMass;
 	glm::vec3 linearVelocity;
+	glm::vec3 linearMomentum;
 
+
+	// angular motion
 	glm::mat3 orientation = glm::mat3(1.0);
 	glm::vec3 angularVelocity;
-
-
-	glm::vec3 acceleration = glm::vec3(0.0, -0.005, 0.0);
+	glm::vec3 angularMomentum;
 
 
 
 	float mass;
 	float density;
-	float inverseMass;
+	float invMass;
 	float friction;
 
-
-	bool isDragging = false;
-
-
-	glm::mat3 inertiaTensor = glm::mat3(1.0);
+	glm::mat3 invInertia;
+	glm::mat3 inertia = glm::mat3(1.0);
 
 public:
 
+	bool isDragging = false;
 
 	BoundingSphere sphere;
 	ConvexHull hull;
 
-	RigidBody(Model model, float rho, glm::vec3 position, glm::vec3 velocity, glm::vec3 omega){
+	RigidBody(Model model, float rho, glm::vec3 position, glm::vec3 velocity, glm::vec3 L){
 
 		// basic physics properties
 		rigidBodyModel = model;
 		density = rho;
 		linearVelocity = velocity;
-		angularVelocity = omega;
+		angularMomentum = L;
 
 		QuickHull qh;
-		hull = qh.getConvexHull(model.GetVertexData());
+		hull = qh.getConvexHull(rigidBodyModel.GetVertexData());
 
 		// sphere centroid position
 		// sphere.computeBoundingSphere(model, worldTrans);
 
 		// com
-		hull.computeMassProperties(density, mass, centreOfMass, inertiaTensor);
+		hull.computeMassProperties(density, mass, centreOfMass, inertia);
+		invInertia = glm::inverse(inertia);
 
 		// set inital transformation matrices
-		worldTrans.SetAbsolutePos(centreOfMass);
-		worldTrans.SetPosition(position);
+		bodyTrans.SetAbsolutePos(centreOfMass);
+		bodyTrans.SetPosition(position);
+		centreOfMass += position;
 
-		hull.computeConvexHull(model, worldTrans);
+		WorldTransform& hullTrans = hull.getWorldTransform();
+		hullTrans.SetAbsolutePos(centreOfMass);
+		//hullTrans.SetPosition(position);
+
+		// rw hull model
+		hull.computeConvexHull(model, bodyTrans);
 	}
 
-	void applyForces() {
+	// apply force & torque 
+	glm::vec3 applyForces() {
 
 	}
 
@@ -85,21 +97,37 @@ public:
 
 		if (isDragging) {
 
-			std::cout << "Hello?\n";
-
+			// DO SOMETHING
 
 		}
 		else {
 
+			// linear motion
+			//linearVelocity += gravity * deltaTime;
 			centreOfMass += linearVelocity * deltaTime;
 
-			//orientation += glm::matrixCross4(angularVelocity) * orientation * deltaTime;
+			// angular motion
+			// omega;
+			glm::mat3 worldInertia = orientation * invInertia * glm::transpose(orientation);
+			angularVelocity = worldInertia * angularMomentum;
+			orientation += glm::matrixCross3(angularVelocity) * orientation * deltaTime;
+
+			orientation = glm::orthonormalize(orientation);
 
 
-			worldTrans.SetPosition(linearVelocity * deltaTime);
+			bodyTrans.SetPosition(linearVelocity * deltaTime);
 			hull.getWorldTransform().SetPosition(linearVelocity * deltaTime);
+			hull.updateCentroid(linearVelocity * deltaTime);
 
-			applyForces();
+
+			bodyTrans.SetPosition(linearVelocity * deltaTime);
+			bodyTrans.SetRotate(glm::mat4(orientation));
+			hull.getWorldTransform().SetPosition(linearVelocity * deltaTime);
+			hull.getWorldTransform().SetRotate(glm::mat4(orientation));
+			hull.updateCentroid(linearVelocity * deltaTime);
+	
+
+			//applyForces();
 			//worldMat4.SetRotate(orientation);
 
 
@@ -113,7 +141,7 @@ public:
 	void drag(glm::vec3 displacement) {
 
 		// update model transformations
-		worldTrans.SetPosition(displacement);
+		bodyTrans.SetPosition(displacement);
 		WorldTransform& hullTrans = hull.getWorldTransform();
 		hullTrans.SetPosition(displacement);
 
@@ -133,14 +161,24 @@ public:
 
 	}
 
-	void reset() {
+	void reset(glm::vec3 position) {
+
+		bodyTrans.SetAbsolutePos(position);
+
+		WorldTransform& hullTrans = hull.getWorldTransform();
+		//Shull.updateCentroid(position);
+		hullTrans.SetAbsolutePos(position);
 
 
+		centreOfMass = position;
+		linearVelocity = glm::vec3(0.0f);
+
+		
 	}
 
 	bool collided(Ray& worldRay, glm::vec3& hitPoint) {
 
-		glm::mat4 inverseModelMatrix = glm::inverse(worldTrans.GetMatrix());
+		glm::mat4 inverseModelMatrix = glm::inverse(bodyTrans.GetMatrix());
 		glm::vec4 rayOrig_local = inverseModelMatrix * glm::vec4(worldRay.origin, 1.0f);
 		glm::vec4 rayDir_local = inverseModelMatrix * glm::vec4(worldRay.direction, 0.0f);
 
@@ -164,13 +202,26 @@ public:
 	}
 
 	WorldTransform& getWorldTransform() {
-		return worldTrans;
+		return bodyTrans;
 	}
 
 	glm::vec3 getCentreOfMass() {
 		return centreOfMass;
-	}z
+	}
 
+	void printVec(glm::vec3 v) {
+		std::cout << "vec3(" << v.x << " " << v.y << " " << v.z << ")\n";
+	}
+
+	void printDebug() {
+		
+
+		std::string i = glm::to_string(inertia);
+		std::cout << "inertia: " << i << std::endl;
+		std::cout << "com: ";  printVec(centreOfMass);
+		std::cout << "omega: ";  printVec(angularVelocity);
+
+	}
 };
 
 #endif

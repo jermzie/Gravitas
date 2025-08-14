@@ -142,28 +142,29 @@ void App::InitScene() {
     Model teapotModel("teapot.obj");
     Model bunnyModel("stanford-bunny.obj");
 
-    RigidBody light(cubeModel, 0.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody cyl(cylinderModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 0.0, 0.0));
+    RigidBody cyl(cylinderModel, 5.0, glm::vec3(0.0, 8.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(10.0, 0.0, 0.0));
     //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody suzanne(suzanneModel, 5.0, glm::vec3(0.0, 2.0, -3.0), glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(100.0, 100.0, 100.0));
     //RigidBody suzanne2(suzanneModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne3(suzanneModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody teapot(teapotModel, 5.0, glm::vec3(10.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody bunny(bunnyModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    
-    
+    RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(10.0, 0.0, 0.0));
+    RigidBody bunny(bunnyModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+       
+    //suzanne.printDebug();
+
     scene.addRigidBody(std::move(light));
     //scene.addRigidBody(std::move(tetra));
-    scene.addRigidBody(std::move(cube));
-    //scene.addRigidBody(std::move(cyl));
+    //scene.addRigidBody(std::move(cube));
+    scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
-    scene.addRigidBody(std::move(suzanne));
+    //scene.addRigidBody(std::move(suzanne));
     //scene.addRigidBody(std::move(suzanne2));
     //scene.addRigidBody(std::move(suzanne3));
-    //scene.addRigidBody(std::move(teapot));
-    //scene.addRigidBody(std::move(bunny));
+    scene.addRigidBody(std::move(teapot));
+    scene.addRigidBody(std::move(bunny));
 
    
    
@@ -234,6 +235,7 @@ void App::Update() {
         if (isDragging && selectedObjectId != -1) {
 
             // find ray-plane intersection
+
             float t;
             if (picker.RayPlaneIntersection(ray, dragPlane.normal, dragPlane.point, t)) {
 
@@ -245,6 +247,8 @@ void App::Update() {
                 scene.rigidBodies[selectedObjectId].drag(displacement);
 
                 oldPos = newPos;
+
+
             }
         }
 
@@ -255,7 +259,7 @@ void App::Update() {
         else {
 
             // check ray-hull intersections for all bodies
-            for (size_t i = 0; i < scene.rigidBodies.size(); ++i) {
+            for (int i = 0; i < scene.rigidBodies.size(); ++i) {
 
                 glm::vec3 hitPoint;
                 if (scene.rigidBodies[i].collided(ray, hitPoint)) {
@@ -290,7 +294,7 @@ void App::Update() {
             }
         }
     }
-
+ 
  
 
     // use fixed timesteps for consistency
@@ -298,6 +302,7 @@ void App::Update() {
 
     // update physics
     scene.step(physicsDT);
+
 
 }
 
@@ -336,7 +341,7 @@ void App::Render() {
 
             pickingShader.use();
             pickingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-            scene.rigidBodies[i].Draw(pickingShader);
+            scene.rigidBodies[i].draw(pickingShader);
 
 
             // draw outline
@@ -351,7 +356,7 @@ void App::Render() {
             glm::mat4 outlineMat4 = glm::scale(orginalMat4, glm::vec3(1.05f));
 
             outlineShader.setMat4("gWVP", projection * view * outlineMat4);
-            scene.rigidBodies[i].Draw(outlineShader);
+            scene.rigidBodies[i].draw(outlineShader);
 
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);
@@ -369,7 +374,7 @@ void App::Render() {
             if (i == 0) {
                 lightingShader.use();
                 lightingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-                scene.rigidBodies[i].Draw(lightingShader);
+                scene.rigidBodies[i].draw(lightingShader);
 
             }
 
@@ -389,7 +394,7 @@ void App::Render() {
                 defaultShader.setVec3("lightPos", scene.rigidBodies[0].getCentreOfMass());
                 defaultShader.setVec3("viewPos", camera.Position);
 
-                scene.rigidBodies[i].Draw(defaultShader);
+                scene.rigidBodies[i].draw(defaultShader);
 
             }
         }
@@ -402,7 +407,7 @@ void App::Render() {
         //glm::vec3 colliderPosition = colliderTrans.GetPosition();
         //colliderTrans.SetPosition(colliderPosition * PHYSICS_SCALE);
         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
-        scene.rigidBodies[i].hull.Draw(pickingShader);
+        scene.rigidBodies[i].hull.draw(pickingShader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         
 
@@ -534,8 +539,13 @@ void App::OnMouseButton(int button, int action, int mods) {
 
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             leftMouseButton.isDown = false;
+            
+            if (selectedObjectId != -1) {
+                scene.rigidBodies[selectedObjectId].isDragging = false;
+            }
 
             isDragging = false; // stop dragging on release
+            //scene.rigidBodies[selectedObjectId].isDragging = false;
             leftMouseButton.firstMouse = true;
             selectedObjectId = -1;  // reset selected object index on release
 

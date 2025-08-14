@@ -33,16 +33,9 @@ public:
 
 
 			// check if body above/below floor/ceil; if not just translate y-axis 
-			if (position.y <= -50.0) {
+			if (position.y <= -10.0f) {
 
-				body.setCentreOfMass(glm::vec3(position.x, 50.0f, position.z));
-				WorldTransform& bodyTrans = body.getWorldTransform();
-				bodyTrans.SetAbsolutePos(glm::vec3(position.x, 50.0f, position.z));
-
-				WorldTransform& hullTrans = body.hull.getWorldTransform();
-				hullTrans.SetAbsolutePos(glm::vec3(position.x, 50.0f, position.z));
-
-				body.reset(glm::vec3(0.0f));
+				body.reset(glm::vec3(position.x, 10.0f, position.z));
 			}
 
 			body.update(timeStep);
