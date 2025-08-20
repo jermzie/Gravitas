@@ -49,14 +49,6 @@ struct Texture {
 };
 
 
-class RenderCallback {
-
-public:
-
-    virtual void DrawCallback(unsigned int DrawIndex) = 0;
-};
-
-
 class Mesh {
 public:
 

@@ -8,6 +8,7 @@
 #include "RigidBody.hpp"
 //#include "ConvexHull.hpp"
 #include "BoundingSphere.hpp"
+#include "SAT.hpp"
 
 
 
@@ -15,12 +16,14 @@ class PhysicsEngine {
 private:
 
 	double timeStep;
+	SAT collisionDetection;
 
 public:
 
 	std::vector<RigidBody> rigidBodies;
 	std::vector<BoundingSphere>colliders;
 
+	bool collides = false;
 
 	void step(double timeStep) {
 
@@ -39,7 +42,15 @@ public:
 			}
 
 			body.update(timeStep);
+
+			for (auto& body2 : rigidBodies) {
+				collides = collisionDetection.optimizedSAT(body.hull, body2.hull);
+			}
 		}
+
+		std::cout << collides << std::endl;
+
+		
 	}
 
 	void addRigidBody(RigidBody&& body) {

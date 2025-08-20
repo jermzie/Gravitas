@@ -19,7 +19,7 @@
 #include "../inc/Mesh.hpp"
 #include "../inc/Camera.hpp"
 #include "../inc/Shader.hpp"
-#include "../inc/ImGUI.hpp"
+#include "../inc/Gui.hpp"
 #include "../inc/MousePicking.hpp"
 #include "../inc/Plane.hpp"
 #include "../physics/PhysicsEngine.hpp"
@@ -74,13 +74,18 @@ private:
 	bool isRotating = false;
 	int selectedObjectId = -1;
 
+	bool dragXZ = false;
+	bool dragYZ = false;
+	bool dragXY = false;
 
 
 	// rendering & scene
 	PhysicsEngine scene;
-	ImGUI gui;
+	Gui gui;
+
 	bool wireFrame = false;
 	bool defaultView = false;
+	
 
 	Shader basicShader;
 	Shader pickingShader;

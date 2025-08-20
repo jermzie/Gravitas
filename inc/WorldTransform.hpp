@@ -29,9 +29,9 @@ public:
 		this->position = position;
 	}
 
-	void SetPosition(glm::vec3 position) {
-		translateMat4 = glm::translate(translateMat4, position);
-		this->position = position;
+	void SetPosition(glm::vec3 deltaPosition) {
+		translateMat4 = glm::translate(translateMat4, deltaPosition);
+		this->position = deltaPosition;
 	}
 
 	/*
@@ -58,13 +58,20 @@ public:
 		this->scale = glm::vec3(scalingFactor, scalingFactor, scalingFactor);
 	}
 
+	void SetAbsoluteRot(float angle, glm::vec3 rotationAxis) {
+		rotateMat4 = glm::rotate(glm::mat4(1.0), angle, rotationAxis);
+	}
+
+	void SetAbsoluteRot(glm::mat4 orientation) {
+		rotateMat4 = orientation;
+	}
 
 	void SetRotate(float angle, glm::vec3 rotationAxis){
 		rotateMat4 = glm::rotate(rotateMat4, angle, rotationAxis);
 	}
 
-	void SetRotate(glm::mat4 orientation) {
-		rotateMat4 = orientation;
+	void SetRotate(glm::mat4 deltaRotation) {
+		rotateMat4 = deltaRotation * rotateMat4;
 	}
 
 	glm::mat4 GetMatrix() {

@@ -52,7 +52,7 @@ private:
 
 public:
 
-	bool isDragging = false;
+	bool isStatic = false;
 
 	BoundingSphere sphere;
 	ConvexHull hull;
@@ -95,7 +95,7 @@ public:
 
 	void update(double deltaTime) {
 
-		if (isDragging) {
+		if (isStatic) {
 
 			// DO SOMETHING
 
@@ -153,9 +153,22 @@ public:
 		// track xyz offSets and deltaTime to accumulate velocity while dragging???
 	}
 
+	void rotate(float xOffset, float yOffset) {
+
+		xOffset *= 0.01f;
+		yOffset *= 0.01f;
+
+		glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), yOffset, glm::vec3(1.0f, 0.0f, 0.0f));
+		glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), xOffset, glm::vec3(0.0f, 1.0f, 0.0f));
+
+		bodyTrans.SetRotate(rotY * rotX);
+		WorldTransform& hullTrans = hull.getWorldTransform();
+		hullTrans.SetRotate(rotY * rotX);
+	}
+
 	void disable() {
 
-		isDragging = true;
+		isStatic = true;
 
 		linearVelocity = glm::vec3(0.0f);
 

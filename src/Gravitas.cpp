@@ -140,31 +140,31 @@ void App::InitScene() {
     Model cylinderModel("cilindru.obj");
     Model suzanneModel("suzanne.obj");
     Model teapotModel("teapot.obj");
-    Model bunnyModel("stanford-bunny.obj");
+    Model davidModel("david.obj");
 
     RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 0.0, 0.0));
-    RigidBody cyl(cylinderModel, 5.0, glm::vec3(0.0, 8.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(10.0, 0.0, 0.0));
+    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+ 
+    //RigidBody cyl(cylinderModel, 5.0, glm::vec3(0.0, 8.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(10.0, 0.0, 0.0));
     //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(100.0, 100.0, 100.0));
+    //RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne2(suzanneModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne3(suzanneModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(10.0, 0.0, 0.0));
-    RigidBody bunny(bunnyModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 0.0, 0.0));
+  
+    //RigidBody david(davidModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
        
     //suzanne.printDebug();
 
     scene.addRigidBody(std::move(light));
-    //scene.addRigidBody(std::move(tetra));
-    //scene.addRigidBody(std::move(cube));
-    scene.addRigidBody(std::move(cyl));
+    scene.addRigidBody(std::move(tetra));
+    scene.addRigidBody(std::move(cube));
+    //scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
     //scene.addRigidBody(std::move(suzanne));
-    //scene.addRigidBody(std::move(suzanne2));
-    //scene.addRigidBody(std::move(suzanne3));
-    scene.addRigidBody(std::move(teapot));
-    scene.addRigidBody(std::move(bunny));
+    //scene.addRigidBody(std::move(teapot));
+    //scene.addRigidBody(std::move(david));
 
    
    
@@ -207,12 +207,10 @@ void App::ProcessInput()
         dragPlane.normal = glm::vec3(0.0f, 0.0f, 1.0f);
         //dragPlane.point = initialObjectPos;
     }
-    /*
+    
     else if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {        // Rotate picked object (no dragging)
         isRotating = true;
     }
-    */
-
     
 }
 
@@ -232,10 +230,10 @@ void App::Update() {
         // convert 2D mouse coords to world space coords
         Ray ray = picker.ScreenToWorldRay(leftMouseButton.x, leftMouseButton.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
 
+        // CURRENTLY DRAGGING
         if (isDragging && selectedObjectId != -1) {
 
             // find ray-plane intersection
-
             float t;
             if (picker.RayPlaneIntersection(ray, dragPlane.normal, dragPlane.point, t)) {
 
@@ -252,10 +250,18 @@ void App::Update() {
             }
         }
 
+        // OBJECT SELECTED AND CURRENTLY ROTATING
         else if (isRotating && selectedObjectId != -1) {
+
+            scene.rigidBodies[selectedObjectId].rotate(leftMouseButton.xOffset, leftMouseButton.yOffset);
+
+            leftMouseButton.xOffset = 0.0f;
+            leftMouseButton.yOffset = 0.0f;
 
         }
 
+        // NO DRAGGING OR ROTATING
+        // INITIAL OBJECT SELECTION
         else {
 
             // check ray-hull intersections for all bodies
@@ -265,37 +271,26 @@ void App::Update() {
                 if (scene.rigidBodies[i].collided(ray, hitPoint)) {
 
                     selectedObjectId = i;
+                    scene.rigidBodies[i].disable();
 
-                    if (isRotating) {
+                    // record initial object pos
+                    oldPos = hitPoint;
+                    //initialObjectPos = scene.rigidBodies[i].getCentreOfMass();
 
-                        // rotate model w/ mouse
-                        // 1. initial model selection w/ mouse picking
-                        // 2. as long as 'R' key pressed, no picking/dragging/ray-model intersections, rotate same selected model
-                        // 3. 
-                        // how to choose rotation axis??
-
-                    }
-                    else {
-
-                        isDragging = true;
-                        scene.rigidBodies[i].disable();
-
-                        // record initial object pos
-                        initialObjectPos = scene.rigidBodies[i].getCentreOfMass();
-                        oldPos = hitPoint;
-
-                        // define drag plane
-                        dragPlane.normal = -camera.Front;
-                        dragPlane.point = hitPoint;
-                    }
+                    // define drag plane
+                    dragPlane.normal = -camera.Front;
+                    dragPlane.point = hitPoint;
 
                     break;
                 }
             }
+
+            // cannot translate & rotate object at same time
+            isDragging = !isRotating;
         }
     }
  
- 
+
 
     // use fixed timesteps for consistency
     float physicsDT = std::clamp(deltaTime, 1.0f / 300.0f, 1.0f / 60.0f);
@@ -329,6 +324,12 @@ void App::Render() {
         WorldTransform& objectTrans = scene.rigidBodies[i].getWorldTransform();
         //glm::vec3 position = objectTrans.GetPosition();
  
+
+        glm::vec3 com = scene.rigidBodies[i].getCentreOfMass();
+        glm::vec3 cen = scene.rigidBodies[i].hull.getCentroid();
+
+        std::cout << "(" << com.x << ", " << com.y << ", " << com.z << ")         ";
+        std::cout << "(" << cen.x << ", " << cen.y << ", " << cen.z << ")\n";
 
 
         if (i == selectedObjectId) {
@@ -441,7 +442,7 @@ void App::OnKey(int key, int scancode, int action, int mods) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    /*
+    
     if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
         defaultView = !defaultView;
         if (defaultView) {
@@ -455,7 +456,7 @@ void App::OnKey(int key, int scancode, int action, int mods) {
             camera.Front = glm::vec3(0.0f, 0.0f, -1.0f);
         }
     }
-    */
+    
 }
 
 void App::OnMouseMove(double xpos, double ypos) {
@@ -496,8 +497,6 @@ void App::OnMouseMove(double xpos, double ypos) {
         leftMouseButton.x = xPos;
         leftMouseButton.y = yPos;
 
-
-        //std::cout << "MOUSE COORDS: " << leftMouseButton.x << " " << leftMouseButton.y << "\n";
     }
 
 }
@@ -510,7 +509,7 @@ void App::OnMouseButton(int button, int action, int mods) {
     float xPos = static_cast<float>(x);
     float yPos = static_cast<float>(y);
 
-    // leftMouseButton controls picking/dragging
+    // leftMouseButton controls picking/dragging movement
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
 
         // capture cursor for picking
@@ -522,10 +521,11 @@ void App::OnMouseButton(int button, int action, int mods) {
 
 
     }
+
     // rightMouseButton controls camera/wasd movement
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
 
-        // disable cursor for camera movement 
+        // disable cursor
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         rightMouseButton.isDown = true;
@@ -534,20 +534,24 @@ void App::OnMouseButton(int button, int action, int mods) {
         rightMouseButton.y = yPos;
 
     }
-    // handle button release
+
+    // handle release
     else if (action == GLFW_RELEASE) {
 
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             leftMouseButton.isDown = false;
             
             if (selectedObjectId != -1) {
-                scene.rigidBodies[selectedObjectId].isDragging = false;
+                scene.rigidBodies[selectedObjectId].isStatic = false;
             }
 
-            isDragging = false; // stop dragging on release
-            //scene.rigidBodies[selectedObjectId].isDragging = false;
+            // stop dragging/rotating on release
+            isDragging = false;
+            isRotating = false;
+
+            // reset object selection
             leftMouseButton.firstMouse = true;
-            selectedObjectId = -1;  // reset selected object index on release
+            selectedObjectId = -1; 
 
             if (!rightMouseButton.isDown) {
 

@@ -215,7 +215,7 @@ public:
 		size_t dotPos = objectName.find_last_of(".");
 		std::string name = objectName.substr(0, dotPos);
 		std::string ext = objectName.substr(dotPos);
-		convexhullName = name + "_convexhull" + ext;
+		convexhullName = name + "_convexhull.obj";
 		std::string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + convexhullName;
 
 
@@ -232,8 +232,12 @@ public:
 
 			// Save convex hull for future iterations
 			writeOBJ(convexhullName, name);
+			convexhullModel.LoadModel(convexhullName);
 
-		}
+		} 
+
+
+		
 		
 		// hull centroid not model centroid?
 		//localCentroid = computeCentroid();
@@ -423,6 +427,11 @@ public:
 		convexhullModel.Draw(shader);
 	}
 
+	/* ????? */
+	const glm::vec3 getCentroid() const {
+		return worldCentroid;
+	}
+
 	WorldTransform& getWorldTransform() {
 		return worldTrans;
 	}
@@ -544,6 +553,9 @@ public:
 
 	}
 
+	void transformHalfEdgeMesh() {
+
+	}
 };
 
 
