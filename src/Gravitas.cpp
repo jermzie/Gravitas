@@ -1,17 +1,17 @@
 ﻿#include "Gravitas.hpp"
 
-App::App(unsigned int width, unsigned int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
+Gravitas::Gravitas(unsigned int width, unsigned int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
 
     lastX = width / 2.0f;
     lastY = height / 2.0f;
 }
 
-App::~App() {
+Gravitas::~Gravitas() {
     gui.Shutdown();
     glfwTerminate();
 }
 
-bool App::Init() {
+bool Gravitas::Init() {
 
     if (!InitGLFW())
         return false;
@@ -26,7 +26,7 @@ bool App::Init() {
     return window != nullptr;
 }
 
-void App::Run() {
+void Gravitas::Run() {
     while (!glfwWindowShouldClose(window)) {
 
         // per-frame time logic
@@ -57,7 +57,7 @@ void App::Run() {
     }
 }
 
-bool App::InitGLFW() {
+bool Gravitas::InitGLFW() {
 
     // initialize and configure glfw
     // ------------------------------
@@ -88,7 +88,7 @@ bool App::InitGLFW() {
     return true;
 }
 
-bool App::InitGLAD() {
+bool Gravitas::InitGLAD() {
 
     // load all OpenGL function pointers
     // ---------------------------------------
@@ -114,19 +114,19 @@ bool App::InitGLAD() {
     return true;
 }
 
-void App::InitCallbacks() {
+void Gravitas::InitCallbacks() {
 
     // glfw initialize callbacks
     // -------------------------
-    glfwSetFramebufferSizeCallback(window, &App::FramebufferSizeCallback);
-    glfwSetScrollCallback(window, &App::ScrollCallback);
-    glfwSetKeyCallback(window, &App::KeyToggleCallback);
-    glfwSetMouseButtonCallback(window, &App::MouseButtonCallback);
-    glfwSetCursorPosCallback(window, &App::MouseMoveCallback);
+    glfwSetFramebufferSizeCallback(window, &Gravitas::FramebufferSizeCallback);
+    glfwSetScrollCallback(window, &Gravitas::ScrollCallback);
+    glfwSetKeyCallback(window, &Gravitas::KeyToggleCallback);
+    glfwSetMouseButtonCallback(window, &Gravitas::MouseButtonCallback);
+    glfwSetCursorPosCallback(window, &Gravitas::MouseMoveCallback);
 
 }
 
-void App::InitScene() {
+void Gravitas::InitScene() {
 
     defaultShader.init("lightObject.vert", "lightObject.frag");
     lightingShader.init("lightSource.vert", "lightSource.frag");
@@ -136,32 +136,28 @@ void App::InitScene() {
     Model tetraModel("tetrahedron.obj");
     Model cubeModel("cube.obj");
     Model ballModel("ball.obj");
-    //Model suzanneModel("suzanne.obj");
     Model cylinderModel("cilindru.obj");
     Model suzanneModel("suzanne.obj");
     Model teapotModel("teapot.obj");
     Model davidModel("david.obj");
 
-    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
- 
-    //RigidBody cyl(cylinderModel, 5.0, glm::vec3(0.0, 8.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(10.0, 0.0, 0.0));
-    //RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.005, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody light(cubeModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody cyl(cylinderModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne2(suzanneModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne3(suzanneModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 0.0, 0.0));
-  
     //RigidBody david(davidModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-       
-    //suzanne.printDebug();
+
 
     scene.addRigidBody(std::move(light));
-    scene.addRigidBody(std::move(tetra));
-    scene.addRigidBody(std::move(cube));
-    //scene.addRigidBody(std::move(cyl));
-    //scene.addRigidBody(std::move(ball));
+    //scene.addRigidBody(std::move(tetra));
+    //scene.addRigidBody(std::move(cube));
+    scene.addRigidBody(std::move(cyl));
+    scene.addRigidBody(std::move(ball));
     //scene.addRigidBody(std::move(suzanne));
     //scene.addRigidBody(std::move(teapot));
     //scene.addRigidBody(std::move(david));
@@ -171,7 +167,7 @@ void App::InitScene() {
     
 }
 
-void App::ProcessInput()
+void Gravitas::ProcessInput()
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
@@ -191,47 +187,38 @@ void App::ProcessInput()
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
             camera.ProcessKeyboard(UP, deltaTime);
 
-    }
-    
-    // Use QWE keys to select cartesian drag plane (tmp soln)
-    // maybe toggle???
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){                // XZ-plane
-        dragPlane.normal = glm::vec3(0.0f,1.0f,0.0f);
-        //dragPlane.point = initialObjectPos;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {         // YZ-plane
-        dragPlane.normal = glm::vec3(1.0f, 0.0f, 0.0f);
-        //dragPlane.point = initialObjectPos;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {        // XY-plane
-        dragPlane.normal = glm::vec3(0.0f, 0.0f, 1.0f);
-        //dragPlane.point = initialObjectPos;
-    }
-    
-    else if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {        // Rotate picked object (no dragging)
-        isRotating = true;
-    }
-    
+    } 
 }
 
 
 // UPDATE
 // ...............................................................................................................................
-void App::Update() {
+void Gravitas::Update() {
 
     // view & projection transformations
     glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
     glm::mat4 view = camera.GetViewMatrix();
 
-
-    // update picking & dragging
     if (leftMouseButton.isDown) {
 
         // convert 2D mouse coords to world space coords
         Ray ray = picker.ScreenToWorldRay(leftMouseButton.x, leftMouseButton.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
 
+
+        // OBJECT SELECTED AND CURRENTLY ROTATING
+        if (isRotating && selectedObjectId != -1) {
+
+            scene.bodies[selectedObjectId].rotate(leftMouseButton.xOffset, leftMouseButton.yOffset);
+
+
+            // per-frame offsets -- rotations don't continue when mouse isn't moving
+            leftMouseButton.xOffset = 0.0f;
+            leftMouseButton.yOffset = 0.0f;
+
+        }
+
         // CURRENTLY DRAGGING
-        if (isDragging && selectedObjectId != -1) {
+        else if (isDragging && selectedObjectId != -1) {
 
             // find ray-plane intersection
             float t;
@@ -242,22 +229,10 @@ void App::Update() {
                 glm::vec3 displacement = newPos - oldPos;
             
                 // update positions + velocities???
-                scene.rigidBodies[selectedObjectId].drag(displacement);
+                scene.bodies[selectedObjectId].drag(displacement);
 
                 oldPos = newPos;
-
-
             }
-        }
-
-        // OBJECT SELECTED AND CURRENTLY ROTATING
-        else if (isRotating && selectedObjectId != -1) {
-
-            scene.rigidBodies[selectedObjectId].rotate(leftMouseButton.xOffset, leftMouseButton.yOffset);
-
-            leftMouseButton.xOffset = 0.0f;
-            leftMouseButton.yOffset = 0.0f;
-
         }
 
         // NO DRAGGING OR ROTATING
@@ -265,17 +240,16 @@ void App::Update() {
         else {
 
             // check ray-hull intersections for all bodies
-            for (int i = 0; i < scene.rigidBodies.size(); ++i) {
+            for (int i = 0; i < scene.bodies.size(); ++i) {
 
                 glm::vec3 hitPoint;
-                if (scene.rigidBodies[i].collided(ray, hitPoint)) {
+                if (scene.bodies[i].collided(ray, hitPoint)) {
 
                     selectedObjectId = i;
-                    scene.rigidBodies[i].disable();
+                    scene.bodies[i].disable();
 
                     // record initial object pos
                     oldPos = hitPoint;
-                    //initialObjectPos = scene.rigidBodies[i].getCentreOfMass();
 
                     // define drag plane
                     dragPlane.normal = -camera.Front;
@@ -293,10 +267,10 @@ void App::Update() {
 
 
     // use fixed timesteps for consistency
-    float physicsDT = std::clamp(deltaTime, 1.0f / 300.0f, 1.0f / 60.0f);
+    //float physicsDT = std::clamp(deltaTime, 1.0f / 300.0f, 1.0f / 60.0f);
 
     // update physics
-    scene.step(physicsDT);
+    scene.step(fixedTimeStep);
 
 
 }
@@ -305,10 +279,10 @@ void App::Update() {
 
 // RENDER
 // ...............................................................................................................................
-void App::Render() {
+void Gravitas::Render() {
 
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 
@@ -318,32 +292,48 @@ void App::Render() {
     glm::mat4 view = camera.GetViewMatrix();
 
 
-    for (int i = 0; i < scene.rigidBodies.size(); ++i) {
+    for (int i = 0; i < scene.bodies.size(); ++i) {
 
-
-        WorldTransform& objectTrans = scene.rigidBodies[i].getWorldTransform();
+        
+        WorldTransform& bodyTrans = scene.bodies[i].getWorldTransform();
         //glm::vec3 position = objectTrans.GetPosition();
  
-
-        glm::vec3 com = scene.rigidBodies[i].getCentreOfMass();
-        glm::vec3 cen = scene.rigidBodies[i].hull.getCentroid();
+        /*
+        glm::vec3 com = scene.bodies[i].getCentreOfMass();
+        glm::vec3 cen = scene.bodies[i].hull.getCentroid();
 
         std::cout << "(" << com.x << ", " << com.y << ", " << com.z << ")         ";
         std::cout << "(" << cen.x << ", " << cen.y << ", " << cen.z << ")\n";
-
+        */
 
         if (i == selectedObjectId) {
-
             
             // first pass -- render object normally & write to stencil buffer
             glStencilFunc(GL_ALWAYS, 1, 0xFF);
             glStencilMask(0xFF);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-            pickingShader.use();
-            pickingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-            scene.rigidBodies[i].draw(pickingShader);
+           /* pickingShader.use();
+            pickingShader.setMat4("gWVP", projection * view * bodyTrans.GetMatrix());
+            scene.bodies[i].draw(pickingShader);*/
+            
+            defaultShader.use();
 
+            // vert uniforms
+           // defaultShader.setMat4("gWVP", projection * view * bodyTrans.GetMatrix());
+            defaultShader.setMat4("projection", projection);
+            defaultShader.setMat4("view", view);
+            defaultShader.setMat4("model", bodyTrans.GetMatrix());
+
+            // frag uniforms
+            defaultShader.setVec3("objectColor", 0.0f, 1.0f, 0.0f);
+            defaultShader.setVec3("lightColor", 1.0f, 1.0f, 0.773f);
+            //defaultShader.setVec3("lightColor", 0.0f, 1.0f, 0.0f);
+            defaultShader.setVec3("lightPos", scene.bodies[0].getCentreOfMass());
+            defaultShader.setVec3("viewPos", camera.Position);
+
+            scene.bodies[i].draw(defaultShader);
+            
 
             // draw outline
             // second pass -- render scaled down object & disable stencil writing
@@ -352,12 +342,22 @@ void App::Render() {
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
             glDisable(GL_DEPTH_TEST);
 
+            
             outlineShader.use();
-            glm::mat4 orginalMat4 = objectTrans.GetMatrix();
-            glm::mat4 outlineMat4 = glm::scale(orginalMat4, glm::vec3(1.05f));
+            glm::vec3 point = scene.bodies[i].getCentreOfMass();
+            glm::mat4 originalMat4 = bodyTrans.GetMatrix();
+            glm::mat4 t1 = glm::translate(glm::mat4(1.0f), point);
+            glm::mat4 s = glm::scale(glm::mat4(1.0f), glm::vec3(1.1f));
+            glm::mat4 t0 = glm::translate(glm::mat4(1.0f), -point);
+            glm::mat4 outlineMat4 = t1 * s * t0 * originalMat4;
+            
+            outlineShader.setMat4("projection", projection);
+            outlineShader.setMat4("view", view);
+            outlineShader.setMat4("model", outlineMat4);
 
-            outlineShader.setMat4("gWVP", projection * view * outlineMat4);
-            scene.rigidBodies[i].draw(outlineShader);
+            //outlineShader.setMat4("gWVP", projection * view * originalMat4);
+            scene.bodies[i].draw(outlineShader);
+            
 
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);
@@ -374,28 +374,27 @@ void App::Render() {
             // light source
             if (i == 0) {
                 lightingShader.use();
-                lightingShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
-                scene.rigidBodies[i].draw(lightingShader);
+                lightingShader.setMat4("gWVP", projection * view * bodyTrans.GetMatrix());
+                scene.bodies[i].draw(lightingShader);
 
             }
-
             else {
 
                 defaultShader.use();
 
-                // vert
-               // defaultShader.setMat4("gWVP", projection * view * objectTrans.GetMatrix());
+                // vert uniforms
+               // defaultShader.setMat4("gWVP", projection * view * bodyTrans.GetMatrix());
                 defaultShader.setMat4("projection", projection);
                 defaultShader.setMat4("view", view);
-                defaultShader.setMat4("model", objectTrans.GetMatrix());
+                defaultShader.setMat4("model", bodyTrans.GetMatrix());
 
-                // frag
+                // frag uniforms
                 defaultShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
                 defaultShader.setVec3("lightColor", 1.0f, 1.0f, 0.773f);
-                defaultShader.setVec3("lightPos", scene.rigidBodies[0].getCentreOfMass());
+                defaultShader.setVec3("lightPos", scene.bodies[0].getCentreOfMass());
                 defaultShader.setVec3("viewPos", camera.Position);
 
-                scene.rigidBodies[i].draw(defaultShader);
+                scene.bodies[i].draw(defaultShader);
 
             }
         }
@@ -404,11 +403,11 @@ void App::Render() {
         // draw wireframe collision mesh
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         pickingShader.use();
-        WorldTransform& colliderTrans = scene.rigidBodies[i].hull.getWorldTransform();
+        WorldTransform& colliderTrans = scene.bodies[i].hull.getWorldTransform();
         //glm::vec3 colliderPosition = colliderTrans.GetPosition();
         //colliderTrans.SetPosition(colliderPosition * PHYSICS_SCALE);
         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
-        scene.rigidBodies[i].hull.draw(pickingShader);
+        scene.bodies[i].hull.draw(pickingShader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         
 
@@ -417,10 +416,11 @@ void App::Render() {
         glStencilFunc(GL_ALWAYS, 0, 0xFF);
         glEnable(GL_DEPTH_TEST);
 
+
     }
 }
 
-void App::OnFramebufferSize(int width, int height) { 
+void Gravitas::OnFramebufferSize(int width, int height) {
 
 	SCREEN_WIDTH = width;
 	SCREEN_HEIGHT = height;
@@ -429,10 +429,48 @@ void App::OnFramebufferSize(int width, int height) {
 	// BAD Solution for dynamic window resizing
 	// Render();
 }
+void Gravitas::OnScroll(double xOffset, double yOffset) { camera.ProcessMouseScroll(static_cast<float>(yOffset)); }
+void Gravitas::OnKey(int key, int scancode, int action, int mods) {
 
-void App::OnScroll(double xOffset, double yOffset) { camera.ProcessMouseScroll(static_cast<float>(yOffset)); }
-void App::OnKey(int key, int scancode, int action, int mods) {
+    static int activeKey = -1; 
 
+    // Only handle press & release
+    if (action == GLFW_PRESS) {
+
+        // nothing active, claim key
+        if (activeKey == -1) {
+            if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R)
+                activeKey = key;
+        }
+        // ignore additional presses while another key is active
+    }
+    else if (action == GLFW_RELEASE) {
+        // If the released key is the active key, clear it
+        if (key == activeKey) activeKey = -1;
+    }
+
+    // Update active flag
+    if (activeKey == GLFW_KEY_Q) {           // XZ-plane
+        dragPlane.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+    else if (activeKey == GLFW_KEY_W) {      // YZ-plane
+        dragPlane.normal = glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+    else if (activeKey == GLFW_KEY_E) {      // XY-plane
+        dragPlane.normal = glm::vec3(0.0f, 0.0f, 1.0f);
+    }
+    else if (activeKey == GLFW_KEY_R) {      // Rotate
+        isRotating = true;
+    }
+    else {                                   // Reset
+        isRotating = false;
+        isDragging = false;
+        selectedObjectId = -1;
+        dragPlane.normal = -camera.Front;
+    }
+
+
+    /*
     // Toggle wireframe mode when key 1 is pressed.
     if (key == GLFW_KEY_1 && action == GLFW_PRESS) {
         wireFrame = !wireFrame;
@@ -456,19 +494,20 @@ void App::OnKey(int key, int scancode, int action, int mods) {
             camera.Front = glm::vec3(0.0f, 0.0f, -1.0f);
         }
     }
+    */
     
 }
 
-void App::OnMouseMove(double xpos, double ypos) {
+void Gravitas::OnMouseMove(double xpos, double ypos) {
 
     float xPos = static_cast<float>(xpos);
     float yPos = static_cast<float>(ypos);
 
     if (rightMouseButton.isDown) {
 
-        // process mouse input
-        if (firstMouse)
-        {
+        // process initial mouse input
+        if (firstMouse) {
+
             lastX = xPos;
             lastY = yPos;
             firstMouse = false;
@@ -477,30 +516,22 @@ void App::OnMouseMove(double xpos, double ypos) {
         float xOffset = xPos - lastX;
         float yOffset = lastY - yPos; // flip since y-axis goes from bottom to top
 
-        lastX = xPos;
-        lastY = yPos;
-
-
         camera.ProcessMouseMovement(xOffset, yOffset);
     }
 
     if (leftMouseButton.isDown) {
 
-
-        leftMouseButton.xOffset = xPos - lastX;
-        leftMouseButton.yOffset = lastY - yPos;
-
-
-        lastX = xPos;
-        lastY = yPos;
-
         leftMouseButton.x = xPos;
         leftMouseButton.y = yPos;
-
+        leftMouseButton.xOffset = xPos - lastX;
+        leftMouseButton.yOffset = lastY - yPos;
     }
 
+    lastX = xPos;
+    lastY = yPos;
 }
-void App::OnMouseButton(int button, int action, int mods) {
+
+void Gravitas::OnMouseButton(int button, int action, int mods) {
 
     // retrieve cursor coords.
     double x, y;
@@ -542,7 +573,7 @@ void App::OnMouseButton(int button, int action, int mods) {
             leftMouseButton.isDown = false;
             
             if (selectedObjectId != -1) {
-                scene.rigidBodies[selectedObjectId].isStatic = false;
+                scene.bodies[selectedObjectId].isStatic = false;
             }
 
             // stop dragging/rotating on release
@@ -574,25 +605,25 @@ void App::OnMouseButton(int button, int action, int mods) {
 }
 
 
-void App::FramebufferSizeCallback(GLFWwindow* w, int a, int b) {
-    static_cast<App*>(glfwGetWindowUserPointer(w))->OnFramebufferSize(a, b);
+void Gravitas::FramebufferSizeCallback(GLFWwindow* w, int a, int b) {
+    static_cast<Gravitas*>(glfwGetWindowUserPointer(w))->OnFramebufferSize(a, b);
 }
-void App::ScrollCallback(GLFWwindow* w, double x, double y) {
-    static_cast<App*>(glfwGetWindowUserPointer(w))->OnScroll(x, y);
+void Gravitas::ScrollCallback(GLFWwindow* w, double x, double y) {
+    static_cast<Gravitas*>(glfwGetWindowUserPointer(w))->OnScroll(x, y);
 }
-void App::KeyToggleCallback(GLFWwindow* w, int k, int s, int a, int m) {
-    static_cast<App*>(glfwGetWindowUserPointer(w))->OnKey(k, s, a, m);
+void Gravitas::KeyToggleCallback(GLFWwindow* w, int k, int s, int a, int m) {
+    static_cast<Gravitas*>(glfwGetWindowUserPointer(w))->OnKey(k, s, a, m);
 }
-void App::MouseButtonCallback(GLFWwindow* w, int b, int a, int m) {
-    static_cast<App*>(glfwGetWindowUserPointer(w))->OnMouseButton(b, a, m);
+void Gravitas::MouseButtonCallback(GLFWwindow* w, int b, int a, int m) {
+    static_cast<Gravitas*>(glfwGetWindowUserPointer(w))->OnMouseButton(b, a, m);
 }
-void App::MouseMoveCallback(GLFWwindow* w, double x, double y) {
-    static_cast<App*>(glfwGetWindowUserPointer(w))->OnMouseMove(x, y);
+void Gravitas::MouseMoveCallback(GLFWwindow* w, double x, double y) {
+    static_cast<Gravitas*>(glfwGetWindowUserPointer(w))->OnMouseMove(x, y);
 }
 
 
 int main() {
-    App physicsTest;
+    Gravitas physicsTest;
     if (!physicsTest.Init()) return -1;
     physicsTest.Run();
     return 0;

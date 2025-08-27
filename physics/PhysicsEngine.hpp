@@ -3,67 +3,62 @@
 
 #include <glm/glm.hpp>
 
+#include <algorithm>
+
 #include "../inc/Model.hpp"
 #include "../inc/Plane.hpp"
 #include "RigidBody.hpp"
-//#include "ConvexHull.hpp"
+#include "ConvexHull.hpp"
 #include "BoundingSphere.hpp"
-#include "SAT.hpp"
+//#include "SAT.hpp"
 
 
 
 class PhysicsEngine {
 private:
 
-	double timeStep;
-	SAT collisionDetection;
+	//SAT collisionDetection;
 
 public:
 
-	std::vector<RigidBody> rigidBodies;
+	std::vector<RigidBody> bodies;
 	std::vector<BoundingSphere>colliders;
 
-	bool collides = false;
+	void step(double dt) {
 
-	void step(double timeStep) {
+		for (size_t i = 0; i < bodies.size(); i++) {
 
-		for (auto& body : rigidBodies) {
-
-
-			glm::vec3 position = body.getCentreOfMass();
-
-			//std::cout << "Object " << " Position: " << position.x << " " << position.y << " " << position.z << "\n";
-
+			glm::vec3 position = bodies[i].getCentreOfMass();
 
 			// check if body above/below floor/ceil; if not just translate y-axis 
 			if (position.y <= -10.0f) {
 
-				body.reset(glm::vec3(position.x, 10.0f, position.z));
+				bodies[i].reset(glm::vec3(position.x, 10.0f, position.z));
 			}
 
-			body.update(timeStep);
+			bodies[i].update(dt);
 
-			for (auto& body2 : rigidBodies) {
-				collides = collisionDetection.optimizedSAT(body.hull, body2.hull);
-			}
+			/*for (size_t j = 0; j < bodies.size(); j++) {
+
+				if (i == j) continue;
+
+				std::cout << collisionDetection.optimizedSAT(bodies[i].hull, bodies[j].hull) << std::endl;
+				
+			}*/
 		}
-
-		std::cout << collides << std::endl;
-
-		
 	}
 
 	void addRigidBody(RigidBody&& body) {
-		rigidBodies.push_back(std::move(body));
+		bodies.push_back(std::move(body));
 
 	}
 
 	void removeRigidBody(RigidBody body) {
-
+		
 	}
 
 	void removeAllBodies() {
-		rigidBodies.clear();
+		bodies.clear();
 	}
 };
 

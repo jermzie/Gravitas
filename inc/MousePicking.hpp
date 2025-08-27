@@ -14,7 +14,7 @@ class MousePicking
 {
 
 public:
-	MousePicking() {}
+	MousePicking() = default;
 
 	// use raycasting to project mouse pos. as 3D ray for object picking
 	Ray ScreenToWorldRay(
@@ -91,15 +91,6 @@ public:
 
 		// min max intersect distances
 		return (t >= 0.1f && t < 50.0f);
-	}
-
-	// Debug method to print current state
-	void PrintState()
-	{
-		/*std::cout << "  Hit Point: (" << hitPoint.x << ", " << hitPoint.y << ", " << hitPoint.z << ")" << std::endl;
-		std::cout << "  Object Center: (" << objectCenter.x << ", " << objectCenter.y << ", " << objectCenter.z << ")" << std::endl;
-		std::cout << "  Object Offset: (" << objectOffset.x << ", " << objectOffset.y << ", " << objectOffset.z << ")" << std::endl;
-		std::cout << "  Dragging: " << (isDragging ? "Yes" : "No") << std::endl;*/
 	}
 };
 

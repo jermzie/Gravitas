@@ -70,7 +70,7 @@ public:
 
 		glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
 		worldCentroid = glm::vec3(objectWorldTrans);
-		worldTrans.SetPosition(worldCentroid);
+		worldTrans.SetRelPosition(worldCentroid);
 
 
 		// scale sphere model to correct dims. of bounding sphere 

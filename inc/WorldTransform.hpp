@@ -21,17 +21,17 @@ private:
 
 public:
 
-	WorldTransform() {}
+	WorldTransform() = default;
 
 
-	void SetAbsolutePos(glm::vec3 position) {
+	void SetAbsPosition(glm::vec3 position) {
 		translateMat4 = glm::translate(glm::mat4(1.0), position);
 		this->position = position;
 	}
 
-	void SetPosition(glm::vec3 deltaPosition) {
-		translateMat4 = glm::translate(translateMat4, deltaPosition);
-		this->position = deltaPosition;
+	void SetRelPosition(glm::vec3 displacment) {
+		translateMat4 = glm::translate(translateMat4, displacment);
+		this->position = displacment;
 	}
 
 	/*
@@ -58,20 +58,29 @@ public:
 		this->scale = glm::vec3(scalingFactor, scalingFactor, scalingFactor);
 	}
 
-	void SetAbsoluteRot(float angle, glm::vec3 rotationAxis) {
+	void SetAbsRotation(float angle, glm::vec3 rotationAxis) {
 		rotateMat4 = glm::rotate(glm::mat4(1.0), angle, rotationAxis);
 	}
 
-	void SetAbsoluteRot(glm::mat4 orientation) {
+	void SetAbsRotation(glm::mat4 orientation) {
 		rotateMat4 = orientation;
 	}
 
-	void SetRotate(float angle, glm::vec3 rotationAxis){
+	void SetRelRotation(float angle, glm::vec3 rotationAxis){
 		rotateMat4 = glm::rotate(rotateMat4, angle, rotationAxis);
 	}
 
-	void SetRotate(glm::mat4 deltaRotation) {
+	void SetRelRotation(glm::mat4 deltaRotation) {
 		rotateMat4 = deltaRotation * rotateMat4;
+	}
+
+	void SetRotationAbtPoint(const glm::mat4& rotation, const glm::vec3& point) {
+
+		glm::mat4 translateToPoint = glm::translate(glm::mat4(1.0f), -point);
+		glm::mat4 translateBack = glm::translate(glm::mat4(1.0f), point);
+
+		glm::mat4 rotateAbtPoint = translateBack * rotation * translateToPoint;
+		SetRelRotation(rotateAbtPoint);
 	}
 
 	glm::mat4 GetMatrix() {
@@ -80,6 +89,14 @@ public:
 
 		return world;
 	}
+
+	glm::mat4 GetMatrix() const {
+
+		glm::mat4 model = translateMat4 * rotateMat4 * scaleMat4;
+
+		return model;
+	}
+
 
 	glm::vec3 GetPosition() {
 
