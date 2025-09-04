@@ -112,8 +112,6 @@ public:
 
 	ConvexHull(const MeshBuilder& buildMesh, const std::vector<glm::vec3>& pointCloud, bool CCW, bool useOriginalIndices) {
 
-		mesh = HalfEdgeMesh(buildMesh, pointCloud);
-
 		if (!useOriginalIndices) {
 			optimizedVBO.reset(new std::vector<glm::vec3>());
 		}
@@ -206,9 +204,12 @@ public:
 		else {
 			vertices = pointCloud;
 		}
+
+		mesh = HalfEdgeMesh(buildMesh, pointCloud);
+		computeCentroid();
 	}
 
-	void computeConvexHull(const Model& objectModel, WorldTransform objectTrans) {
+	void getHullModel(const Model& objectModel, WorldTransform objectTrans) {
 
 		std::string objectName = objectModel.fileName;
 		size_t dotPos = objectName.find_last_of(".");
@@ -532,10 +533,10 @@ public:
 			glm::vec3 v2 = vertices[v[2]];
 
 			// get edges and cross products
-			//glm::vec3 n = glm::normalize(getTriangleNormal(v1, v2, v0));
+			glm::vec3 n = glm::normalize(getTriangleNormal(v1, v2, v0));
 			glm::vec3 e1 = v1 - v0;
 			glm::vec3 e2 = v2 - v0;
-			glm::vec3 n = glm::normalize(glm::cross(e1, e2));
+			//glm::vec3 n = glm::normalize(glm::cross(e1, e2));
 
 			// surface integral shortcuts
 

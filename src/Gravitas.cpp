@@ -141,23 +141,23 @@ void Gravitas::InitScene() {
     Model teapotModel("teapot.obj");
     Model davidModel("david.obj");
 
-    RigidBody light(cubeModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody cyl(cylinderModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody ball(ballModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody cyl(cylinderModel, 5.0, glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody ball(ballModel, 5.0, glm::vec3(3.0, 3.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
+    RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
     //RigidBody suzanne2(suzanneModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne3(suzanneModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 0.0, 0.0));
+    RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
     //RigidBody david(davidModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
 
 
     scene.addRigidBody(std::move(light));
-    //scene.addRigidBody(std::move(tetra));
+    scene.addRigidBody(std::move(tetra));
     //scene.addRigidBody(std::move(cube));
-    scene.addRigidBody(std::move(cyl));
-    scene.addRigidBody(std::move(ball));
+    //scene.addRigidBody(std::move(cyl));
+    //scene.addRigidBody(std::move(ball));
     //scene.addRigidBody(std::move(suzanne));
     //scene.addRigidBody(std::move(teapot));
     //scene.addRigidBody(std::move(david));
@@ -399,6 +399,8 @@ void Gravitas::Render() {
             }
         }
         
+
+        /*
         // probably make a imgui toggle for this
         // draw wireframe collision mesh
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -409,7 +411,7 @@ void Gravitas::Render() {
         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
         scene.bodies[i].hull.draw(pickingShader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        
+        */
 
         // reset to default state after rendering
         glStencilMask(0xFF);

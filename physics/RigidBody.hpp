@@ -22,13 +22,11 @@
 
 class RigidBody {
 private:
-	std::vector<ConvexHull>body;		// Polyhedron triangle mesh
+	std::vector<ConvexHull>body;		// collection of convex hulls 
 
 	WorldTransform bodyTrans;
 	Model bodyModel;
 	glm::vec3 localCOMOffset;
-
-	const glm::vec3 gravity = glm::vec3(0.0f, -9.81f, 0.0f);
 
 	// linear motion
 	glm::vec3 centreOfMass;
@@ -40,16 +38,14 @@ private:
 	glm::mat3 orientation = glm::mat3(1.0);
 	glm::vec3 angularVelocity;
 	glm::vec3 angularMomentum;
+	glm::mat3 inertia = glm::mat3(1.0);
+	glm::mat3 invInertia = glm::mat3(1.0);
 
-
-
+	// mass properties
 	float mass;
 	float density;
 	float invMass;
 	float friction;
-
-	glm::mat3 invInertia;
-	glm::mat3 inertia = glm::mat3(1.0);
 
 public:
 
@@ -77,15 +73,13 @@ public:
 		hull.computeMassProperties(density, mass, localCOMOffset, inertia);
 		invInertia = glm::inverse(inertia);
 		centreOfMass = position + localCOMOffset;
-
+		
+		// transformations
 		bodyTrans.SetAbsPosition(position);
 		hull.getWorldTransform().SetAbsPosition(position);
 
-		// hull model
-		hull.computeConvexHull(model, bodyTrans);
-
-		std::array<float, 6> ex = hull.getExtrema();
-		glm::vec3 centroid = hull.computeCentroid();
+		// model
+		hull.getHullModel(bodyModel, bodyTrans);
 	}
 
 	/*
@@ -103,7 +97,7 @@ public:
 
 
 	// apply force & torque 
-	glm::vec3 applyForces() {
+	void integrateForces(double dt) {
 
 	}
 
@@ -133,6 +127,10 @@ public:
 			hull.getWorldTransform().SetRelPosition(linearVelocity * deltaTime);
 			hull.updateCentroid(linearVelocity * deltaTime);
 
+			
+			// SAME ISSUE AS BEFORE. IF MODEL ORIGIN NOT AT CENTRE OF MASS. ROTATION FAILS.
+			//bodyTrans.SetAbsRotation(glm::mat4(orientation));
+			//hull.getWorldTransform().SetAbsRotation(glm::mat4(orientation));
 
 			// update rotation matrix
 			bodyTrans.SetRotationAbtPoint(glm::mat4(orientation), localCOMOffset);
@@ -171,6 +169,10 @@ public:
 
 		bodyTrans.SetRotationAbtPoint(rotation, localCOMOffset);
 		hull.getWorldTransform().SetRotationAbtPoint(rotation, localCOMOffset);
+
+		// SAME ISSUE AS BEFORE. IF MODEL ORIGIN NOT AT CENTRE OF MASS. ROTATION FAILS.
+		//bodyTrans.SetRelRotation(rotation);
+		//hull.getWorldTransform().SetRelRotation(rotation);
 	}
 
 	void disable() {
