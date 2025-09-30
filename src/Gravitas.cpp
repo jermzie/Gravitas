@@ -141,8 +141,8 @@ void Gravitas::InitScene() {
     Model teapotModel("teapot.obj");
     Model davidModel("david.obj");
 
-    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 1.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody cyl(cylinderModel, 5.0, glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody ball(ballModel, 5.0, glm::vec3(3.0, 3.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
@@ -441,7 +441,7 @@ void Gravitas::OnKey(int key, int scancode, int action, int mods) {
 
         // nothing active, claim key
         if (activeKey == -1) {
-            if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R)
+            if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R || key == GLFW_KEY_1 || key == GLFW_KEY_2 || key == GLFW_KEY_3)
                 activeKey = key;
         }
         // ignore additional presses while another key is active
@@ -463,6 +463,18 @@ void Gravitas::OnKey(int key, int scancode, int action, int mods) {
     }
     else if (activeKey == GLFW_KEY_R) {      // Rotate
         isRotating = true;
+    }
+    else if (activeKey == GLFW_KEY_1) {
+        camera.Position = glm::vec3(0.0f, 0.0f, 20.0f);
+        camera.Front = glm::vec3(0.0f, 0.0f, -1.0f);
+    }
+    else if (activeKey == GLFW_KEY_2) {
+        camera.Position = glm::vec3(20.0f, 0.0f, 0.0f);
+        camera.Front = glm::vec3(-1.0f, 0.0f, 0.0f);
+    }
+    else if (activeKey == GLFW_KEY_3) {
+        camera.Position = glm::vec3(0.0f, 20.0f, 0.0f);
+        camera.Front = glm::vec3(0.0f, -1.0f, 0.0f);
     }
     else {                                   // Reset
         isRotating = false;

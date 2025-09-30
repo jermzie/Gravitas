@@ -37,11 +37,12 @@ public:
 			}
 		}
 
-		// 2. broadphase (BVH) -- 
+		// 2. broadphase (BVH) -- find potential colliding pairs
 
 		// 3. narrowphase (SAT) -- build contact list
 
-		if (narrowphase.optimizedSAT(bodies[0].hull, bodies[1].hull)){
+		
+		if (narrowphase.SATPolyPoly(bodies[0].hull, bodies[1].hull)){
 
 			std::cout << "HIT OBJECT" << std::endl;
 		}
@@ -94,6 +95,8 @@ public:
 			RigidBody body = bodies[i];
 		}
 		*/
+
+
 
 	}
 

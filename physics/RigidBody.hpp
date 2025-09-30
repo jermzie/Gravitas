@@ -19,6 +19,7 @@
 #include "ConvexHull.hpp"
 #include "QuickHull.hpp"
 #include "BoundingSphere.hpp"
+#include "AABB.hpp"
 
 class RigidBody {
 private:
@@ -53,6 +54,7 @@ public:
 	bool isStatic = false;
 
 	BoundingSphere sphere;
+	AABB node;
 	ConvexHull hull;
 
 	// body created by singular model -- often imported models
@@ -68,6 +70,7 @@ public:
 		// compute convex hull & half-edge mesh of model
 		QuickHull qh;
 		hull = qh.getConvexHull(bodyModel.GetVertexData());
+		auto extrema = qh.getExtremaVertices();
 
 		// local com & inertia
 		hull.computeMassProperties(density, mass, localCOMOffset, inertia);
@@ -77,6 +80,7 @@ public:
 		// transformations
 		bodyTrans.SetAbsPosition(position);
 		hull.getWorldTransform().SetAbsPosition(position);
+		hull.worldCentroid += position;
 
 		// model
 		hull.getHullModel(bodyModel, bodyTrans);

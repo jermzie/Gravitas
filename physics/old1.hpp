@@ -1,5 +1,5 @@
-#ifndef SAT_HPP
-#define SAT_HPP
+//#ifndef SAT_HPP
+//#define SAT_HPP
 
 #include "ConvexHull.hpp"
 #include "HalfEdgeMesh.hpp"
@@ -16,26 +16,6 @@
 class SAT {
 public:
 
-
-	struct FaceColInfo {
-
-		float separation = 0.0f;
-		size_t faceIdx;
-
-		FaceColInfo() = default;
-		FaceColInfo(float distance, size_t face) : separation(distance), faceIdx(face) {}
-
-	};
-
-	struct EdgeColInfo {
-
-		float separation = 0.0f;
-		std::pair<size_t, size_t> edgeIdx;
-
-		EdgeColInfo() = default;
-		EdgeColInfo(float distance, std::pair<size_t, size_t> edges) : separation(distance), edgeIdx(edges) {}
-	};
-
 	struct Interval {
 		glm::vec3 min;
 		glm::vec3 max;
@@ -47,6 +27,25 @@ public:
 		float getPenetration(const Interval& other) const {
 
 		}
+	};
+
+	struct FaceCollision {
+
+		float separation = 69.0f;
+		size_t faceIdx;
+
+		FaceCollision() = default;
+		FaceCollision(float distance, size_t face) : separation(distance), faceIdx(face) {}
+
+	};
+
+	struct EdgeCollision {
+
+		float separation = 69.0f;
+		std::pair<size_t, size_t> edgeIdx;
+
+		EdgeCollision() = default;
+		EdgeCollision(float distance, std::pair<size_t, size_t> edges) : separation(distance), edgeIdx(edges) {}
 	};
 
 	struct ContactPoint {
@@ -65,7 +64,10 @@ public:
 	};
 
 	// O(n^3)
-	// Brute Force Approach
+	// Iterate over all edges of A and B to test possible axes
+	// Project vertices of A and B onto axes
+	// Compare interval overlap
+
 	/*
 	bool bruteForceSAT(const ConvexHull& polyA, const ConvexHull& polyB) {
 
@@ -92,7 +94,7 @@ public:
 
 				auto& halfEdgeB = polyB.mesh.halfEdges[j];
 				visitedB[j] = true;
-				
+
 				// skip twin
 				if (visitedB[halfEdgeB.twin]) {
 					continue;
@@ -146,8 +148,8 @@ public:
 	*/
 
 	// O(n^2)
-	// Gauss Map Optimization
-	bool SATPolyPoly(const ConvexHull& polyA, const ConvexHull& polyB) {
+	// Optimized w/ Gauss Maps
+	bool optimizedSAT(const ConvexHull& polyA, const ConvexHull& polyB) {
 
 		std::cout << "polyA Centroid ";
 		printVec(polyA.getCentroid());
@@ -156,21 +158,21 @@ public:
 
 
 		// Check all face normals of A -- O(n^2)
-		FaceColInfo fa = queryFaceNormals(polyA, polyB);
+		FaceCollision fa = queryFaceNormals(polyA, polyB);
 		std::cout << "polyA normals: " << fa.separation << std::endl;
 		if (fa.separation > 0.0f) {
 			return false;
 		}
 
 		// Check all face normals of B -- O(n^2)
-		FaceColInfo fb = queryFaceNormals(polyB, polyA);
+		FaceCollision fb = queryFaceNormals(polyB, polyA);
 		std::cout << "polyB normals: " << fb.separation << std::endl;
 		if (fb.separation > 0.0f) {
 			return false;
 		}
 
 		// Check all edge combos between -- O(n^2)
-		EdgeColInfo eab = queryEdgeCombos(polyA, polyB);
+		EdgeCollision eab = queryEdgeCombos(polyA, polyB);
 		std::cout << "edge combos: " << eab.separation << std::endl;
 		if (eab.separation > 0.0f) {
 			return false;
@@ -179,36 +181,35 @@ public:
 		return true;
 	}
 
-	FaceColInfo queryFaceNormals(const ConvexHull& polyA, const ConvexHull& polyB) {
+	FaceCollision queryFaceNormals(const ConvexHull& polyA, const ConvexHull& polyB) {
 
 		// All computations in local space of hull B -- multiply A by inverse transformations of B
 		glm::mat4 modelB = polyB.getWorldTransform().GetMatrix();
-		//glm::mat4 modelA = polyA.getWorldTransform().GetMatrix();
 		glm::mat4 modelA = glm::inverse(modelB) * polyA.getWorldTransform().GetMatrix();
-
 
 		float maxDist = -std::numeric_limits<float>::max();
 		size_t maxIdx;
 
-		const size_t faceCount = polyA.mesh.faces.size();
+		size_t faceCount = polyA.mesh.faces.size();
+
 		for (size_t i = 0; i < faceCount; i++) {
 
-			const HalfEdgeMesh::Face face = polyA.mesh.faces[i];
-			Plane plane = face.P;
+			auto face = polyA.mesh.faces[i];
+			auto plane = face.P;
 
-			// Transform normal into hull B's local space
-			glm::mat3 normalMat = getNormalMatrix(modelA);
-			glm::vec3 direction = normalMat * -plane.normal;
+			// transform normal to B's local space
+			glm::mat3 normMatrix = getNormalMatrix(modelA);
+			glm::vec3 direction = normMatrix * -plane.normal;
 
-			// Find furthest vertex in direction opposite to normal
+			// search for most extreme point opposite of normal direction
 			glm::vec3 vertex = findSupportPoint(direction, polyB);
 
-			// Compute separation distance between vertex and face plane
-			plane.normal = normalMat * plane.normal;
-			plane.point = glm::vec3(modelA * glm::vec4(plane.point, 1.0f));
-			plane.distance = -glm::dot(plane.normal, plane.point);
+			// compute distance from face plane -- penetration if distance is negative
+			glm::vec3 worldNormal = normMatrix * plane.normal;
+			glm::vec3 worldPlanePoint = glm::vec3(modelA * glm::vec4(plane.point, 1.0f));
+			float worldDistance = -glm::dot(worldNormal, worldPlanePoint);
 
-			float dist = getSignedDistanceToPlane(vertex, plane);
+			float dist = glm::dot(worldNormal, vertex) + worldDistance;
 
 			if (dist > maxDist) {
 				maxDist = dist;
@@ -216,21 +217,20 @@ public:
 			}
 		}
 
-		return FaceColInfo(maxDist, maxIdx);
+		return FaceCollision(maxDist, maxIdx);
 	}
 
-	EdgeColInfo queryEdgeCombos(const ConvexHull& polyA, const ConvexHull& polyB) {
+	EdgeCollision queryEdgeCombos(const ConvexHull& polyA, const ConvexHull& polyB) {
 
 
 		// All computations in local space of hull B -- multiply A by inverse transformations of B
 		glm::mat4 modelB = polyB.getWorldTransform().GetMatrix();
-		//glm::mat4 modelA = polyA.getWorldTransform().GetMatrix();
 		glm::mat4 modelA = glm::inverse(modelB) * polyA.getWorldTransform().GetMatrix();
 		glm::vec3 centroidA = glm::vec3(modelA * glm::vec4(polyA.getCentroid(), 1.0f));
 
+
 		size_t edgeCountA = polyA.mesh.halfEdges.size();
 		size_t edgeCountB = polyB.mesh.halfEdges.size();
-
 
 		float maxDist = -std::numeric_limits<float>::max();
 		std::pair<size_t, size_t> maxIdx;
@@ -238,7 +238,7 @@ public:
 		std::vector<bool> visitedA(edgeCountA, false);
 		for (size_t i = 0; i < edgeCountA; i++) {
 
-			const auto halfEdgeA = polyA.mesh.halfEdges[i];
+			const auto& halfEdgeA = polyA.mesh.halfEdges[i];
 			visitedA[i] = true;
 
 			// skip twin half-edge
@@ -246,14 +246,15 @@ public:
 				continue;
 			}
 
-			// get indices to halfedge vertices
-			const auto heIdxA = polyA.mesh.getHalfEdgeVertices(halfEdgeA);
-			const auto vertsA = polyA.getVertices();
 
-			glm::vec3 p1 = glm::vec3(modelA * glm::vec4(vertsA[heIdxA[0]], 1.0f));
-			glm::vec3 q1 = glm::vec3(modelA * glm::vec4(vertsA[heIdxA[1]], 1.0f));
+			// get indices to edge vertices
+			const auto heIndicesA = polyA.mesh.getHalfEdgeVertices(halfEdgeA);
+			const auto verticesA = polyA.getVertices();
 
-			glm::vec3 edgeA = q1 - p1;
+			glm::vec3 p1 = glm::vec3(modelA * glm::vec4(verticesA[heIndicesA[0]], 1.0f));
+			glm::vec3 q1 = glm::vec3(modelA * glm::vec4(verticesA[heIndicesA[1]], 1.0f));
+			glm::vec3 worldEdgeA = q1 - p1;
+
 
 
 			// compute normal matrix
@@ -263,14 +264,14 @@ public:
 			glm::vec3 aLocal = polyA.mesh.faces[halfEdgeA.face].P.normal;
 			glm::vec3 bLocal = polyA.mesh.faces[polyA.mesh.halfEdges[halfEdgeA.twin].face].P.normal;
 
-			// transform to hull B's local space
+			// transform to B's local space
 			glm::vec3 aTrans = normA * aLocal;
 			glm::vec3 bTrans = normA * bLocal;
 
 			std::vector<bool> visitedB(edgeCountB, false);
 			for (size_t j = 0; j < edgeCountB; j++) {
 
-				const auto halfEdgeB = polyB.mesh.halfEdges[j];
+				auto& halfEdgeB = polyB.mesh.halfEdges[j];
 				visitedB[j] = true;
 
 				// skip twin half-edge
@@ -279,44 +280,24 @@ public:
 				}
 
 				// get indices to edge vertices
-				const auto heIdxB = polyB.mesh.getHalfEdgeVertices(halfEdgeB);
-				const auto vertsB = polyB.getVertices();
+				const auto heIndicesB = polyB.mesh.getHalfEdgeVertices(halfEdgeB);
+				const auto verticesB = polyB.getVertices();
 
-				//glm::vec3 p2 = glm::vec3(modelB * glm::vec4(vertsB[heIdxB[0]], 1.0f));
-				//glm::vec3 q2 = glm::vec3(modelB * glm::vec4(vertsB[heIdxB[1]], 1.0f));
-
-				glm::vec3 p2 = vertsB[heIdxB[0]];
-				glm::vec3 q2 = vertsB[heIdxB[1]];
-
-				glm::vec3 edgeB = q2 - p2;
-
-
-				// compute normal matrix
-				//glm::mat3 normB = getNormalMatrix(modelB);
+				glm::vec3 p2 = verticesB[heIndicesB[0]];
+				glm::vec3 q2 = verticesB[heIndicesB[1]];
+				glm::vec3 worldEdgeB = q2 - p2;
 
 				// hull B normals remain untransformed
-				//glm::mat3 normB = getNormalMatrix(glm::mat4(1.0f));
-
 				glm::vec3 cLocal = polyB.mesh.faces[halfEdgeB.face].P.normal;
 				glm::vec3 dLocal = polyB.mesh.faces[polyB.mesh.halfEdges[halfEdgeB.twin].face].P.normal;
 
-				//glm::vec3 cTrans = normB * cLocal;
-				//glm::vec3 dTrans = normB * dLocal;
 
-				// transform to [] space
-				//glm::vec3 cTrans = normB * cLocal;
-				//glm::vec3 dTrans = normB * dLocal;
-
-				// check separation distances only if edges form a minkowski face
+				// only check distances if edges form a minkowski face
 				//if (buildMinkowskiFace(edgeA, edgeB, polyA, polyB)) {
-				if (isMinkowskiFace(aTrans, bTrans, -cLocal, -dLocal)) {
-				//if (isMinkowskiFace(aTrans, bTrans, -edgeA, -cLocal, -dLocal, -edgeB)) {
+				if (isMinkowskiFace(aTrans, bTrans, -worldEdgeA, -cLocal, -dLocal, -worldEdgeB)) {
 
-
-					//std::cout << "HILLO\n";
 					// find separation distance
-					//float distance = findSeparationDist(p1, edgeA, p2, edgeB, polyA.getCentroid());
-					float distance = findSeparationDist(p1, edgeA, p2, edgeB, centroidA);
+					float distance = findSeparationDist(p1, worldEdgeA, p2, worldEdgeB, centroidA);
 
 					if (distance > maxDist) {
 						maxDist = distance;
@@ -328,7 +309,7 @@ public:
 			}
 		}
 
-		return EdgeColInfo(maxDist, maxIdx);
+		return EdgeCollision(maxDist, maxIdx);
 	}
 
 	// Normal transformations use different matrix from model matrix; 
@@ -358,26 +339,6 @@ public:
 		return L < eps * denom;
 	}
 
-	bool isMinkowskiFace(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d) {
-
-		// recall vertices are simply normals of adjacent faces for both edges
-		// test if arcs AB and CD intersect on unit sphere
-
-		// planes through arcs AB and CD respectively
-		glm::vec3 BxA = glm::cross(b, a);
-		glm::vec3 DxC = glm::cross(d, c);
-
-		// find signed distance to plane
-		float CBA = glm::dot(c, BxA);
-		float DBA = glm::dot(d, BxA);
-		float ADC = glm::dot(a, DxC);
-		float BDC = glm::dot(b, DxC);
-
-		// overlap test -- if vertices separated by plane, sign is negative
-		// hemisphere test (edge case) -- overlap test fails if arcs on different hemispheres
-		return CBA * DBA < 0.0f && ADC * BDC < 0.0f && CBA * BDC > 0.0f;
-	}
-
 	bool isMinkowskiFace(const glm::vec3& a, const glm::vec3& b, const glm::vec3& BxA, const glm::vec3& c, const glm::vec3& d, const glm::vec3& DxC) {
 
 		// recall vertices are simply normals of adjacent faces for both edges
@@ -401,23 +362,18 @@ public:
 	float findSeparationDist(const glm::vec3& pointA, const glm::vec3& edgeA, const glm::vec3& pointB, const glm::vec3& edgeB, const glm::vec3& centroidA) {
 
 		// skip near parallel edges
-		//glm::vec3 n = glm::cross(edgeA, edgeB);
-		/*if (isParallel(edgeA, edgeB)) {
+		glm::vec3 n = glm::cross(edgeA, edgeB);
+
+		const float eps = 1e-6f;
+		float l = glm::length(n);
+		if (l < eps * glm::sqrt(glm::length2(edgeA) * glm::length2(edgeB))) {
 			return -std::numeric_limits<float>::max();
-		}*/
+		}
 
-		//const float eps = 1e-6f;
-		//float l = glm::length(n);
-		//if (l < eps * glm::sqrt(glm::length2(edgeA) * glm::length2(edgeB))) {
-		//	return -std::numeric_limits<float>::max();
-		//}
-
-		//// separating axis orthogonal to both edges
-		//glm::vec3 normal = n / l;
+		// separating axis orthogonal to both edges
+		glm::vec3 normal = n / l;
 
 		// ensure normal points from A -> B
-
-		glm::vec3 normal = glm::normalize(glm::cross(edgeA, edgeB));
 		if (glm::dot(normal, pointA - centroidA) < 0.0f) {
 			normal = -normal;
 		}
@@ -425,15 +381,12 @@ public:
 		return glm::dot(normal, pointB - pointA);
 	}
 
-	
-	/*
 	glm::vec3 findSupportPoint(glm::vec3 direction, const ConvexHull& c) {
 
 		auto vLocal = c.getVertices();
 
 		float maxProj = -std::numeric_limits<float>::max();
 		glm::vec3 maxVert;
-
 		for (size_t i = 0; i < vLocal.size(); i++) {
 
 			//glm::vec3 worldVert = glm::vec3(model * glm::vec4(localVerts[i], 1.0f));
@@ -448,35 +401,10 @@ public:
 
 		return maxVert;
 	}
-	*/
 	void printVec(glm::vec3 v) {
 		std::cout << "vec3(" << v.x << " " << v.y << " " << v.z << ")\n";
 	}
 
-	glm::vec3 findSupportPoint(glm::vec3 direction, const ConvexHull& poly) {
-
-		//std::vector<glm::vec3> vertices;
-		//transformVertices(poly, modelMat4, vertices);
-
-		//glm::mat4 model = poly.getWorldTransform().GetMatrix();
-		auto localVerts = poly.getVertices();
-
-		float maxProj = -std::numeric_limits<float>::max();
-		glm::vec3 maxVert;
-		for (size_t i = 0; i < localVerts.size(); i++) {
-
-			//glm::vec3 worldVert = glm::vec3(model * glm::vec4(localVerts[i], 1.0f));
-			float projection = glm::dot(localVerts[i], direction);
-
-			if (projection > maxProj) {
-
-				maxProj = projection;
-				maxVert = localVerts[i];
-			}
-		}
-
-		return maxVert;
-	}
 };
 
-#endif
+//#endif

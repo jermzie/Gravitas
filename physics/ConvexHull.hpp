@@ -29,12 +29,12 @@ private:
 	// Transformations
 	WorldTransform hullTrans;
 	glm::vec3 localCentroid;
-	glm::vec3 worldCentroid;
 
 public:
 
 	// Face processing
 	HalfEdgeMesh mesh;
+	glm::vec3 worldCentroid;
 
 
 
@@ -206,7 +206,7 @@ public:
 		}
 
 		mesh = HalfEdgeMesh(buildMesh, pointCloud);
-		computeCentroid();
+		worldCentroid = computeCentroid();
 	}
 
 	void getHullModel(const Model& objectModel, WorldTransform objectTrans) {
