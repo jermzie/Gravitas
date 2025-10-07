@@ -103,6 +103,11 @@ public:
 		return position;
 	}
 
+	glm::mat4 GetRotation() {
+		
+		return rotateMat4;
+	}
+
 
 };
 

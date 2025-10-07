@@ -141,9 +141,10 @@ void Gravitas::InitScene() {
     Model teapotModel("teapot.obj");
     Model davidModel("david.obj");
 
-    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 1.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    RigidBody tetra(tetraModel, 5.0, glm::vec3(0.0, 0.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
-    //RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 1.5, 4.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    //RigidBody tetra(tetraModel, 5.0, glm::vec3(-0.5, 1.0, 4.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody tetra(tetraModel, 5.0, glm::vec3(1.5, 1.0, 4.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+    RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody cyl(cylinderModel, 5.0, glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody ball(ballModel, 5.0, glm::vec3(3.0, 3.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
     RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
@@ -154,8 +155,8 @@ void Gravitas::InitScene() {
 
 
     scene.addRigidBody(std::move(light));
-    scene.addRigidBody(std::move(tetra));
-    //scene.addRigidBody(std::move(cube));
+    //scene.addRigidBody(std::move(tetra));
+    scene.addRigidBody(std::move(cube));
     //scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
     //scene.addRigidBody(std::move(suzanne));
@@ -342,7 +343,7 @@ void Gravitas::Render() {
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
             glDisable(GL_DEPTH_TEST);
 
-            
+            /*
             outlineShader.use();
             glm::vec3 point = scene.bodies[i].getCentreOfMass();
             glm::mat4 originalMat4 = bodyTrans.GetMatrix();
@@ -357,7 +358,7 @@ void Gravitas::Render() {
 
             //outlineShader.setMat4("gWVP", projection * view * originalMat4);
             scene.bodies[i].draw(outlineShader);
-            
+            */
 
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);

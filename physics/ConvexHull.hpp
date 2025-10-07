@@ -491,6 +491,10 @@ public:
 		return worldCentroid;
 	}
 
+	const glm::vec3 getLocalCentroid() const {
+		return localCentroid;
+	}
+
 	void debugState() const
 	{
 		std::cout << "=============================" << std::endl;
