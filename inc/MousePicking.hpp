@@ -10,18 +10,18 @@
 #include "Camera.hpp"
 #include "Ray.hpp"
 
-class MousePicking {
+class MousePicking
+{
 
 public:
-    MousePicking() {}
+	MousePicking() = default;
 
 	// use raycasting to project mouse pos. as 3D ray for object picking
 	Ray ScreenToWorldRay(
 		float xpos, float ypos,
 		int SCR_WIDTH, int SCR_HEIGHT,
-		glm::mat4 projection, glm::mat4 view) {
-
-
+		glm::mat4 projection, glm::mat4 view)
+	{
 
 		// Screen Space --> Clip Space (NDC)
 		// scale screen coordinates to NDC [-1, 1]
@@ -30,7 +30,6 @@ public:
 
 		glm::vec4 rayStart_clip(x, y, -1.0f, 1.0f);
 		glm::vec4 rayEnd_clip(x, y, 1.0, 1.0f);
-
 
 		/*
 		// Clip Space --> Camera Space
@@ -64,7 +63,6 @@ public:
 		rayStart_world /= rayStart_world.w;
 		rayEnd_world /= rayEnd_world.w;
 
-
 		glm::vec3 rayDir_world(rayEnd_world - rayStart_world);
 
 		Ray r;
@@ -74,41 +72,26 @@ public:
 		return r;
 	}
 
+	// Drag body along plane perpendicular to camera
+	bool RayPlaneIntersection(const Ray &ray, const glm::vec3 &planeNormal, const glm::vec3 &planePoint, float &t)
+	{
 
-	
+		// Calculate ray-plane intersection
+		float denom = glm::dot(planeNormal, ray.direction);
 
-    // Drag body along plane perpendicular to camera
-    bool RayPlaneIntersection(const Ray& ray, const glm::vec3& planeNormal, const glm::vec3& planePoint, float& t) {
-
-
-        // Calculate ray-plane intersection
-        float denom = glm::dot(planeNormal, ray.direction);
-
-        // Check if ray is not parallel to plane -- avoid zero division
-		if (std::abs(denom) < 1e-6) {
+		// Check if ray is not parallel to plane -- avoid zero division
+		if (std::abs(denom) < 1e-6)
+		{
 			return false;
 		}
 
+		t = glm::dot(planeNormal, planePoint - ray.origin) / denom;
 
-        t = glm::dot(planeNormal, planePoint - ray.origin) / denom;
+		// return t >= 0;
 
-		//return t >= 0;
-
-		
 		// min max intersect distances
-	return (t >= 0.1f && t < 50.0f);
-		
-    }
-  
-
-    // Debug method to print current state
-    void PrintState() {
-        std::cout << "MousePicking State: " << std::endl;
-        /*std::cout << "  Hit Point: (" << hitPoint.x << ", " << hitPoint.y << ", " << hitPoint.z << ")" << std::endl;
-        std::cout << "  Object Center: (" << objectCenter.x << ", " << objectCenter.y << ", " << objectCenter.z << ")" << std::endl;
-        std::cout << "  Object Offset: (" << objectOffset.x << ", " << objectOffset.y << ", " << objectOffset.z << ")" << std::endl;
-        std::cout << "  Dragging: " << (isDragging ? "Yes" : "No") << std::endl;*/
-    }
+		return (t >= 0.1f && t < 50.0f);
+	}
 };
 
 #endif

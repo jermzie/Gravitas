@@ -18,11 +18,8 @@ class ConvexHull {
 private:
 
 	// Writing to .obj file
-	Model convexhullModel;
-	std::string convexhullName;
-
-	// Face processing
-	//HalfEdgeMesh mesh;
+	Model hullModel;
+	std::string hullName;
 
 	// Rendering 
 	std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
@@ -30,13 +27,15 @@ private:
 	std::vector<size_t> indices;
 
 	// Transformations
-	WorldTransform worldTrans;
+	WorldTransform hullTrans;
 	glm::vec3 localCentroid;
-	glm::vec3 worldCentroid;
 
 public:
 
+	// Face processing
 	HalfEdgeMesh mesh;
+	glm::vec3 worldCentroid;
+
 
 
 	/*
@@ -206,17 +205,18 @@ public:
 			vertices = pointCloud;
 		}
 
-		this->mesh = HalfEdgeMesh(buildMesh, pointCloud);
+		mesh = HalfEdgeMesh(buildMesh, pointCloud);
+		worldCentroid = computeCentroid();
 	}
 
-	void computeConvexHull(const Model& objectModel, WorldTransform objectTrans) {
+	void getHullModel(const Model& objectModel, WorldTransform objectTrans) {
 
 		std::string objectName = objectModel.fileName;
 		size_t dotPos = objectName.find_last_of(".");
 		std::string name = objectName.substr(0, dotPos);
 		std::string ext = objectName.substr(dotPos);
-		convexhullName = name + "_convexhull" + ext;
-		std::string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + convexhullName;
+		hullName = name + "_convexhull.obj";
+		std::string const& path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + hullName;
 
 
 		// Rendering & Writing
@@ -226,22 +226,26 @@ public:
 		if (std::filesystem::exists(path)) {
 
 			// Use Pre-computed hull
-			convexhullModel.LoadModel(convexhullName);
+			hullModel.LoadModel(hullName);
 		}
 		else {
 
 			// Save convex hull for future iterations
-			writeOBJ(convexhullName, name);
+			writeOBJ(hullName, name);
+			hullModel.LoadModel(hullName);
 
-		}
+		} 
+
+
+		
 		
 		// hull centroid not model centroid?
 		//localCentroid = computeCentroid();
 		//glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
 
 		// same COM as model 
-		worldCentroid = objectTrans.GetPosition();
-		worldTrans.SetPosition(worldCentroid);
+		/*worldCentroid = objectTrans.GetPosition();
+		worldTrans.SetAbsolutePos(worldCentroid);*/
 		
 
 		//debugState();
@@ -302,6 +306,59 @@ public:
 	{
 
 		return indices;
+	}
+
+	const std::array <float, 6> getExtrema() const {
+
+		std::array<size_t, 6> outIndices{ 0, 0, 0, 0, 0, 0 };
+		std::array<float, 6> extremeValues{ vertices[0].x, vertices[0].x, vertices[0].y, vertices[0].y, vertices[0].z, vertices[0].z };
+
+		for (size_t i = 1; i < vertices.size(); i++)
+		{
+
+			const glm::vec3& pos = vertices[i];
+
+			// X-axis
+			if (pos.x > extremeValues[0])
+			{
+				extremeValues[0] = pos.x;
+				outIndices[0] = i;
+			}
+
+			else if (pos.x < extremeValues[1])
+			{
+				extremeValues[1] = pos.x;
+				outIndices[1] = i;
+			}
+
+			// Y-axis
+			if (pos.y > extremeValues[2])
+			{
+				extremeValues[2] = pos.y;
+				outIndices[2] = i;
+			}
+
+			else if (pos.y < extremeValues[3])
+			{
+				extremeValues[3] = pos.y;
+				outIndices[3] = i;
+			}
+
+			// Z-axis
+			if (pos.z > extremeValues[4])
+			{
+				extremeValues[4] = pos.z;
+				outIndices[4] = i;
+			}
+
+			else if (pos.z < extremeValues[5])
+			{
+				extremeValues[5] = pos.z;
+				outIndices[5] = i;
+			}
+		}
+
+		return extremeValues;
 	}
 
 	// same tmax as far plane from perspective matrix???
@@ -384,11 +441,6 @@ public:
 		}
 
 	}
-	
-	bool computePlaneIntersection(const Plane& p) {
-
-	}
-
 
 	glm::vec3 computeCentroid() {
 
@@ -417,14 +469,28 @@ public:
 		worldCentroid += displacement;
 	}
 
+	WorldTransform& getWorldTransform() {
+		
+		return hullTrans;
+	}
+
+	const WorldTransform& getWorldTransform() const {
+
+		return hullTrans;
+	}
 
 	void draw(Shader& shader)
 	{
-		convexhullModel.Draw(shader);
+		hullModel.Draw(shader);
 	}
 
-	WorldTransform& getWorldTransform() {
-		return worldTrans;
+	/* ????? */
+	const glm::vec3 getCentroid() const {
+		return worldCentroid;
+	}
+
+	const glm::vec3 getLocalCentroid() const {
+		return localCentroid;
 	}
 
 	void debugState() const
@@ -464,16 +530,15 @@ public:
 
 			// get face vertices
 			auto v = mesh.getFaceVertices(face);
-			
 			glm::vec3 v0 = vertices[v[0]];
 			glm::vec3 v1 = vertices[v[1]];
 			glm::vec3 v2 = vertices[v[2]];
 
 			// get edges and cross products
 			glm::vec3 n = glm::normalize(getTriangleNormal(v1, v2, v0));
-			//glm::vec3 e1 = v1 - v0;
-			//glm::vec3 e2 = v2 - v0;
-			//glm::vec3 n = glm::normalize(face.P.normal);
+			glm::vec3 e1 = v1 - v0;
+			glm::vec3 e2 = v2 - v0;
+			//glm::vec3 n = glm::normalize(glm::cross(e1, e2));
 
 			// surface integral shortcuts
 
@@ -494,15 +559,19 @@ public:
 			intg[0] += n.x * fX;
 
 			// x, y, z
-			intg[1] += n.x * fSqX;	intg[2] += n.y * fSqY;	intg[3] += n.z * fSqZ;
+			intg[1] += n.x * fSqX;	
+			intg[2] += n.y * fSqY;	
+			intg[3] += n.z * fSqZ;
 
 			// x^2. y^2, z^2
-			intg[4] += n.x * fCuX;	intg[5] += n.y * fCuY;	intg[6] += n.z * fCuZ;
+			intg[4] += n.x * fCuX;	
+			intg[5] += n.y * fCuY;	
+			intg[6] += n.z * fCuZ;
 
 			// xy, yz, zx
-			intg[7] += n.x * (v0.y * gX0 + v1.y * gX1 * v2.y * gX2);
-			intg[8] += n.y * (v0.z * gY0 + v1.z * gY1 * v2.z * gY2);
-			intg[9] += n.z * (v0.x * gZ0 + v1.x * gZ1 * v2.x * gZ2);
+			intg[7] += n.x * (v0.y * gX0 + v1.y * gX1 + v2.y * gX2);
+			intg[8] += n.y * (v0.z * gY0 + v1.z * gY1 + v2.z * gY2);
+			intg[9] += n.z * (v0.x * gZ0 + v1.x * gZ1 + v2.x * gZ2);
 
 
 		}
@@ -519,6 +588,7 @@ public:
 		com.y = intg[2] / vol;
 		com.z = intg[3] / vol;
 
+		/*
 		// xx, yx, zx
 		glm::vec3 col1(
 			density * (intg[5] + intg[6] - vol * (com.y * com.y + com.z * com.z)),
@@ -538,6 +608,29 @@ public:
 			-(intg[9] - vol * (com.x * com.z)),
 			-(intg[8] - vol * (com.y * com.z)),
 			intg[4] + intg[5] - vol * (com.x * com.x + com.y * com.y)
+		);
+		*/
+
+
+		// xx, yx, zx
+		glm::vec3 col1(
+			density * (intg[5] + intg[6] - vol * (com.y * com.y + com.z * com.z)),  // Ixx
+			density * (-(intg[7] - vol * com.x * com.y)),                           // Iyx  
+			density * (-(intg[9] - vol * com.x * com.z))                            // Izx
+		);
+
+		// xy, yy, zy
+		glm::vec3 col2(
+			density * (-(intg[7] - vol * com.x * com.y)),                           // Ixy
+			density * (intg[4] + intg[6] - vol * (com.x * com.x + com.z * com.z)),  // Iyy
+			density * (-(intg[8] - vol * com.y * com.z))                            // Izy
+		);
+
+		// xz, yz, zz
+		glm::vec3 col3(
+			density * (-(intg[9] - vol * com.x * com.z)),                           // Ixz
+			density * (-(intg[8] - vol * com.y * com.z)),                           // Iyz  
+			density * (intg[4] + intg[5] - vol * (com.x * com.x + com.y * com.y))   // Izz
 		);
 
 		inertia = glm::mat3(col1, col2, col3);

@@ -33,19 +33,21 @@ inline glm::vec3 getTriangleNormal(const glm::vec3& a, const glm::vec3& b, const
 	u x v = (u.y*v.z - u.z*v.x, u.z*v.x - u.x*v.z, u.x*v.y - u.y*v.x).
 	*/
 
-	float ux = a.x - c.x;
-	float uy = a.y - c.y;
-	float uz = a.z - c.z;
+	//float ux = a.x - c.x;
+	//float uy = a.y - c.y;
+	//float uz = a.z - c.z;
 
-	float vx = b.x - c.x;
-	float vy = b.y - c.y;
-	float vz = b.z - c.z;
+	//float vx = b.x - c.x;
+	//float vy = b.y - c.y;
+	//float vz = b.z - c.z;
 
-	float px = uy * vz - uz * vy;
-	float py = uz * vx - ux * vz;
-	float pz = ux * vy - uy * vx;
+	//float px = uy * vz - uz * vy;
+	//float py = uz * vx - ux * vz;
+	//float pz = ux * vy - uy * vx;
 
-	return glm::vec3(px, py, pz);	// un-normalized
+	//return glm::vec3(px, py, pz);	// un-normalized
+
+	return glm::normalize(glm::cross(a - c, b - c));
 	
 }
 

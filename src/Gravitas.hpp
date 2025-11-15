@@ -19,17 +19,17 @@
 #include "../inc/Mesh.hpp"
 #include "../inc/Camera.hpp"
 #include "../inc/Shader.hpp"
-#include "../inc/ImGUI.hpp"
+#include "../inc/Gui.hpp"
 #include "../inc/MousePicking.hpp"
 #include "../inc/Plane.hpp"
 #include "../physics/PhysicsEngine.hpp"
 #include "../physics/RigidBody.hpp"
 
-class App {
+class Gravitas {
 public:
 
-	App(unsigned int SCREEN_WIDTH = 800, unsigned int SCREEN_HEIGHT = 800);
-	~App();
+	Gravitas(unsigned int SCREEN_WIDTH = 800, unsigned int SCREEN_HEIGHT = 800);
+	~Gravitas();
 
 	bool Init();
 	void Run();
@@ -44,9 +44,10 @@ private:
 	unsigned int SCREEN_WIDTH, SCREEN_HEIGHT;
 
 	// 1 m in physics => 0.01 OpenGL units
-	const float PHYSICS_SCALE = 0.01f;
+	// const float PHYSICS_SCALE = 0.01f;
 
 	// timing
+	float fixedTimeStep = 1.0f / 60.0f;		// 60 steps per second
 	float deltaTime = 0.0f;
 	float currentFrame= 0.0f;
 	float lastFrame = 0.0f;
@@ -57,31 +58,28 @@ private:
 	float lastX, lastY;
 
 	// mouse picking/dragging
+	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y, xOffset, yOffset; } leftMouseButton, rightMouseButton;
 	MousePicking picker;
 	Plane dragPlane;
-	float dragSensitivity = 1.0f;
-
-	glm::vec4 objectViewSpacePos;
-
-	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y, xOffset, yOffset; } leftMouseButton, rightMouseButton;
-
-	glm::vec3 initialIntersection;
-	glm::vec3 initialObjectPos;
-	glm::vec3 oldPos;
-	glm::vec3 newPos;
-	glm::vec3 initialHitPoint;
 	bool isDragging = false;
 	bool isRotating = false;
 	int selectedObjectId = -1;
+	glm::vec3 oldPos;
+	glm::vec3 newPos;
 
+	bool dragXZ = false;
+	bool dragYZ = false;
+	bool dragXY = false;
 
 
 	// rendering & scene
 	PhysicsEngine scene;
-	ImGUI gui;
+	Gui gui;
+
 	bool wireFrame = false;
 	bool defaultView = false;
-
+	
+	// shaders
 	Shader basicShader;
 	Shader pickingShader;
 	Shader outlineShader;
@@ -99,8 +97,6 @@ private:
 	void Update();
 	void Render();
 
-
-	//void DragObject();
 
 	// callback handlers
 	void OnFramebufferSize(int width, int height);

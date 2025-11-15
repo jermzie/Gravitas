@@ -111,6 +111,8 @@ public:
 
 	HalfEdgeMesh getHalfEdgeMesh(const std::vector<glm::vec3>& pointCloud, bool CCW = true, float epsilon = 0.0001f);
 
+	std::array<float, 6> getExtremaVertices();
+
 
 };
 
