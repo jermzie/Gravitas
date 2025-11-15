@@ -18,6 +18,15 @@ class SAT {
 public:
 
 
+	struct CollisionInfo {
+
+		int apid;
+		int bpid;
+		glm::vec3 axis;
+		float penetration;
+	};
+
+
 	struct FaceColInfo {
 
 		float separation = 0.0f;
@@ -40,17 +49,30 @@ public:
 	struct ContactPoint {
 
 		glm::vec3 point;	// world-space contact point
-		glm::vec3 normal;   // contact normal from A -> B
+		glm::vec3 normal;
 		float penetration;	// penetration depth
+		int contactID;
+
+		/*
+		float restitution;			// elasticity coefficient?
+		float kinFricCoeff;
+		float statFricCoeff;
+		*/
 
 	};
 
 	struct ContactManifold {
 
-		float penetration;
-		glm::vec3 normal;
 		std::vector<ContactPoint> point;
+		glm::vec3 normal;	// contact normal from A -> B
+		float maxPenetration;
 	};
+
+
+	// Contact Creation
+	// Need to identify axis of minimum penetration (ie. smallest penetration?)
+	// choose between face A/B normals or edge-edge cross product
+
 
 	// O(n^2)
 	// Gauss Map Optimization
@@ -62,9 +84,11 @@ public:
 		printVec(polyB.getCentroid());*/
 
 
+		CollisionInfo out{ -1, -1, glm::vec3(0.0f),  std::numeric_limits<float>::max() };
+
+
 		// All computations in local space of hull B -- multiply A by inverse transformations of B
 		glm::mat4 modelB = polyB.getWorldTransform().GetMatrix();
-		//glm::mat4 modelA = polyA.getWorldTransform().GetMatrix();
 		glm::mat4 modelA = glm::inverse(modelB) * polyA.getWorldTransform().GetMatrix();
 
 
@@ -72,6 +96,7 @@ public:
 		FaceColInfo fa = queryFaceNormals(polyA, polyB, modelA);
 		std::cout << "polyA normals: " << fa.separation << std::endl;
 		if (fa.separation > 0.0f) {
+
 			return false;
 		}
 
@@ -79,6 +104,7 @@ public:
 		FaceColInfo fb = queryFaceNormals(polyB, polyA, glm::inverse(modelA));
 		std::cout << "polyB normals: " << fb.separation << std::endl;
 		if (fb.separation > 0.0f) {
+
 			return false;
 		}
 
@@ -87,10 +113,34 @@ public:
 		std::cout << "edge combos: " << eab.separation << std::endl;
 		
 		if (eab.separation > 0.0f) {
+
 			return false;
 		}
 
+
+		// No separating axis found -- collision detected
+		// all separation results are negative
+		bool isFaceContactA = fa.separation > eab.separation;
+		bool isFaceContactB = fb.separation > eab.separation;
+		if (isFaceContactA && isFaceContactB) {
+
+		}
+		else {
+
+		}
+
 		return true;
+	}
+
+
+	// use SutherlandHodgeman clipping to fin contact area????
+	void createFaceContact() {
+
+	}
+
+	// find closest points on two colliding edges (midpoint????)
+	void createEdgeContact() {
+
 	}
 
 	FaceColInfo queryFaceNormals(const ConvexHull& polyA, const ConvexHull& polyB, glm::mat4 trans) {
@@ -313,10 +363,6 @@ public:
 		}
 
 		return maxVert;
-	}
-
-	void printVec(glm::vec3 v) {
-		std::cout << "vec3(" << v.x << " " << v.y << " " << v.z << ")\n";
 	}
 };
 

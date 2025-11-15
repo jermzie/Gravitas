@@ -103,6 +103,9 @@ public:
 	// apply force & torque 
 	void integrateForces(double dt) {
 
+		glm::vec3 gravity(0.0f, -1.0f, 0.0f);
+		linearVelocity += gravity * dt;
+
 	}
 
 	void update(double deltaTime) {

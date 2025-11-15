@@ -24,9 +24,9 @@ cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems
 
 ## Roadmap
 - [ ] Fix centre of mass and inertia tensor computation
-- [ ] Fix edge-edge collisions (SAT)
+- [x] Fix edge-edge collisions (SAT)
 - [ ] Add representation for concave polyhedra as compound of convex polyhedra
-- [ ] Add broad phase collision detection (BVH/Octrees)
+- [x] Add broad phase collision detection (dBVH/Octrees)
 - [ ] Add collision response (Sequential Impulse/PGS iterative solvers)
 - [ ] Add better lighting?
 - [ ] Add ground plane/grid

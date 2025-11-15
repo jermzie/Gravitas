@@ -1,4 +1,5 @@
 ﻿#include "Gravitas.hpp"
+#include <random>
 
 Gravitas::Gravitas(unsigned int width, unsigned int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
 
@@ -126,6 +127,27 @@ void Gravitas::InitCallbacks() {
 
 }
 
+
+int random(int min, int max) {
+    std::random_device                  rand_dev;
+    std::mt19937                        generator(rand_dev());
+    std::uniform_int_distribution<int>    distr(min, max);
+    return distr(generator);
+}
+
+
+glm::vec3 randPos() {
+
+    int min = -10;
+    int max = 10;
+
+    return glm::vec3(random(min, max), random(min, max), 0.0f);
+
+
+
+
+}
+
 void Gravitas::InitScene() {
 
     defaultShader.init("lightObject.vert", "lightObject.frag");
@@ -147,23 +169,33 @@ void Gravitas::InitScene() {
     RigidBody cube(cubeModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody cyl(cylinderModel, 5.0, glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody ball(ballModel, 5.0, glm::vec3(3.0, 3.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
-    RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
+    RigidBody suzanne(suzanneModel, 1.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0, 0, 0));
     //RigidBody suzanne2(suzanneModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody suzanne3(suzanneModel, 5.0, glm::vec3(0.0, 5.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody teapot(teapotModel, 5.0, glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5, 0.5, 0.5));
     //RigidBody david(davidModel, 5.0, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
 
 
+    
+
     scene.addRigidBody(std::move(light));
     //scene.addRigidBody(std::move(tetra));
-    scene.addRigidBody(std::move(cube));
+    //scene.addRigidBody(std::move(cube));
     //scene.addRigidBody(std::move(cyl));
     //scene.addRigidBody(std::move(ball));
-    //scene.addRigidBody(std::move(suzanne));
+    scene.addRigidBody(std::move(suzanne));
     //scene.addRigidBody(std::move(teapot));
     //scene.addRigidBody(std::move(david));
 
-   
+    /*
+    // 100 Cubes -- 144 FPS
+    // 1000 Cubes -- 30 FPS
+    for (int i = 0; i < 100; i++) {
+        RigidBody cube(cubeModel, 5.0, randPos(), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
+        scene.addRigidBody(std::move(cube));
+    }
+    */
+    
    
     
 }
@@ -188,7 +220,18 @@ void Gravitas::ProcessInput()
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
             camera.ProcessKeyboard(UP, deltaTime);
 
-    } 
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        camera.ProcessKeyboard(UP, deltaTime);
+
 }
 
 
@@ -343,7 +386,7 @@ void Gravitas::Render() {
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
             glDisable(GL_DEPTH_TEST);
 
-            /*
+            
             outlineShader.use();
             glm::vec3 point = scene.bodies[i].getCentreOfMass();
             glm::mat4 originalMat4 = bodyTrans.GetMatrix();
@@ -358,7 +401,7 @@ void Gravitas::Render() {
 
             //outlineShader.setMat4("gWVP", projection * view * originalMat4);
             scene.bodies[i].draw(outlineShader);
-            */
+            
 
             glStencilFunc(GL_ALWAYS, 0, 0xFF);
             glStencilMask(0xFF);
@@ -401,7 +444,7 @@ void Gravitas::Render() {
         }
         
 
-        /*
+        
         // probably make a imgui toggle for this
         // draw wireframe collision mesh
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -412,7 +455,7 @@ void Gravitas::Render() {
         pickingShader.setMat4("gWVP", projection * view * colliderTrans.GetMatrix());
         scene.bodies[i].hull.draw(pickingShader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        */
+        
 
         // reset to default state after rendering
         glStencilMask(0xFF);
@@ -474,8 +517,8 @@ void Gravitas::OnKey(int key, int scancode, int action, int mods) {
         camera.Front = glm::vec3(-1.0f, 0.0f, 0.0f);
     }
     else if (activeKey == GLFW_KEY_3) {
-        camera.Position = glm::vec3(0.0f, 20.0f, 0.0f);
-        camera.Front = glm::vec3(0.0f, -1.0f, 0.0f);
+        camera.Position = glm::vec3(0.0f, 10.0f, 0.0f);
+        camera.Front = glm::vec3(0.0f, -0.9f, 0.0f);
     }
     else {                                   // Reset
         isRotating = false;
