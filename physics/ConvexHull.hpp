@@ -479,8 +479,6 @@ public:
 		return hullTrans;
 	}
 
-
-
 	void draw(Shader& shader)
 	{
 		hullModel.Draw(shader);

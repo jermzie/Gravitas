@@ -44,6 +44,7 @@ private:
 
 	// mass properties
 	float mass;
+	float invMass;
 	float density;
 	float invMass;
 	float friction;
@@ -53,6 +54,7 @@ public:
 	int id;
 	bool isStatic = false;
 
+	bool isDragging = false;
 	BoundingSphere sphere;
 	AABB node;
 	ConvexHull hull;
@@ -152,6 +154,7 @@ public:
 
 	void drag(glm::vec3 displacement) {
 
+		dragVelocity = 100.0f * displacement;
 		// update model transformations
 		bodyTrans.SetRelPosition(displacement);
 		hull.getWorldTransform().SetRelPosition(displacement);
@@ -227,6 +230,10 @@ public:
 
 	void draw(Shader& shader) {
 		bodyModel.Draw(shader);
+	}
+	
+	void printVec(glm::vec3 v){
+		std::cout << v.x << " " << v.y << " " << v.z << "\n";
 	}
 
 	WorldTransform& getWorldTransform() {
