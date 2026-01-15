@@ -37,17 +37,36 @@ HalfEdgeMesh QuickHull::getHalfEdgeMesh(const std::vector<glm::vec3>& pointCloud
 }
 
 
+/*
 std::array<float, 6> QuickHull::getExtremaVertices() {
 
 	std::array<float, 6> extremaValues;
 	for (size_t i = 0; i < 6; i++) {
 
-		// raw pointer to ith extrema vertex data
+		// pointer to ith extrema vertex
 		const float *v = (const float*)(&vertexData[extremaIndices[i]]);
 
-		// pointer offset for desired component of vertex  data -- [0, 1] (x-component), [2, 3] (y-component), [4, 5] (z-component)
+		// integer division maps index i to each component -- [0, 1] (pick x-component), [2, 3] (pick y-component), [4, 5] (pick z-component)
 		v += i / 2;
 		extremaValues[i] = *v;
+	}
+
+	return extremaValues;
+}
+*/
+
+std::array<float, 6> QuickHull::getExtremaVertices() {
+
+	std::array<float, 6> extremaValues;
+	for (size_t i = 0; i < 6; i++) {
+
+		const glm::vec3& v =  vertexData[extremaIndices[i]];
+
+		switch (i / 2) {
+			case 0: extremaValues[i] = v.x; break;
+			case 1: extremaValues[i] = v.y; break;
+			case 2: extremaValues[i] = v.z; break;
+		}
 	}
 
 	return extremaValues;

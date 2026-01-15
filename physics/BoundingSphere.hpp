@@ -45,7 +45,6 @@ public:
 
 
 	BoundingSphere() {
-
 		sphere.LoadModel("ball.obj");
 	}
 

@@ -493,15 +493,6 @@ public:
 		return localCentroid;
 	}
 
-	void debugState() const
-	{
-		std::cout << "=============================" << std::endl;
-		std::cout << "=== ConvexHull Debug Info ===" << std::endl;
-		std::cout << "vertices.size(): " << vertices.size() << std::endl;
-		std::cout << "indices.size(): " << indices.size() << std::endl;
-		std::cout << "============================" << std::endl;
-	}
-
 	// helper function for computing surface integrals
 	void computeSubexpressions(float w0, float w1, float w2, float& f1, float& f2, float& f3, float& g0, float& g1, float& g2) {
 

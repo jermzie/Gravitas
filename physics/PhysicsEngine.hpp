@@ -9,6 +9,8 @@
 #include "../inc/Plane.hpp"
 #include "RigidBody.hpp"
 #include "ConvexHull.hpp"
+#include "DynamicBVH.hpp"
+//#include "AABB.hpp"
 #include "BoundingSphere.hpp"
 #include "SAT.hpp"
 
@@ -18,11 +20,13 @@ class PhysicsEngine {
 private:
 
 	SAT narrowphase;
+	BVH broadphase;
 
 public:
 
 	std::vector<RigidBody> bodies;
 	std::vector<BoundingSphere>colliders;
+	std::vector<std::pair<int, int>>potential_collisions;
 
 	void step(double dt) {
 
@@ -38,14 +42,22 @@ public:
 		}*/
 
 		// 2. broadphase (BVH) -- find potential colliding pairs
+		potential_collisions = broadphase.query_pairs();
+
+		for (auto pair : potential_collisions) {
+
+			if (narrowphase.SATPolyPoly(bodies[pair.first].hull, bodies[pair.second].hull)) {
+
+				std::cout << "HIT OBJECT" << std::endl;
+			}
+
+		}
+		
 
 		// 3. narrowphase (SAT) -- build contact list
 
 		
-		if (narrowphase.SATPolyPoly(bodies[0].hull, bodies[1].hull)){
-
-			std::cout << "HIT OBJECT" << std::endl;
-		}
+	
 
 		/*
 		for (auto& b1 : bodies) {
@@ -96,11 +108,12 @@ public:
 
 		body.id = (int)bodies.size() + 1;
 		bodies.push_back(std::move(body));
+		//broadphase.insert();
 	}
 
 	void removeRigidBody(RigidBody body) {
 
-
+		//bodies.erase();s
 		
 	}
 

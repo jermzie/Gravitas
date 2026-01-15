@@ -8,6 +8,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include "Shader.hpp"
+#include "Debugger.hpp"
 #include "../physics/PhysicsEngine.hpp"
 
 class Gui {
@@ -18,7 +19,8 @@ public:
 	void Init(GLFWwindow *window, const char *glsl_version) {
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO();
+		ImGuiIO& io = ImGui::GetIO()
+		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; 
 
 		// Setup platform-specific bindings
 		ImGui_ImplGlfw_InitForOpenGL(window, true);

@@ -10,7 +10,7 @@ class WorldTransform {
 
 private:
 
-	glm::mat4 world = glm::mat4(1.0);;
+	glm::mat4 model = glm::mat4(1.0);;
 	glm::mat4 translateMat4 = glm::mat4(1.0);
 	glm::mat4 rotateMat4 = glm::mat4(1.0);
 	glm::mat4 scaleMat4 = glm::mat4(1.0);
@@ -85,9 +85,9 @@ public:
 
 	glm::mat4 GetMatrix() {
 
-		world = translateMat4 * rotateMat4 * scaleMat4;
+		model = translateMat4 * rotateMat4 * scaleMat4;
 
-		return world;
+		return model;
 	}
 
 	glm::mat4 GetMatrix() const {

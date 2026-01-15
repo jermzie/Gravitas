@@ -15,15 +15,21 @@
 #include <algorithm>
 #include <vector>
 
+// Rendering
 #include "../inc/Model.hpp"
 #include "../inc/Mesh.hpp"
 #include "../inc/Camera.hpp"
 #include "../inc/Shader.hpp"
+
+// Debugging
 #include "../inc/Gui.hpp"
-#include "../inc/MousePicking.hpp"
-#include "../inc/Plane.hpp"
+
+// Physics
 #include "../physics/PhysicsEngine.hpp"
 #include "../physics/RigidBody.hpp"
+
+#include "../inc/Plane.hpp"
+#include "../inc/Ray.hpp"
 
 class Gravitas {
 public:
@@ -43,9 +49,6 @@ private:
 	const char* glsl_version = "#version 330 core";
 	unsigned int SCREEN_WIDTH, SCREEN_HEIGHT;
 
-	// 1 m in physics => 0.01 OpenGL units
-	// const float PHYSICS_SCALE = 0.01f;
-
 	// timing
 	float fixedTimeStep = 1.0f / 60.0f;		// 60 steps per second
 	float deltaTime = 0.0f;
@@ -53,13 +56,12 @@ private:
 	float lastFrame = 0.0f;
 
 	// camera & input
-	Camera camera{ glm::vec3(0.0f, 0.0f, 20.0f) };    // initial camera pos.
-	bool firstMouse = true;
-	float lastX, lastY;
+	Camera camera{ glm::vec3(0.0f, 0.0f, 20.0f) };			// initial camera pos.
+	bool firstMouse = true;									// initial mouse jittering
+	float lastX, lastY;										// previous mouse pos. 					
 
 	// mouse picking/dragging
-	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y, xOffset, yOffset; } leftMouseButton, rightMouseButton;
-	MousePicking picker;
+	struct MouseState { bool isDown = false; bool firstMouse = true; float x, y, x_offset, y_offset; } leftMouseButton, rightMouseButton;
 	Plane dragPlane;
 	bool isDragging = false;
 	bool isRotating = false;
@@ -72,7 +74,7 @@ private:
 	bool dragXY = false;
 
 
-	// rendering & scene
+	// Physics
 	PhysicsEngine scene;
 	Gui gui;
 
@@ -85,6 +87,10 @@ private:
 	Shader outlineShader;
 	Shader lightingShader;
 	Shader defaultShader;
+
+	// transformations
+	glm::mat4 projection;
+	glm::mat4 view;
 
 	// initialization
 	bool InitGLFW();

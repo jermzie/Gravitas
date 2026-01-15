@@ -127,34 +127,15 @@ void Gravitas::InitCallbacks() {
 
 }
 
-
-int random(int min, int max) {
-    std::random_device                  rand_dev;
-    std::mt19937                        generator(rand_dev());
-    std::uniform_int_distribution<int>    distr(min, max);
-    return distr(generator);
-}
-
-
-glm::vec3 randPos() {
-
-    int min = -10;
-    int max = 10;
-
-    return glm::vec3(random(min, max), random(min, max), 0.0f);
-
-
-
-
-}
-
 void Gravitas::InitScene() {
 
+    // Compile Shaders
     defaultShader.init("lightObject.vert", "lightObject.frag");
     lightingShader.init("lightSource.vert", "lightSource.frag");
     pickingShader.init("pickingColor.vert", "pickingColor.frag");
     outlineShader.init("stencilOutline.vert", "stencilOutline.frag");
 
+    // Load Models
     Model tetraModel("tetrahedron.obj");
     Model cubeModel("cube.obj");
     Model ballModel("ball.obj");
@@ -163,6 +144,7 @@ void Gravitas::InitScene() {
     Model teapotModel("teapot.obj");
     Model davidModel("david.obj");
 
+    // Initialize Bodies -- Physics Properties, Collision Geometry, Transformations
     RigidBody light(cubeModel, 1.0, glm::vec3(1.0, 1.5, 4.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     //RigidBody tetra(tetraModel, 5.0, glm::vec3(-0.5, 1.0, 4.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
     RigidBody tetra(tetraModel, 5.0, glm::vec3(1.5, 1.0, 4.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 0.0));
@@ -177,7 +159,7 @@ void Gravitas::InitScene() {
 
 
     
-
+    // Building Scene -- Dynamic BVH Tree
     scene.addRigidBody(std::move(light));
     //scene.addRigidBody(std::move(tetra));
     //scene.addRigidBody(std::move(cube));
@@ -187,6 +169,9 @@ void Gravitas::InitScene() {
     //scene.addRigidBody(std::move(teapot));
     //scene.addRigidBody(std::move(david));
 
+
+
+
     /*
     // 100 Cubes -- 144 FPS
     // 1000 Cubes -- 30 FPS
@@ -195,9 +180,7 @@ void Gravitas::InitScene() {
         scene.addRigidBody(std::move(cube));
     }
     */
-    
-   
-    
+  
 }
 
 void Gravitas::ProcessInput()
@@ -234,41 +217,56 @@ void Gravitas::ProcessInput()
 
 }
 
+int random(int min, int max) {
+    std::random_device                  rand_dev;
+    std::mt19937                        generator(rand_dev());
+    std::uniform_int_distribution<int>    distr(min, max);
+    return distr(generator);
+}
+glm::vec3 randPos() {
+
+    int min = -10;
+    int max = 10;
+
+    return glm::vec3(random(min, max), random(min, max), 0.0f);
+}
+
+
 
 // UPDATE
 // ...............................................................................................................................
 void Gravitas::Update() {
 
-    // view & projection transformations
-    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
-    glm::mat4 view = camera.GetViewMatrix();
+    // update camera transformations
+    projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
+    view = camera.GetViewMatrix();
 
+    // update picking/dragging
     if (leftMouseButton.isDown) {
 
         // convert 2D mouse coords to world space coords
-        Ray ray = picker.ScreenToWorldRay(leftMouseButton.x, leftMouseButton.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
+        Ray ray = ScreenToWorldRay(leftMouseButton.x, leftMouseButton.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
 
 
-        // OBJECT SELECTED AND CURRENTLY ROTATING
+        // rotating
         if (isRotating && selectedObjectId != -1) {
 
-            scene.bodies[selectedObjectId].rotate(leftMouseButton.xOffset, leftMouseButton.yOffset);
-
+            scene.bodies[selectedObjectId].rotate(leftMouseButton.x_offset, leftMouseButton.y_offset);
 
             // per-frame offsets -- rotations don't continue when mouse isn't moving
-            leftMouseButton.xOffset = 0.0f;
-            leftMouseButton.yOffset = 0.0f;
+            leftMouseButton.x_offset = 0.0f;
+            leftMouseButton.y_offset = 0.0f;
 
         }
 
-        // CURRENTLY DRAGGING
+        // dragging
         else if (isDragging && selectedObjectId != -1) {
 
             // find ray-plane intersection
             float t;
-            if (picker.RayPlaneIntersection(ray, dragPlane.normal, dragPlane.point, t)) {
+            if (RayPlaneIntersection(ray, dragPlane.normal, dragPlane.point, t)) {
 
-                // new point of intersection
+                // update new point of intersection
                 newPos = ray.origin + ray.direction * t;
                 glm::vec3 displacement = newPos - oldPos;
             
@@ -279,15 +277,15 @@ void Gravitas::Update() {
             }
         }
 
-        // NO DRAGGING OR ROTATING
-        // INITIAL OBJECT SELECTION
+        // check initial object selection
         else {
 
+            // BRUTE FORCE -- SLOW
             // check ray-hull intersections for all bodies
             for (int i = 0; i < scene.bodies.size(); ++i) {
 
                 glm::vec3 hitPoint;
-                if (scene.bodies[i].collided(ray, hitPoint)) {
+                if (scene.bodies[i].ray_intersection(ray, hitPoint)) {
 
                     selectedObjectId = i;
                     scene.bodies[i].disable();
@@ -303,6 +301,34 @@ void Gravitas::Update() {
                 }
             }
 
+            // AABB initial intersection test
+            /*
+            for (AABB box : ) {
+                
+                if (!ray_intersection(box, ray) {
+                    continue;
+                }
+
+                glm::vec3 hit_point;
+                bool hit = scene.bodies[i].ray_intersection(ray, hit_point);
+                if(hit) {
+                    
+                    selectedObjectId = i;
+                    scene.bodies[i].disable();
+
+                    // record initial object pos
+                    oldPos = hitPoint;
+
+                    // define drag plane
+                    dragPlane.normal = -camera.Front;
+                    dragPlane.point = hitPoint;
+
+                    break;
+                }
+            }
+            
+            */
+
             // cannot translate & rotate object at same time
             isDragging = !isRotating;
         }
@@ -312,7 +338,6 @@ void Gravitas::Update() {
 
     // use fixed timesteps for consistency
     //float physicsDT = std::clamp(deltaTime, 1.0f / 300.0f, 1.0f / 60.0f);
-
     // update physics
     scene.step(fixedTimeStep);
 
@@ -325,15 +350,13 @@ void Gravitas::Update() {
 // ...............................................................................................................................
 void Gravitas::Render() {
 
-
+    // framebuffer stuff
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-
-
-    // view & projection transformations
-    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
-    glm::mat4 view = camera.GetViewMatrix();
+    // update transformations
+    projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
+    view = camera.GetViewMatrix();
 
 
     for (int i = 0; i < scene.bodies.size(); ++i) {
@@ -480,10 +503,10 @@ void Gravitas::OnKey(int key, int scancode, int action, int mods) {
 
     static int activeKey = -1; 
 
-    // Only handle press & release
+    // handle press & release actions
     if (action == GLFW_PRESS) {
 
-        // nothing active, claim key
+        // nothing currently active, claim key
         if (activeKey == -1) {
             if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R || key == GLFW_KEY_1 || key == GLFW_KEY_2 || key == GLFW_KEY_3)
                 activeKey = key;
@@ -491,40 +514,50 @@ void Gravitas::OnKey(int key, int scancode, int action, int mods) {
         // ignore additional presses while another key is active
     }
     else if (action == GLFW_RELEASE) {
-        // If the released key is the active key, clear it
+
+        // If the released key is currently active key, clear it
         if (key == activeKey) activeKey = -1;
     }
 
-    // Update active flag
-    if (activeKey == GLFW_KEY_Q) {           // XZ-plane
-        dragPlane.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-    }
-    else if (activeKey == GLFW_KEY_W) {      // YZ-plane
-        dragPlane.normal = glm::vec3(1.0f, 0.0f, 0.0f);
-    }
-    else if (activeKey == GLFW_KEY_E) {      // XY-plane
-        dragPlane.normal = glm::vec3(0.0f, 0.0f, 1.0f);
-    }
-    else if (activeKey == GLFW_KEY_R) {      // Rotate
-        isRotating = true;
-    }
-    else if (activeKey == GLFW_KEY_1) {
+    // specific key actions
+    switch (activeKey) {
+    case GLFW_KEY_Q:
+        dragPlane.normal = glm::vec3(0.0f, 1.0f, 0.0f);     // XZ-plane
+        break;
+
+    case GLFW_KEY_W:
+        dragPlane.normal = glm::vec3(1.0f, 0.0f, 0.0f);     // YZ-plane
+        break;
+
+    case GLFW_KEY_E:
+        dragPlane.normal = glm::vec3(0.0f, 0.0f, 1.0f);     // XY-plane
+        break;
+
+    case GLFW_KEY_R:
+        isRotating = true;      // rotate flag
+        break;
+
+    case GLFW_KEY_1:
         camera.Position = glm::vec3(0.0f, 0.0f, 20.0f);
         camera.Front = glm::vec3(0.0f, 0.0f, -1.0f);
-    }
-    else if (activeKey == GLFW_KEY_2) {
+        break;
+
+    case GLFW_KEY_2:
         camera.Position = glm::vec3(20.0f, 0.0f, 0.0f);
         camera.Front = glm::vec3(-1.0f, 0.0f, 0.0f);
-    }
-    else if (activeKey == GLFW_KEY_3) {
+        break;
+
+    case GLFW_KEY_3:
         camera.Position = glm::vec3(0.0f, 10.0f, 0.0f);
         camera.Front = glm::vec3(0.0f, -0.9f, 0.0f);
-    }
-    else {                                   // Reset
+        break;
+
+    default:
         isRotating = false;
         isDragging = false;
         selectedObjectId = -1;
         dragPlane.normal = -camera.Front;
+        break;
     }
 
 
@@ -558,55 +591,54 @@ void Gravitas::OnKey(int key, int scancode, int action, int mods) {
 
 void Gravitas::OnMouseMove(double xpos, double ypos) {
 
-    float xPos = static_cast<float>(xpos);
-    float yPos = static_cast<float>(ypos);
+    float x = static_cast<float>(xpos);
+    float y = static_cast<float>(ypos);
 
     if (rightMouseButton.isDown) {
 
         // process initial mouse input
         if (firstMouse) {
 
-            lastX = xPos;
-            lastY = yPos;
+            lastX = x;
+            lastY = y;
             firstMouse = false;
         }
 
-        float xOffset = xPos - lastX;
-        float yOffset = lastY - yPos; // flip since y-axis goes from bottom to top
-
-        camera.ProcessMouseMovement(xOffset, yOffset);
+        float x_offset = x - lastX;
+        float y_offset = lastY - y; // flip since y-axis goes from bottom to top
+        camera.ProcessMouseMovement(x_offset, y_offset);
     }
 
     if (leftMouseButton.isDown) {
 
-        leftMouseButton.x = xPos;
-        leftMouseButton.y = yPos;
-        leftMouseButton.xOffset = xPos - lastX;
-        leftMouseButton.yOffset = lastY - yPos;
+        leftMouseButton.x = x;
+        leftMouseButton.y = y;
+        leftMouseButton.x_offset = x - lastX;
+        leftMouseButton.y_offset = lastY - y;
     }
 
-    lastX = xPos;
-    lastY = yPos;
+    lastX = x;
+    lastY = y;
 }
 
 void Gravitas::OnMouseButton(int button, int action, int mods) {
 
     // retrieve cursor coords.
-    double x, y;
-    glfwGetCursorPos(window, &x, &y);
+    double cursor_x, cursor_y;
+    glfwGetCursorPos(window, &cursor_x, &cursor_y);
 
-    float xPos = static_cast<float>(x);
-    float yPos = static_cast<float>(y);
+    float x = static_cast<float>(cursor_x);
+    float y = static_cast<float>(cursor_y);
 
     // leftMouseButton controls picking/dragging movement
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
 
-        // capture cursor for picking
+        // enable and capture cursor for picking
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_CAPTURED);
 
         leftMouseButton.isDown = true;
-        leftMouseButton.x = xPos;
-        leftMouseButton.y = yPos;
+        leftMouseButton.x = x;
+        leftMouseButton.y = y;
 
 
     }
@@ -619,8 +651,8 @@ void Gravitas::OnMouseButton(int button, int action, int mods) {
 
         rightMouseButton.isDown = true;
         firstMouse = true;
-        rightMouseButton.x = xPos;
-        rightMouseButton.y = yPos;
+        rightMouseButton.x = x;
+        rightMouseButton.y = y;
 
     }
 
@@ -651,8 +683,8 @@ void Gravitas::OnMouseButton(int button, int action, int mods) {
         }
 
         else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            rightMouseButton.isDown = false;
 
+            rightMouseButton.isDown = false;
             if (!leftMouseButton.isDown) {
 
                 // normal cursor if no buttons are pressed

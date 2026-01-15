@@ -23,69 +23,73 @@
 
 class RigidBody {
 private:
+
 	std::vector<ConvexHull>body;		// collection of convex hulls 
 
-	WorldTransform bodyTrans;
-	Model bodyModel;
-	glm::vec3 localCOMOffset;
+	WorldTransform world_transform;
+	Model rigidbody_model;
+	glm::vec3 local_com_offset;
+	std::array<float, 6U> extrema;
 
 	// linear motion
-	glm::vec3 centreOfMass;
-	glm::vec3 linearVelocity;
-	glm::vec3 linearMomentum;
+	glm::vec3 com;
+	glm::vec3 lin_velocity;
+	glm::vec3 lin_momentum;
 
 
 	// angular motion
 	glm::mat3 orientation = glm::mat3(1.0);
-	glm::vec3 angularVelocity;
-	glm::vec3 angularMomentum;
+	glm::vec3 ang_velocity;
+	glm::vec3 ang_momentum;
 	glm::mat3 inertia = glm::mat3(1.0);
-	glm::mat3 invInertia = glm::mat3(1.0);
+	glm::mat3 inv_inertia = glm::mat3(1.0);
 
 	// mass properties
 	float mass;
-	float invMass;
+	float inv_mass;
 	float density;
-	float invMass;
 	float friction;
 
 public:
 
 	int id;
-	bool isStatic = false;
+	bool is_static = false;
+	bool is_dragging = false;
 
-	bool isDragging = false;
 	BoundingSphere sphere;
-	AABB node;
+	AABB box;
 	ConvexHull hull;
 
 	// body created by singular model -- often imported models
 	RigidBody(Model model, float rho, glm::vec3 position, glm::vec3 velocity, glm::vec3 L){
 
 		// basic physics properties
-		bodyModel = model;
+		rigidbody_model = model;
 		density = rho;
-		linearVelocity = velocity;
-		angularMomentum = L;
+		lin_velocity = velocity;
+		ang_momentum = L;
 
 
 		// compute convex hull & half-edge mesh of model
 		QuickHull qh;
-		hull = qh.getConvexHull(bodyModel.GetVertexData());
-		auto extrema = qh.getExtremaVertices();
+		hull = qh.getConvexHull(rigidbody_model.GetVertexData());
+		extrema = qh.getExtremaVertices();
+
+		// compute aabb
+		box.init(extrema);
 
 		// local com & inertia
-		hull.computeMassProperties(density, mass, localCOMOffset, inertia);
-		invInertia = glm::inverse(inertia);
-		centreOfMass = position + localCOMOffset;
+		hull.computeMassProperties(density, mass, local_com_offset, inertia);
+		inv_inertia = glm::inverse(inertia);
+		com = position + local_com_offset;
 		
 		// transformations
-		bodyTrans.SetAbsPosition(position);
+		world_transform.SetAbsPosition(position);
 		hull.getWorldTransform().SetAbsPosition(position);
 		hull.worldCentroid += position;
 
 		// model
-		hull.getHullModel(bodyModel, bodyTrans);
+		hull.getHullModel(rigidbody_model, world_transform);
 	}
 
 	/*
@@ -93,10 +97,10 @@ public:
 	RigidBody(std::vector<ConvexHull>models, float rho, glm::vec3 position, glm::vec3 velocity, glm::vec3 L) {
 
 		// basic physics properties
-		bodyModel = models;
+		rigidbody_model = models;
 		density = rho;
-		linearVelocity = velocity;
-		angularMomentum = L;
+		lin_velocity = velocity;
+		ang_momentum = L;
 
 	}
 	*/
@@ -106,13 +110,12 @@ public:
 	void integrateForces(double dt) {
 
 		glm::vec3 gravity(0.0f, -1.0f, 0.0f);
-		linearVelocity += gravity * dt;
+		lin_velocity += gravity * dt;
 
 	}
+	void update(double delta_time) {
 
-	void update(double deltaTime) {
-
-		if (isStatic) {
+		if (is_static) {
 
 			// DO SOMETHING
 
@@ -120,30 +123,28 @@ public:
 		else {
 
 			// linear motion
-			//linearVelocity += gravity * deltaTime;
-			centreOfMass += linearVelocity * deltaTime;
+			//lin_velocity += gravity * deltaTime;
+			com += lin_velocity * delta_time;
 
 			// angular motion
-			// omega;
-			glm::mat3 worldInertia = orientation * invInertia * glm::transpose(orientation);
-			angularVelocity = worldInertia * angularMomentum;
-			orientation += glm::matrixCross3(angularVelocity) * orientation * deltaTime;
-
+			glm::mat3 world_inertia = orientation * inv_inertia * glm::transpose(orientation);
+			ang_velocity = world_inertia * ang_momentum;
+			orientation += glm::matrixCross3(ang_velocity) * orientation * delta_time;
 			orientation = glm::orthonormalize(orientation);
 
 			// update translation matrix
-			bodyTrans.SetRelPosition(linearVelocity * deltaTime);
-			hull.getWorldTransform().SetRelPosition(linearVelocity * deltaTime);
-			hull.updateCentroid(linearVelocity * deltaTime);
+			world_transform.SetRelPosition(lin_velocity * deltaTime);
+			hull.getWorldTransform().SetRelPosition(lin_velocity * deltaTime);
+			hull.updateCentroid(lin_velocity * deltaTime);
 
 			
 			// SAME ISSUE AS BEFORE. IF MODEL ORIGIN NOT AT CENTRE OF MASS. ROTATION FAILS.
-			//bodyTrans.SetAbsRotation(glm::mat4(orientation));
+			//world_transform.SetAbsRotation(glm::mat4(orientation));
 			//hull.getWorldTransform().SetAbsRotation(glm::mat4(orientation));
 
 			// update rotation matrix
-			bodyTrans.SetRotationAbtPoint(glm::mat4(orientation), localCOMOffset);
-			hull.getWorldTransform().SetRotationAbtPoint(glm::mat4(orientation), localCOMOffset);
+			world_transform.SetRotationAbtPoint(glm::mat4(orientation), local_com_offset);
+			hull.getWorldTransform().SetRotationAbtPoint(glm::mat4(orientation), local_com_offset);
 	
 
 			//applyForces();
@@ -154,15 +155,15 @@ public:
 
 	void drag(glm::vec3 displacement) {
 
-		dragVelocity = 100.0f * displacement;
+		//dragVelocity = 100.0f * displacement;
 		// update model transformations
-		bodyTrans.SetRelPosition(displacement);
+		world_transform.SetRelPosition(displacement);
 		hull.getWorldTransform().SetRelPosition(displacement);
 
 
 		// update COM positiosn
 		hull.updateCentroid(displacement);
-		centreOfMass += displacement;
+		com += displacement;
 
 		// track xyz offSets and deltaTime to accumulate velocity while dragging???
 	}
@@ -177,39 +178,39 @@ public:
 		glm::mat4 rotation = rotY * rotX;
 
 
-		bodyTrans.SetRotationAbtPoint(rotation, localCOMOffset);
-		hull.getWorldTransform().SetRotationAbtPoint(rotation, localCOMOffset);
+		world_transform.SetRotationAbtPoint(rotation, local_com_offset);
+		hull.getWorldTransform().SetRotationAbtPoint(rotation, local_com_offset);
 
 		// SAME ISSUE AS BEFORE. IF MODEL ORIGIN NOT AT CENTRE OF MASS. ROTATION FAILS.
-		//bodyTrans.SetRelRotation(rotation);
+		//world_transform.SetRelRotation(rotation);
 		//hull.getWorldTransform().SetRelRotation(rotation);
 	}
 
 	void disable() {
 
-		isStatic = true;
+		is_static = true;
 
-		linearVelocity = glm::vec3(0.0f);
+		lin_velocity = glm::vec3(0.0f);
 
 	}
 
 	void reset(glm::vec3 position) {
 
-		bodyTrans.SetAbsPosition(position);
+		world_transform.SetAbsPosition(position);
 
 		//Shull.updateCentroid(position);
 		hull.getWorldTransform().SetAbsPosition(position);
 
 
-		centreOfMass = position;
-		linearVelocity = glm::vec3(0.0f);
+		com = position;
+		lin_velocity = glm::vec3(0.0f);
 
 		
 	}
 
-	bool collided(Ray& worldRay, glm::vec3& hitPoint) {
+	bool ray_intersection(Ray& worldRay, glm::vec3& hitPoint) {
 
-		glm::mat4 inverseModelMatrix = glm::inverse(bodyTrans.GetMatrix());
+		glm::mat4 inverseModelMatrix = glm::inverse(world_transform.GetMatrix());
 		glm::vec4 rayOrig_local = inverseModelMatrix * glm::vec4(worldRay.origin, 1.0f);
 		glm::vec4 rayDir_local = inverseModelMatrix * glm::vec4(worldRay.direction, 0.0f);
 
@@ -229,19 +230,15 @@ public:
 	}
 
 	void draw(Shader& shader) {
-		bodyModel.Draw(shader);
-	}
-	
-	void printVec(glm::vec3 v){
-		std::cout << v.x << " " << v.y << " " << v.z << "\n";
+		rigidbody_model.Draw(shader);
 	}
 
 	WorldTransform& getWorldTransform() {
-		return bodyTrans;
+		return world_transform;
 	}
 
-	glm::vec3 getCentreOfMass() {
-		return centreOfMass;
+	glm::vec3 getcom() {
+		return com;
 	}
 
 	void printVec(glm::vec3 v) {
@@ -253,8 +250,8 @@ public:
 
 		std::string i = glm::to_string(inertia);
 		std::cout << "inertia: " << i << std::endl;
-		std::cout << "com: ";  printVec(centreOfMass);
-		std::cout << "omega: ";  printVec(angularVelocity);
+		std::cout << "com: ";  printVec(com);
+		std::cout << "omega: ";  printVec(ang_velocity);
 
 	}
 };

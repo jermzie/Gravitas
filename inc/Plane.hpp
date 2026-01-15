@@ -3,8 +3,8 @@
 
 #include <glm/glm.hpp>
 
-class Plane {
-public:
+struct Plane {
+
 	glm::vec3 normal;
 	glm::vec3 point;
 	float distance;	// signed distance from origin
