@@ -7,119 +7,105 @@
 
 #include "../inc/Model.hpp"
 #include "../inc/Plane.hpp"
-#include "RigidBody.hpp"
 #include "ConvexHull.hpp"
-#include "DynamicBVH.hpp"
-//#include "AABB.hpp"
+#include "RigidBody.hpp"
+
+// DOESNT WORK
+// #include "Broadphase.hpp"
+// DOESNT WORK
+#include "AABB.hpp"
+
 #include "BoundingSphere.hpp"
-#include "SAT.hpp"
-
-
+#include "Narrowphase.hpp"
 
 class PhysicsEngine {
 private:
-
-	SAT narrowphase;
-	BVH broadphase;
+  SAT narrowphase;
+  // BVH broadphase;
 
 public:
+  std::vector<RigidBody> bodies;
+  std::vector<BoundingSphere> colliders;
+  std::vector<std::pair<int, int>> potential_collisions;
 
-	std::vector<RigidBody> bodies;
-	std::vector<BoundingSphere>colliders;
-	std::vector<std::pair<int, int>>potential_collisions;
+  void step(double dt) {
 
-	void step(double dt) {
+    // std::cerr << "Entered collision function\n";
+    //  1. integrate forces
+    /*for (auto& b : bodies) {
+            if (b.isStatic) {
 
-		// 1. integrate forces
-		/*for (auto& b : bodies) {
-			if (b.isStatic) {
+            }
+            else {
+                    b.integrateForces(dt);
+                    b.update(dt);
+            }
+    }*/
 
-			}
-			else {
-				b.integrateForces(dt);
-				b.update(dt);
-			}
-		}*/
+    // 2. broadphase (BVH) -- find potential colliding pairs
+    // DOESNT WORK
+    // potential_collisions = broadphase.query_pairs();
 
-		// 2. broadphase (BVH) -- find potential colliding pairs
-		potential_collisions = broadphase.query_pairs();
+    // DOESNT WORK
+    for (auto pair : potential_collisions) {
 
-		for (auto pair : potential_collisions) {
+      if (narrowphase.SATPolyPoly(bodies[pair.first].hull,
+                                  bodies[pair.second].hull)) {
+        printf("HIT OBJECT\n");
+      }
+    }
 
-			if (narrowphase.SATPolyPoly(bodies[pair.first].hull, bodies[pair.second].hull)) {
+    // 3. narrowphase (SAT) -- build contact list
 
-				std::cout << "HIT OBJECT" << std::endl;
-			}
+    /*
+    for (auto& b1 : bodies) {
 
-		}
-		
+            for (auto& b2 : bodies) {
 
-		// 3. narrowphase (SAT) -- build contact list
-
-		
-	
-
-		/*
-		for (auto& b1 : bodies) {
-
-			for (auto& b2 : bodies) {
-
-				if (b1.id == b2.id) {
-					continue;
-				}
-
-				
-				else if(narrowphase.optimizedSAT(b1.hull, b2.hull)) {
-					std::cout << "HIT BETWEEN OBJECT: " << b1.id << " & " << b2.id << std::endl;
-				}
-				
-			}
-		}
-		*/
-		
-
-		// 4. collision solver (iterative)
+                    if (b1.id == b2.id) {
+                            continue;
+                    }
 
 
+                    else if(narrowphase.optimizedSAT(b1.hull, b2.hull)) {
+                            std::cout << "HIT BETWEEN OBJECT: " << b1.id << " &
+    " << b2.id << std::endl;
+                    }
 
-		
-		for (size_t i = 0; i < bodies.size(); i++) {
+            }
+    }
+    */
 
-			
-			glm::vec3 position = bodies[i].getCentreOfMass();
+    // 4. collision solver (iterative)
 
-			// check if body above/below floor/ceil; if not just translate y-axis
-			if (position.y <= -20.0f) {
+    for (size_t i = 0; i < bodies.size(); i++) {
 
-				bodies[i].reset(glm::vec3(position.x, 20.0f, position.z));
-			}
+      glm::vec3 position = bodies[i].get_centre_of_mass();
 
-			//bodies[i].integrateForces(dt);
-			bodies[i].update(dt);
+      // check if body above/below floor/ceil; if not just translate y-axis
+      if (position.y <= -20.0f) {
 
-		}
-		
+        bodies[i].reset(glm::vec3(position.x, 20.0f, position.z));
+      }
 
+      // bodies[i].integrateForces(dt);
+      bodies[i].update(dt);
+    }
+  }
 
+  void addRigidBody(RigidBody &&body) {
 
-	}
+    body.id = (int)bodies.size() + 1;
+    bodies.push_back(std::move(body));
+    // broadphase.insert();
+  }
 
-	void addRigidBody(RigidBody&& body) {
+  void removeRigidBody(RigidBody body) {
 
-		body.id = (int)bodies.size() + 1;
-		bodies.push_back(std::move(body));
-		//broadphase.insert();
-	}
+    // bodies.erase();s
+  }
 
-	void removeRigidBody(RigidBody body) {
-
-		//bodies.erase();s
-		
-	}
-
-	void removeAllBodies() {
-		bodies.clear();
-	}
+  void removeAllBodies() { bodies.clear(); }
 };
 
 #endif
