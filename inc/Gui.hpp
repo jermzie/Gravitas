@@ -16,7 +16,7 @@ class Gui {
 public:
   bool darkMode = false;
 
-  void Init(GLFWwindow *window, const char *glsl_version) {
+  void init(GLFWwindow *window, const char *glsl_version) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
@@ -30,7 +30,7 @@ public:
     ImGui::StyleColorsDark();
   }
 
-  void NewFrame() {
+  void new_frame() {
     // Feed inputs to imgui, start new frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -41,14 +41,14 @@ public:
     if (darkMode) {
       grid.use();
 
-      grid.setVec4("gGridColorThin", glm::vec4(1.0, 1.0, 1.0, 1.0));
-      grid.setVec4("gGridColorThick", glm::vec4(1.0, 1.0, 1.0, 1.0));
+      grid.set_vec4("gGridColorThin", glm::vec4(1.0, 1.0, 1.0, 1.0));
+      grid.set_vec4("gGridColorThick", glm::vec4(1.0, 1.0, 1.0, 1.0));
     }
   }
 
   // A custom toggle switch widget.
   // Use as: ToggleButton("Toggle", &toggle_state);
-  void ToggleButton(const char *str_id, bool *v) {
+  void toggle_button(const char *str_id, bool *v) {
     // Get the current cursor position on screen.
     ImVec2 p = ImGui::GetCursorScreenPos();
     // Get the window's DrawList so we can issue custom draw commands.
@@ -89,7 +89,7 @@ public:
     // ImGui::SameLine() and ImGui::Text() if you wish to display text.
   }
 
-  virtual void Update() {
+  virtual void update() {
 
     static float f = 0.0f;
     static int counter = 0;
@@ -114,7 +114,7 @@ public:
     ImGui::SameLine();
     ImGui::Text("counter = %d", counter);
 
-    ToggleButton("Dark Mode", &darkMode);
+    toggle_button("Dark Mode", &darkMode);
 
     // Optionally display the state.
     ImGui::SameLine();
@@ -135,13 +135,13 @@ public:
     ImGui::End();
   }
 
-  void Render() {
+  void render() {
     // Render GUI
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
-  void Shutdown() {
+  void shutdown() {
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

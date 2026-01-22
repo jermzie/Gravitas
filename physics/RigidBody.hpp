@@ -1,6 +1,10 @@
-#ifndef RIGIDBODY_HPP
-#define RIGIDBODY_HPP
+#pragma once
 
+// NOT DONE
+
+#include "ConvexMesh.hpp"
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/quaternion_trigonometric.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -15,33 +19,69 @@
 #include "../inc/Mesh.hpp"
 #include "../inc/Model.hpp"
 #include "../inc/Ray.hpp"
-#include "../inc/WorldTransform.hpp"
-#include "AABB.hpp"
-#include "BoundingSphere.hpp"
-#include "ConvexHull.hpp"
+#include "../inc/Transform.hpp"
+// #include "AABB.hpp"
+// #include "BoundingSphere.hpp"
+#include "CollisionGeometry.hpp"
+#include "MassProperties.hpp"
 #include "QuickHull.hpp"
+
+struct CollisionData {
+  CollisionGeometry hull;
+  // AABB local_aabb;
+  // BoundingSphere local_sphere;
+
+  // AABB get_world_aabb(const Transform &transform) const;
+  // BoundingSphere get_world_sphere(const Transform &transform) const;
+};
+
+// ? IS THIS NEEDED?
+struct rigid_body_config_t {
+  Model &model;
+  float mass;
+  float density;
+  glm::vec3 position;
+  glm::vec3 lin_velocity;
+  glm::vec3 ang_velocity;
+};
 
 class RigidBody {
 private:
-  std::vector<ConvexHull> body; // collection of convex hulls
+  // Geometry & collisions
+  CollisionData collider;
 
-  WorldTransform world_transform;
-  Model rigidbody_model;
+  // Transform (world space)
+  glm::vec3 position;
+  glm::quat orientation;
+
+  // Physics state
+  Transform transform;
+  MassProperties properties;
+  glm::vec3 lin_velocity = glm::vec3(0.0f);
+  glm::vec3 lin_momentum = glm::vec3(0.0f);
+  glm::vec3 ang_velocity = glm::vec3(0.0f);
+  glm::vec3 ang_momentum = glm::vec3(0.0f);
+
+  glm::vec3 force;
+  glm::vec3 torque;
+
+  // Rendering
+  Model render_model;                // Just for drawing
+  glm::vec3 model_origin_offset;     // Offset from COM to model origin
+  glm::vec3 geometric_origin_offset; // Offset from COM to geometric origin
+                                     //
+  /*
   glm::vec3 local_com_offset;
   std::array<float, 6U> extrema;
 
   // linear motion
   glm::vec3 com;
-  glm::vec3 lin_velocity;
-  glm::vec3 lin_momentum;
 
   // angular motion
-  glm::mat3 orientation = glm::mat3(1.0);
-  glm::vec3 ang_velocity;
-  glm::vec3 ang_momentum;
+  // glm::mat3orientation = glm::mat3(1.0);
   glm::mat3 inertia = glm::mat3(1.0);
   glm::mat3 inv_inertia = glm::mat3(1.0);
-
+*/
   // mass properties
   float mass;
   float inv_mass;
@@ -53,12 +93,109 @@ public:
   bool is_static = false;
   bool is_dragging = false;
 
-  BoundingSphere sphere;
-  AABB box;
-  ConvexHull hull;
+  void apply_force(glm::vec3 f, glm::vec3 point);
 
+  void integrate(float dt);
+
+  /*
+  AABB get_world_aabb() const {
+    AABB local_box = collider.hull.compute_aabb();
+    // need to transfor to world?
+    return local_box;
+  }
+  */
+
+  bool raycast(const Ray &world_ray, glm::vec3 &hit_point) {
+
+    glm::mat4 inv_transform = transform.get_inverse_matrix();
+    // Ray local_ray = transform.world_to_local(world_ray);
+    // return collision.mesh.ray_intersect(local_ray, t);
+
+    Ray local_ray;
+    local_ray.origin =
+        glm::vec3(inv_transform * glm::vec4(world_ray.origin, 1.0f));
+    local_ray.direction =
+        glm::vec3(inv_transform * glm::vec4(world_ray.direction, 0.0f));
+
+    // glm::vec3 local_hit_point;
+    float t;
+    int hit = collider.hull.raycast(local_ray, t);
+
+    if (hit != 0) {
+      // glm::mat4 world_transform = const_cast<Transform
+      // &>(transform).get_matrix();
+      glm::mat4 world_transform = transform.get_matrix();
+      glm::vec3 local_hit_point = local_ray.origin + local_ray.direction * t;
+      hit_point = glm::vec3(world_transform * glm::vec4(local_hit_point, 1.0f));
+      // hit_point = glm::vec3(world_transform *
+      // glm::vec4(local_hit_point, 1.0f));
+      return true;
+    }
+
+    return false;
+  }
+
+  void update_transform() {
+    transform.set_position(position);
+    transform.set_orientation(orientation);
+  }
+
+  glm::mat4 get_render_matrix() const {
+
+    // Get matrix (COM in world space)
+    glm::mat4 base = transform.get_matrix();
+
+    // Get offset translation matrix
+    glm::mat4 offset = glm::translate(glm::mat4(1.0f), -model_origin_offset);
+    return base * offset;
+  }
+
+  glm::mat4 get_matrix() const {
+    // glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
+    // glm::mat4 R = glm::mat4_cast(orientation);
+    // return T * R;
+    return transform.get_matrix();
+  }
+
+  ConvexMesh get_mesh() const { return collider.hull.get_mesh(); }
+
+  RigidBody(Model model, float density, glm::vec3 position) {
+
+    // 1. Build collision geometry
+    QuickHull qh;
+    ConvexMesh mesh = qh.build_convex_mesh(model.get_vertex_data());
+
+    // 2. Compute mass properties
+    properties = MassProperties::compute(mesh, density);
+    model_origin_offset = properties.centre_of_mass;
+
+    // 3. Shift vertices so COM is at origin
+    for (auto &v : mesh.vertices) {
+      v -= properties.centre_of_mass;
+    }
+
+    // 4. Recompute mass properties (COM should be ~(0, 0, 0))
+    properties = MassProperties::compute(mesh, density);
+    geometric_origin_offset = mesh.compute_geometric_centroid();
+
+    // 5. Build collision geometry
+    collider.hull = CollisionGeometry(mesh);
+
+    // 6. Transform into world space
+    this->position = position;
+    this->orientation = glm::quat(1, 0, 0, 0);
+
+    // transform.set_position(position);
+    // transform.set_orientation(orientation);
+    //
+    update_transform();
+
+    render_model = model;
+  }
+
+  /*
   // body created by singular model -- often imported models
-  RigidBody(Model model, float rho, glm::vec3 position, glm::vec3 velocity,
+  RigidBody(Model& model, float rho, glm::vec3 position, glm::vec3 velocity,
             glm::vec3 L) {
 
     // basic physics properties
@@ -69,8 +206,18 @@ public:
 
     // compute convex hull & half-edge mesh of model
     QuickHull qh;
-    hull = qh.getConvexHull(rigidbody_model.GetVertexData());
-    extrema = qh.getExtremaVertices();
+    ConvexMesh mesh = qh.build_mesh(render_model.get_vertex_data());
+    glm::vec3 geometric_centre;
+
+    extrema = qh.get_extrema_vertices();
+
+    glm::vec3 model_origin_offset = hull.recentre_to_origin();
+
+    mass_props = MassProperties::compute(mesh, density);
+
+    collision.mesh = mesh;
+    collision.local_aabb;
+    collision.local_sphere;
 
     // compute aabb
     box.init(extrema);
@@ -88,6 +235,7 @@ public:
     // model
     hull.getHullModel(rigidbody_model, world_transform);
   }
+  */
 
   /*
   // body created by collection of convex meshes -- manually defined
@@ -109,97 +257,99 @@ public:
     glm::vec3 gravity(0.0f, -1.0f, 0.0f);
     lin_velocity += gravity * dt;
   }
-  void update(double delta_time) {
+
+  void update(float dt) {
 
     if (is_static) {
 
       // DO SOMETHING
-
     } else {
 
-      // linear motion
-      // lin_velocity += gravity * deltaTime;
-      com += lin_velocity * delta_time;
+      // LINEAR MOTION
+      glm::vec3 dt_position = dt * lin_velocity;
+      position += dt_position;
 
-      // angular motion
+      // ANGULAR MOTION
+      glm::mat3 R = glm::mat3_cast(orientation);
       glm::mat3 world_inertia =
-          orientation * inv_inertia * glm::transpose(orientation);
+          R * properties.inv_inertia_tensor * glm::transpose(R);
       ang_velocity = world_inertia * ang_momentum;
-      orientation += glm::matrixCross3(ang_velocity) * orientation * delta_time;
-      orientation = glm::orthonormalize(orientation);
 
-      // update translation matrix
-      world_transform.SetRelPosition(lin_velocity * delta_time);
-      hull.getWorldTransform().SetRelPosition(lin_velocity * delta_time);
-      hull.updateCentroid(lin_velocity * delta_time);
+      // Update orientation
+      glm::quat omega_quat(0.0f, ang_velocity.x, ang_velocity.y,
+                           ang_velocity.z);
+      glm::quat dt_orientation = 0.5f * dt * omega_quat * orientation;
+      orientation += dt_orientation;
+      orientation = glm::normalize(orientation);
 
-      // SAME ISSUE AS BEFORE. IF MODEL ORIGIN NOT AT CENTRE OF MASS. ROTATION
-      // FAILS.
-      // world_transform.SetAbsRotation(glm::mat4(orientation));
-      // hull.getWorldTransform().SetAbsRotation(glm::mat4(orientation));
-
-      // update rotation matrix
-      world_transform.SetRotationAbtPoint(glm::mat4(orientation),
-                                          local_com_offset);
-      hull.getWorldTransform().SetRotationAbtPoint(glm::mat4(orientation),
-                                                   local_com_offset);
-
-      // applyForces();
+      // TRANSFORMATION MATRIX
+      // transform.set_displacement(dt_position);
+      // transform.set_rotation(dt_orientation);
+      //
+      update_transform();
     }
   }
 
-  void drag(glm::vec3 displacement) {
+  void drag(glm::vec3 delta) {
 
     // dragVelocity = 100.0f * displacement;
     //  update model transformations
-    world_transform.SetRelPosition(displacement);
-    hull.getWorldTransform().SetRelPosition(displacement);
 
-    // update COM positiosn
-    hull.updateCentroid(displacement);
-    com += displacement;
+    // Update transform
+    // transform.set_displacement(delta);
 
+    // Update COM position
+    position += delta;
+    update_transform();
     // track xyz offSets and deltaTime to accumulate velocity while dragging???
   }
 
-  void rotate(float xOffset, float yOffset) {
+  void rotate(float x_offset, float y_offset) {
 
-    xOffset *= 0.01f;
-    yOffset *= 0.01f;
+    x_offset *= 0.1f;
+    y_offset *= 0.1f;
 
-    glm::mat4 rotX =
-        glm::rotate(glm::mat4(1.0f), yOffset, glm::vec3(1.0f, 0.0f, 0.0f));
-    glm::mat4 rotY =
-        glm::rotate(glm::mat4(1.0f), xOffset, glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 rotation = rotY * rotX;
+    // Movement along y-axis rotates about x-axis and vice versa
+    glm::quat rot_x = glm::angleAxis(-y_offset, glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::quat rot_y = glm::angleAxis(x_offset, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::quat rotation = rot_y * rot_x;
 
-    world_transform.SetRotationAbtPoint(rotation, local_com_offset);
-    hull.getWorldTransform().SetRotationAbtPoint(rotation, local_com_offset);
+    // transform.set_rotation(rotation);
 
+    orientation = rotation * orientation;
+    orientation = glm::normalize(orientation);
+
+    update_transform();
+
+    /*
+    printf("Rotation applied: x_offset=%.3f, y_offset=%.3f\n", x_offset,
+           y_offset);
+    printf("New orientation: w=%.3f, x=%.3f, y=%.3f, z=%.3f\n", orientation.w,
+           orientation.x, orientation.y, orientation.z);
+    */
     // SAME ISSUE AS BEFORE. IF MODEL ORIGIN NOT AT CENTRE OF MASS. ROTATION
     // FAILS.
     // world_transform.SetRelRotation(rotation);
     // hull.getWorldTransform().SetRelRotation(rotation);
   }
 
+  // Body is static and unable to move
   void disable() {
 
     is_static = true;
-
     lin_velocity = glm::vec3(0.0f);
   }
 
-  void reset(glm::vec3 position) {
+  // Body is reset to provided position
+  void reset(glm::vec3 pos) {
 
-    world_transform.SetAbsPosition(position);
-
-    // Shull.updateCentroid(position);
-    hull.getWorldTransform().SetAbsPosition(position);
-
-    com = position;
+    position = pos;
     lin_velocity = glm::vec3(0.0f);
+    update_transform();
   }
 
+  // Let collider handle raycasting, not physics object
+  /*
   bool ray_intersection(Ray &worldRay, glm::vec3 &hitPoint) {
 
     glm::mat4 inverseModelMatrix = glm::inverse(world_transform.GetMatrix());
@@ -223,26 +373,20 @@ public:
 
     return res;
   }
+  */
 
-  void draw(Shader &shader) { rigidbody_model.Draw(shader); }
+  void draw(Shader &shader) { render_model.draw(shader); }
 
-  WorldTransform &getWorldTransform() { return world_transform; }
+  glm::vec3 get_centre_of_mass() const { return position; }
 
-  glm::vec3 get_centre_of_mass() { return com; }
+  // Returns geometric_centroid in world space
+  glm::vec3 get_geometric_centriod() const {
 
-  void printVec(glm::vec3 v) {
-    std::cout << "vec3(" << v.x << " " << v.y << " " << v.z << ")\n";
-  }
+    // Get offset translation matrix
+    // glm::mat4 offset =
+    //    glm::translate(glm::mat4(1.0f), -geometric_origin_offset);
 
-  void printDebug() {
-
-    std::string i = glm::to_string(inertia);
-    std::cout << "inertia: " << i << std::endl;
-    std::cout << "com: ";
-    printVec(com);
-    std::cout << "omega: ";
-    printVec(ang_velocity);
+    return glm::vec3(transform.get_matrix() *
+                     glm::vec4(geometric_origin_offset, 1.0f));
   }
 };
-
-#endif

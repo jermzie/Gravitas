@@ -13,25 +13,26 @@
 #include "HalfEdgeMesh.hpp"
 #include "MeshBuilder.hpp"
 
+class ConvexMesh {
+  std::vector<glm::vec3> vertices; // In local space (COM centred at orgin)
+  std::vector<size_t> indices;
+  std::vector<Face> faces;
+  std::vector<HalfEdge> half_edges;
+
+  glm::vec3 support() const;
+  bool ray_intersect(const Ray &local_ray, float &t) const;
+};
+
 class ConvexHull {
 private:
-  // Writing to .obj file
-  Model hullModel;
-  std::string hullName;
-
   // Rendering
   std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
   std::vector<glm::vec3> vertices;
   std::vector<size_t> indices;
 
-  // Transformations
-  WorldTransform hullTrans;
-  glm::vec3 localCentroid;
-
 public:
   // Face processing
   HalfEdgeMesh mesh;
-  glm::vec3 worldCentroid;
 
   /*
   ConvexHull(const ConvexHull& o)
@@ -105,7 +106,7 @@ public:
 
   ConvexHull() = default;
 
-  ConvexHull(const MeshBuilder &buildMesh,
+  ConvexHull(const ConvexMeshBuilder &buildMesh,
              const std::vector<glm::vec3> &pointCloud, bool CCW,
              bool useOriginalIndices) {
 
@@ -121,7 +122,7 @@ public:
 
     for (size_t i = 0; i < buildMesh.faces.size(); i++) {
 
-      if (!buildMesh.faces[i].isDisabled()) {
+      if (!buildMesh.faces[i].is_disabled()) {
         faceStack.push_back(i);
         break;
       }
@@ -132,7 +133,7 @@ public:
 
     const size_t isCCW = CCW ? 1 : 0;
     const size_t faceCount =
-        buildMesh.faces.size() - buildMesh.disabledFaces.size();
+        buildMesh.faces.size() - buildMesh.disabled_faces.size();
     indices.reserve(faceCount * 3);
 
     size_t i = 0;
@@ -140,7 +141,7 @@ public:
 
       auto itf = faceStack.end() - 1;
       size_t topIdx = *itf;
-      assert(!buildMesh.faces[topIdx].isDisabled());
+      assert(!buildMesh.faces[topIdx].is_disabled());
       faceStack.erase(itf);
 
       if (faceProcessed[topIdx]) {
@@ -148,21 +149,22 @@ public:
       } else {
 
         faceProcessed[topIdx] = true;
-        auto he = buildMesh.getFaceHalfEdges(buildMesh.faces[topIdx]);
+        auto he = buildMesh.get_face_half_edges(buildMesh.faces[topIdx]);
 
         // Push neighboring faces onto stack
         size_t adjacentFaces[] = {
-            buildMesh.halfEdges[buildMesh.halfEdges[he[0]].twin].face,
-            buildMesh.halfEdges[buildMesh.halfEdges[he[1]].twin].face,
-            buildMesh.halfEdges[buildMesh.halfEdges[he[2]].twin].face};
+            buildMesh.half_edges[buildMesh.half_edges[he[0]].twin].face,
+            buildMesh.half_edges[buildMesh.half_edges[he[1]].twin].face,
+            buildMesh.half_edges[buildMesh.half_edges[he[2]].twin].face};
         for (auto f : adjacentFaces) {
-          if (!faceProcessed[f] && !buildMesh.faces[f].isDisabled()) {
+          if (!faceProcessed[f] && !buildMesh.faces[f].is_disabled()) {
             faceStack.push_back(f);
           }
         }
 
         // Process face vertices
-        auto faceVertices = buildMesh.getFaceVertices(buildMesh.faces[topIdx]);
+        auto faceVertices =
+            buildMesh.get_face_vertices(buildMesh.faces[topIdx]);
         if (!useOriginalIndices) {
           for (auto &v : faceVertices) {
             auto itv = mapVertex2Index.find(v);
@@ -197,7 +199,7 @@ public:
 
   void getHullModel(const Model &objectModel, WorldTransform objectTrans) {
 
-    std::string objectName = objectModel.fileName;
+    std::string objectName = objectModel.file_name;
     size_t dotPos = objectName.find_last_of(".");
     std::string name = objectName.substr(0, dotPos);
     std::string ext = objectName.substr(dotPos);
@@ -423,10 +425,6 @@ public:
 
     worldCentroid += displacement;
   }
-
-  WorldTransform &getWorldTransform() { return hullTrans; }
-
-  const WorldTransform &getWorldTransform() const { return hullTrans; }
 
   void draw(Shader &shader) { hullModel.Draw(shader); }
 

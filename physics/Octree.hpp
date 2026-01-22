@@ -1,43 +1,32 @@
-#ifndef OCTREE_H
-#define OCTREE_H
+#pragma once
 
 #include "AABB.hpp"
 #include "RigidBody.hpp"
 
 struct OctreeBody {
 
-	const RigidBody* body;
-	const AABB* aabb;
-
+  const RigidBody *body;
+  const AABB *aabb;
 };
 
 struct OctreeNode {
 
-	AABB aabb;
-	glm::vec3 centre;
-	std::vector<OctreeBody> bodies;
-	bool isLeaf;
-	OctreeNode* children[8] = { nullptr };
-
+  AABB aabb;
+  glm::vec3 centre;
+  std::vector<OctreeBody> bodies;
+  bool isLeaf;
+  OctreeNode *children[8] = {nullptr};
 };
 
 class Octree {
 
 private:
+  OctreeNode root;
+  float min_size;
 
-	OctreeNode root;
-	float min_size;
+  void insert_recursive(OctreeNode *curr, OctreeBody, b) {}
 
-	void insert_recursive(OctreeNode* curr, OctreeBody, b) {
+  void intersects_recursive(const OctreeNode *curr, std::set<> *out) {}
 
-	}
-
-	void intersects_recursive(const OctreeNode* curr, std::set<>* out) {
-
-	}
 public:
-
-
 };
-
-#endif 

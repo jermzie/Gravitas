@@ -1,9 +1,8 @@
-#ifndef AABB_HPP
-#define AABB_HPP
+#pragma once
 
 #include "../inc/Model.hpp"
 #include "../inc/Ray.hpp"
-#include "../inc/WorldTransform.hpp"
+#include "../inc/Transform.hpp"
 #include <glm/glm.hpp>
 
 struct AABB {
@@ -96,5 +95,3 @@ inline AABB fatten(const AABB& box, float margin) {
     return { box - glm::vec3(margin), box + glm::vec3(margin) };
 }
 */
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef BROADPHASE_HPP
-#define BROADPHASE_HPP
+#pragma once
 
 #include <glm/glm.hpp>
 
@@ -8,8 +7,7 @@
 #include <vector>
 
 #include "../inc/Ray.hpp"
-#include "AABB.hpp"
-#include "ConvexHull.hpp"
+// #include "AABB.hpp"
 #include "PhysicsEngine.hpp"
 #include "RigidBody.hpp"
 
@@ -26,10 +24,10 @@ struct Node {
   AABB box;
   int object_id = -1;
 
-  bool is_leaf() const { return left == NULL_INDEX && right == NULL_INDEX };
+  bool is_leaf() const { return left == NULL_INDEX && right == NULL_INDEX; };
 };
 
-class BVH {
+class Broadphase {
 private:
   std::vector<Node> nodes;
   int free_list = NULL_INDEX;
@@ -454,5 +452,3 @@ public:
     return false;
   }
 };
-
-#endif

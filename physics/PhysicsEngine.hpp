@@ -1,5 +1,4 @@
-#ifndef PHYSICSENGINE_HPP
-#define PHYSICSENGINE_HPP
+#pragma once
 
 #include <glm/glm.hpp>
 
@@ -7,28 +6,27 @@
 
 #include "../inc/Model.hpp"
 #include "../inc/Plane.hpp"
-#include "ConvexHull.hpp"
+#include "CollisionGeometry.hpp"
 #include "RigidBody.hpp"
 
 // DOESNT WORK
 // #include "Broadphase.hpp"
 // DOESNT WORK
-#include "AABB.hpp"
-
-#include "BoundingSphere.hpp"
+// #include "AABB.hpp"
+// DOESNT WORK
+// #include "BoundingSphere.hpp"
 #include "Narrowphase.hpp"
 
 class PhysicsEngine {
 private:
-  SAT narrowphase;
+  Narrowphase sat;
   // BVH broadphase;
 
 public:
   std::vector<RigidBody> bodies;
-  std::vector<BoundingSphere> colliders;
   std::vector<std::pair<int, int>> potential_collisions;
 
-  void step(double dt) {
+  void step(float dt) {
 
     // std::cerr << "Entered collision function\n";
     //  1. integrate forces
@@ -47,6 +45,7 @@ public:
     // potential_collisions = broadphase.query_pairs();
 
     // DOESNT WORK
+    /*
     for (auto pair : potential_collisions) {
 
       if (narrowphase.SATPolyPoly(bodies[pair.first].hull,
@@ -54,27 +53,23 @@ public:
         printf("HIT OBJECT\n");
       }
     }
+    */
 
     // 3. narrowphase (SAT) -- build contact list
 
-    /*
-    for (auto& b1 : bodies) {
+    for (auto &b1 : bodies) {
 
-            for (auto& b2 : bodies) {
+      for (auto &b2 : bodies) {
 
-                    if (b1.id == b2.id) {
-                            continue;
-                    }
+        if (b1.id == b2.id) {
+          continue;
+        }
 
-
-                    else if(narrowphase.optimizedSAT(b1.hull, b2.hull)) {
-                            std::cout << "HIT BETWEEN OBJECT: " << b1.id << " &
-    " << b2.id << std::endl;
-                    }
-
-            }
+        else if (sat.poly_poly_collision(b1, b2)) {
+          std::cout << "HIT OBJECT" << std::endl;
+        }
+      }
     }
-    */
 
     // 4. collision solver (iterative)
 
@@ -83,29 +78,27 @@ public:
       glm::vec3 position = bodies[i].get_centre_of_mass();
 
       // check if body above/below floor/ceil; if not just translate y-axis
-      if (position.y <= -20.0f) {
+      // if (position.y <= -20.0f) {
 
-        bodies[i].reset(glm::vec3(position.x, 20.0f, position.z));
-      }
+      // bodies[i].reset(glm::vec3(position.x, 20.0f, position.z));
+      //}
 
       // bodies[i].integrateForces(dt);
       bodies[i].update(dt);
     }
   }
 
-  void addRigidBody(RigidBody &&body) {
+  void add_rigid_body(RigidBody &&body) {
 
     body.id = (int)bodies.size() + 1;
     bodies.push_back(std::move(body));
     // broadphase.insert();
   }
 
-  void removeRigidBody(RigidBody body) {
+  void remove_rigid_body(RigidBody body) {
 
     // bodies.erase();s
   }
 
-  void removeAllBodies() { bodies.clear(); }
+  void remove_all_bodies() { bodies.clear(); }
 };
-
-#endif
