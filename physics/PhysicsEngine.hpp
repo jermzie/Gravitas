@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+#include "../inc/Debugger.hpp"
 #include "../inc/Model.hpp"
 #include "../inc/Plane.hpp"
 #include "CollisionGeometry.hpp"
@@ -19,10 +20,13 @@
 
 class PhysicsEngine {
 private:
+  Debugger *debug = nullptr;
   Narrowphase sat;
   // BVH broadphase;
 
 public:
+  void set_debugger(Debugger *debug) { this->debug = debug; }
+
   std::vector<RigidBody> bodies;
   std::vector<std::pair<int, int>> potential_collisions;
 
@@ -65,7 +69,7 @@ public:
           continue;
         }
 
-        else if (sat.poly_poly_collision(b1, b2)) {
+        else if (sat.poly_poly_collision(b1, b2, debug)) {
           std::cout << "HIT OBJECT" << std::endl;
         }
       }

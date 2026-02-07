@@ -1,6 +1,7 @@
 #pragma once
 
 // NOT DONE
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 
@@ -18,6 +19,7 @@ public:
     size_t twin;
     size_t face;
     size_t next;
+    size_t prev;
   };
 
   struct Face {
@@ -32,8 +34,7 @@ public:
   ConvexMesh() = default;
 
   // Build half-edge mesh representation of convex hull
-  ConvexMesh(const ConvexMeshBuilder &mesh_builder,
-             const std::vector<glm::vec3> &point_cloud) {
+  ConvexMesh(const ConvexMeshBuilder &mesh_builder, const std::vector<glm::vec3> &point_cloud) {
 
     std::unordered_map<size_t, size_t> face_map;
     std::unordered_map<size_t, size_t> half_edge_map;
@@ -44,8 +45,7 @@ public:
 
       if (!f.is_disabled()) {
 
-        faces.push_back(
-            {static_cast<size_t>(f.he), static_cast<Plane>(f.plane)});
+        faces.push_back({static_cast<size_t>(f.he), static_cast<Plane>(f.plane)});
         // faces.push_back({ static_cast<size_t>(f.he) });
         face_map[i] = faces.size() - 1;
 
@@ -67,9 +67,11 @@ public:
     for (const auto &he : mesh_builder.half_edges) {
       if (!he.is_disabled()) {
 
-        half_edges.push_back(
-            {static_cast<size_t>(he.vert), static_cast<size_t>(he.twin),
-             static_cast<size_t>(he.face), static_cast<size_t>(he.next)});
+        half_edges.push_back({static_cast<size_t>(he.vert),
+            static_cast<size_t>(he.twin),
+            static_cast<size_t>(he.face),
+            static_cast<size_t>(he.next),
+            static_cast<size_t>(he.prev)});
         half_edge_map[i] = half_edges.size() - 1;
       }
       i++;
@@ -84,6 +86,7 @@ public:
       he.face = face_map[he.face];
       he.twin = half_edge_map[he.twin];
       he.next = half_edge_map[he.next];
+      he.prev = half_edge_map[he.prev];
       he.vert = vertex_map[he.vert];
     }
   }
@@ -101,14 +104,47 @@ public:
     return v;
   }
 
-  std::array<size_t, 3> get_face_half_edges(const Face &f) const {
-    return {f.he, half_edges[f.he].next,
-            half_edges[half_edges[f.he].next].next};
+  std::vector<size_t> get_face_half_edges(const Face &f) const {
+    std::vector<size_t> edges;
+    size_t initial_half_edge = f.he;
+    size_t current_half_edge = initial_half_edge;
+    size_t safety_count = 0;
+    const size_t max_iterations = half_edges.size();
+
+    do {
+      edges.push_back(current_half_edge);
+      current_half_edge = half_edges[current_half_edge].next;
+      if (++safety_count > max_iterations) {
+        std::cerr << "ERROR: Infinite loop detected" << std::endl;
+        break;
+      }
+    } while (current_half_edge != initial_half_edge);
+
+    return edges;
   }
 
-  std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const {
-    return {half_edges[he.twin].vert, he.vert};
+  // Keep triangular version for backwards compatibility
+  std::array<size_t, 3> get_face_half_edges_tri(const Face &f) const {
+    return {f.he, half_edges[f.he].next, half_edges[half_edges[f.he].next].next};
   }
+
+  std::vector<size_t> get_vertices(const Face &f) const {
+
+    std::vector<size_t> out;
+
+    size_t initial_half_edge = f.he;
+    size_t current_half_edge = half_edges[initial_half_edge].next;
+    while (current_half_edge != initial_half_edge) {
+
+      const HalfEdge *he = &half_edges[current_half_edge];
+      out.push_back(he->vert);
+      current_half_edge = half_edges[current_half_edge].next;
+    }
+
+    return out;
+  }
+
+  std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const { return {half_edges[he.twin].vert, he.vert}; }
 
   glm::vec3 compute_geometric_centroid() const {
 
@@ -133,9 +169,8 @@ public:
   const std::array<float, 6> get_extrema() const {
 
     std::array<size_t, 6> extrema_indices{0, 0, 0, 0, 0, 0};
-    std::array<float, 6> extrema_vertices{vertices[0].x, vertices[0].x,
-                                          vertices[0].y, vertices[0].y,
-                                          vertices[0].z, vertices[0].z};
+    std::array<float, 6> extrema_vertices{
+        vertices[0].x, vertices[0].x, vertices[0].y, vertices[0].y, vertices[0].z, vertices[0].z};
 
     for (size_t i = 1; i < vertices.size(); i++) {
 

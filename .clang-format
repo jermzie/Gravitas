@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 120
+
+AlignAfterOpenBracket: DontAlign
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Inline

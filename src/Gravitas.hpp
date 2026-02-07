@@ -22,6 +22,7 @@
 #include "../inc/Shader.hpp"
 
 // Debugging
+#include "../inc/Debugger.hpp"
 #include "../inc/Gui.hpp"
 
 // Physics
@@ -76,6 +77,7 @@ private:
   // Physics
   PhysicsEngine scene;
   Gui gui;
+  Debugger debug;
 
   bool wireFrame = false;
   bool defaultView = false;

@@ -73,29 +73,26 @@ private:
 
   struct FaceData {
     size_t face_index;
-    size_t
-        entered_from_half_edge; // Mark as horizon edge if face is not visible
+    size_t entered_from_half_edge; // Mark as horizon edge if face is not visible
 
     FaceData() = default;
-    FaceData(size_t face, size_t he)
-        : face_index(face), entered_from_half_edge(he) {}
+    FaceData(size_t face, size_t he) : face_index(face), entered_from_half_edge(he) {}
   };
 
   std::vector<FaceData> possible_visible_faces;
   std::deque<size_t> face_stack;
 
-  void build_mesh(const std::vector<glm::vec3> &point_cloud,
-                  float default_epsilon = 0.0001f);
+  void build_mesh(const std::vector<glm::vec3> &point_cloud, float default_epsilon = 0.0001f);
 
   void setup_initial_tetrahedron();
 
   void create_half_edge_mesh();
 
-  bool connect_horizon_edges(std::vector<size_t> &horizonEdges);
+  bool connect_horizon_edges(std::vector<size_t> &horizon_edges);
 
-  std::array<size_t, 6> get_extrema();
+  std::array<size_t, 6> find_extrema_points();
 
-  float get_scale();
+  float compute_point_cloud_scale();
 
   bool add_point_to_face(ConvexMeshBuilder::Face &face, size_t point_index);
 
@@ -103,22 +100,25 @@ private:
 
   inline void reclaim_conflict_list(std::unique_ptr<std::vector<size_t>> &ptr);
 
+  // Face merging
+  Plane compute_newell_plane(const std::vector<size_t> &vertex_indices);
+
+  bool test_face_convexity(const size_t &face1_index, const size_t &face2_index);
+
+  void resolve_topological_errors(const size_t &shared_edge_index);
+
+  void merge_nonconvex_faces(
+      const size_t &absorbing_face_index, const size_t &deleted_face_index, const size_t &shared_edge_index);
+
+  void merge_new_faces(const std::vector<size_t> &new_faces);
+
 public:
   QuickHull() = default;
 
-  /*
-  ConvexHull getConvexHull(const std::vector<glm::vec3> &pointCloud,
-                           bool CCW = true, bool useOriginalIndices = false,
-                           float epsilon = 0.0001f);
-
-  HalfEdgeMesh getHalfEdgeMesh(const std::vector<glm::vec3> &pointCloud,
-                               bool CCW = true, float epsilon = 0.0001f);
-  */
-
   ConvexMesh build_convex_mesh(const std::vector<glm::vec3> &point_cloud,
-                               bool is_counter_clock_wise = true,
-                               bool use_original_indices = false,
-                               float epsilon = 0.0001f);
+      bool is_counter_clock_wise = true,
+      bool use_original_indices = false,
+      float epsilon = 0.0001f);
 
   std::array<float, 6> get_extrema_vertices();
 };

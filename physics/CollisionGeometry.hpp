@@ -78,8 +78,7 @@ private:
         auto he = mesh.get_face_half_edges(mesh.faces[top_index]);
 
         // Push neighboring faces onto stack
-        size_t adjacent_faces[] = {
-            mesh.half_edges[mesh.half_edges[he[0]].twin].face,
+        size_t adjacent_faces[] = {mesh.half_edges[mesh.half_edges[he[0]].twin].face,
             mesh.half_edges[mesh.half_edges[he[1]].twin].face,
             mesh.half_edges[mesh.half_edges[he[2]].twin].face};
         for (auto f : adjacent_faces) {
@@ -141,8 +140,7 @@ public:
   }
   */
 
-  CollisionGeometry(const ConvexMesh &mesh, bool is_counter_clockwise = true,
-                    bool use_original_indices = true) {
+  CollisionGeometry(const ConvexMesh &mesh, bool is_counter_clockwise = true, bool use_original_indices = true) {
 
     // Build render indices from topology
     build_render_indices(mesh, is_counter_clockwise);
@@ -284,9 +282,7 @@ public:
 
   ConvexMesh &get_mesh() { return mesh; }
 
-  const std::vector<size_t> &get_render_indices() const {
-    return render_indices;
-  };
+  const std::vector<size_t> &get_render_indices() const { return render_indices; };
 
   /*
   AABB compute_aabb() const {

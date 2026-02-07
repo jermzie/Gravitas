@@ -10,18 +10,15 @@ struct AABB {
   glm::vec3 min;
   glm::vec3 max;
 
-  void init(std::array<float, 6U> extrema) {
+  /*
+    void init(std::array<float, 6U> extrema) {
 
-    for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) {
 
-      /*
-       *   array structure:
-       *   0      1      2      3      4      5
-       *  [x_min, x_max, y_min, y_max, z_min, z_max]
-       */
-      (i % 2 == 0) ? min[i / 2] = extrema[i] : max[i / 2] = extrema[i];
+        (i % 2 == 0) ? min[i / 2] = extrema[i] : max[i / 2] = extrema[i];
+      }
     }
-  }
+  */
 
   /*
   // simple ray intersection test

@@ -1,8 +1,7 @@
 ﻿#include "Gravitas.hpp"
 #include <random>
 
-Gravitas::Gravitas(unsigned int width, unsigned int height)
-    : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
+Gravitas::Gravitas(unsigned int width, unsigned int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
 
   prev_x = width / 2.0f;
   prev_y = height / 2.0f;
@@ -22,6 +21,7 @@ bool Gravitas::init() {
     return false;
 
   init_callbacks();
+  debug.init();
   init_scene();
   gui.init(window, glsl_version);
 
@@ -30,6 +30,8 @@ bool Gravitas::init() {
 
 void Gravitas::run() {
   while (!glfwWindowShouldClose(window)) {
+
+    debug.new_frame();
 
     // per-frame time logic
     curr_frame = static_cast<float>(glfwGetTime());
@@ -45,6 +47,7 @@ void Gravitas::run() {
 
     // render scene
     render();
+    debug.render(view, projection, glm::mat4(1.0f));
 
     // imgui shit
     gui.new_frame();
@@ -52,7 +55,7 @@ void Gravitas::run() {
     gui.render();
 
     glfwSwapBuffers(window);
-    glfwSwapInterval(1); // VSYNC disabled; limits fps to refresh rate (144hz)
+    // glfwSwapInterval(1); // VSYNC disabled; limits fps to refresh rate (144hz)
   }
 }
 
@@ -71,19 +74,17 @@ bool Gravitas::init_glfw() {
 
   // glfw window creation
   // --------------------
-  window =
-      glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Gravitas", NULL, NULL);
+  window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Gravitas", NULL, NULL);
   if (window == nullptr) {
     std::cout << "Failed to create GLFW window" << std::endl;
     glfwTerminate();
     return false;
   }
 
-  glfwMakeContextCurrent(
-      window); // make opengl context current immediately after window creation
+  glfwMakeContextCurrent(window);         // make opengl context current immediately after window creation
   glfwSetWindowUserPointer(window, this); // Add this line
   glfwSetInputMode(window, GLFW_CURSOR,
-                   GLFW_CURSOR_CAPTURED); // tell glfw to capture our mouse
+      GLFW_CURSOR_CAPTURED); // tell glfw to capture our mouse
 
   return true;
 }
@@ -104,7 +105,7 @@ bool Gravitas::init_glad() {
   glEnable(GL_STENCIL_TEST);
   glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
   glStencilOp(GL_KEEP, GL_KEEP,
-              GL_REPLACE); // pass/fail action for stencil test
+      GL_REPLACE); // pass/fail action for stencil test
 
   // glEnable(GL_BLEND);
   // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);      // Final color =
@@ -141,28 +142,38 @@ void Gravitas::init_scene() {
   Model suzanne_model("suzanne.obj");
   Model teapot_model("teapot.obj");
   Model david_model("david.obj");
+  Model cow_model("cow.obj");
+  Model bunny_model("stanford-bunny.obj");
+  Model dragon_model("dragon.obj");
 
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
   RigidBody light(cube_model, 1.0, glm::vec3(2.0, 2.0, 2.0));
   // RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 1.0, 4.0));
   RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
-  // RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
-  // RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
+  RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
+  //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
   RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
   // RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
-  // RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  //    RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  // RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //    RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //    RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
-  // scene.addRigidBody(std::move(tetra));
+  // scene.add_rigid_body(std::move(tetra));
   scene.add_rigid_body(std::move(cube));
-  // scene.addRigidBody(std::move(cyl));
-  // scene.addRigidBody(std::move(ball));
+  scene.add_rigid_body(std::move(cyl));
+  // scene.add_rigid_body(std::move(ball));
   scene.add_rigid_body(std::move(suzanne));
-  //  scene.addRigidBody(std::move(teapot));
-  //  scene.addRigidBody(std::move(david));
+  // scene.add_rigid_body(std::move(teapot));
+  //      scene.addRigidBody(std::move(david));
+  // scene.add_rigid_body(std::move(cow));
+  //   scene.add_rigid_body(std::move(bunny));
+  //   scene.add_rigid_body(std::move(dragon));
 
+  scene.set_debugger(&debug);
   /*
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
@@ -223,24 +234,18 @@ glm::vec3 rand_pos() {
 void Gravitas::update() {
 
   // update camera transformations
-  projection = glm::perspective(glm::radians(camera.zoom),
-                                (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
-                                0.01f, 500.0f);
+  projection = glm::perspective(glm::radians(camera.zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
   view = camera.get_view_matrix();
 
   // update picking/dragging
   if (left_mouse_btn.is_down) {
 
     // convert 2D mouse coords to world space coords
-    Ray ray =
-        screen_to_world_ray(left_mouse_btn.x, left_mouse_btn.y, SCREEN_WIDTH,
-                            SCREEN_HEIGHT, projection, view);
-
+    Ray ray = screen_to_world_ray(left_mouse_btn.x, left_mouse_btn.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
     // rotating
     if (is_rotating && selected_object != -1) {
 
-      scene.bodies[selected_object].rotate(left_mouse_btn.x_offset,
-                                           left_mouse_btn.y_offset);
+      scene.bodies[selected_object].rotate(left_mouse_btn.x_offset, left_mouse_btn.y_offset);
 
       // per-frame offsets -- rotations don't continue when mouse isn't moving
       left_mouse_btn.x_offset = 0.0f;
@@ -274,12 +279,14 @@ void Gravitas::update() {
       // should use Broadphase to raycast bvh first
       for (int i = 0; i < scene.bodies.size(); ++i) {
 
-        glm::vec3 hit_point;
-        if (scene.bodies[i].raycast(ray, hit_point)) {
+        float t;
+        if (scene.bodies[i].raycast(ray, t)) {
 
+          glm::vec3 hit_point = ray.origin + ray.direction * t;
           selected_object = i;
           scene.bodies[i].disable();
 
+          std::cout << "PICKED RIGID BODY " << scene.bodies[i].id << std::endl;
           // record initial object pos
           old_position = hit_point;
 
@@ -339,14 +346,12 @@ void Gravitas::render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
   // update transformations
-  projection = glm::perspective(glm::radians(camera.zoom),
-                                (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
-                                0.01f, 500.0f);
+  projection = glm::perspective(glm::radians(camera.zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
   view = camera.get_view_matrix();
 
   for (int i = 0; i < scene.bodies.size(); ++i) {
 
-    glm::mat4 model_matrix = scene.bodies[i].get_matrix();
+    glm::mat4 model_matrix = scene.bodies[i].get_render_matrix();
     // glm::vec3 position = objectTrans.GetPosition();
     //
 
@@ -358,21 +363,43 @@ void Gravitas::render() {
     std::cout << "(" << cen.x << ", " << cen.y << ", " << cen.z << ")\n";
     */
 
+    const auto mesh = scene.bodies[i].get_mesh();
+    debug.draw_vertex(scene.bodies[i].get_centre_of_mass(), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // NEED EASIER METHOD OF TRANSFORMING VERTICES BETWEEN SPACES
+    /*
+    glm::mat4 physics_matrix = scene.bodies[i].get_physics_matrix();
+    std::array<size_t, 2> edge =
+        mesh.get_half_edge_vertices(mesh.half_edges[0]);
+    glm::vec3 start =
+        glm::vec3(physics_matrix * glm::vec4(mesh.vertices[edge[0]], 1.0f));
+    glm::vec3 end =
+        glm::vec3(physics_matrix * glm::vec4(mesh.vertices[edge[1]], 1.0f));
+
+    debug.draw_line(start, end, glm::vec3(1.0f, 0.0f, 0.0f));
+    */
+
+    debug.draw_mesh(scene.bodies[i].get_mesh(), scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
+
     if (i == selected_object) {
 
+      /*
       glm::mat4 m = scene.bodies[i].get_matrix();
       printf("\nTransform matrix\n");
       for (int row = 0; row < 4; row++) {
-        printf("  %f %f %f %f\n", m[0][row], m[1][row], m[2][row], m[3][row]);
+        printf("  %f %f %f %f\n", m[0][row], m[1][row],
+      m[2][row], m[3][row]);
       }
-
-      // first pass -- render object normally & write to stencil buffer
+      */
+      // first pass -- render object normally & write to stencil
+      // buffer
       glStencilFunc(GL_ALWAYS, 1, 0xFF);
       glStencilMask(0xFF);
       glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
       /* pickingShader.use();
-       pickingShader.setMat4("gWVP", projection * view * bodyTrans.GetMatrix());
+       pickingShader.setMat4("gWVP", projection * view *
+       bodyTrans.GetMatrix());
        scene.bodies[i].draw(pickingShader);*/
 
       default_shader.use();
@@ -395,7 +422,8 @@ void Gravitas::render() {
       scene.bodies[i].draw(default_shader);
 
       // draw outline
-      // second pass -- render scaled down object & disable stencil writing
+      // second pass -- render scaled down object & disable
+      // stencil writing
       glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
       glStencilMask(0x00);
       glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -412,7 +440,8 @@ void Gravitas::render() {
       outline_shader.set_mat4("view", view);
       outline_shader.set_mat4("model", outline_matrix);
 
-      // outlineShader.setMat4("gWVP", projection * view * originalMat4);
+      // outlineShader.setMat4("gWVP", projection * view *
+      // originalMat4);
       scene.bodies[i].draw(outline_shader);
 
       glStencilFunc(GL_ALWAYS, 0, 0xFF);
@@ -445,8 +474,7 @@ void Gravitas::render() {
         // frag uniforms
         default_shader.set_vec3("objectColor", 1.0f, 0.5f, 0.31f);
         default_shader.set_vec3("lightColor", 1.0f, 1.0f, 0.773f);
-        default_shader.set_vec3("lightPos",
-                                scene.bodies[0].get_centre_of_mass());
+        default_shader.set_vec3("lightPos", scene.bodies[0].get_centre_of_mass());
         default_shader.set_vec3("viewPos", camera.position);
 
         scene.bodies[i].draw(default_shader);
@@ -457,9 +485,12 @@ void Gravitas::render() {
     // draw wireframe collision mesh
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     picking_shader.use();
-    // Transform &colliderTrans = scene.bodies[i].hull.getWorldTransform();
-    //  glm::vec3 colliderPosition = colliderTrans.GetPosition();
-    //  colliderTrans.SetPosition(colliderPosition * PHYSICS_SCALE);
+    // Transform &colliderTrans =
+    // scene.bodies[i].hull.getWorldTransform();
+    //  glm::vec3 colliderPosition =
+    //  colliderTrans.GetPosition();
+    //  colliderTrans.SetPosition(colliderPosition *
+    //  PHYSICS_SCALE);
     picking_shader.set_mat4("gWVP", projection * view * model_matrix);
     // need to determine how to implement collider draw calls
     // scene.bodies[i].collider.hull.draw(picking_shader);
@@ -498,9 +529,8 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
 
     // nothing currently active, claim key
     if (active_key == -1) {
-      if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E ||
-          key == GLFW_KEY_R || key == GLFW_KEY_1 || key == GLFW_KEY_2 ||
-          key == GLFW_KEY_3)
+      if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R || key == GLFW_KEY_1 ||
+          key == GLFW_KEY_2 || key == GLFW_KEY_3)
         active_key = key;
     }
     // ignore additional presses while another key is active
@@ -527,21 +557,23 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
 
   case GLFW_KEY_R:
     is_rotating = true; // rotate flag
+                        // disable cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     break;
 
   case GLFW_KEY_1:
-    camera.position = glm::vec3(0.0f, 0.0f, 20.0f);
-    camera.front_vector = glm::vec3(0.0f, 0.0f, -1.0f);
+    camera.reset(glm::vec3(0.0f, 0.0f, 20.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
     break;
 
   case GLFW_KEY_2:
-    camera.position = glm::vec3(20.0f, 0.0f, 0.0f);
-    camera.front_vector = glm::vec3(-1.0f, 0.0f, 0.0f);
+    camera.reset(
+        glm::vec3(20.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -180.0f, 0.0f);
     break;
 
   case GLFW_KEY_3:
-    camera.position = glm::vec3(0.0f, 10.0f, 0.0f);
-    camera.front_vector = glm::vec3(0.0f, -0.9f, 0.0f);
+    camera.reset(
+        glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), -270.0f, 0.0f);
     break;
 
   default:

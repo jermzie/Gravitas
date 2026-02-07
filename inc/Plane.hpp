@@ -18,16 +18,19 @@ struct Plane {
   Plane() = default;
   Plane(const glm::vec3 &n, const glm::vec3 &p)
       : normal(n), point(p), distance(-glm::dot(n, p)),
-        normal_len_squared(normal.x * normal.x + normal.y * normal.y +
-                           normal.z * normal.z) {}
+        normal_len_squared(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) {}
 };
 
 inline float get_signed_distance_to_plane(const glm::vec3 &v, const Plane &p) {
   return glm::dot(p.normal, v) + p.distance;
 }
 
-inline glm::vec3 get_triangle_normal(const glm::vec3 &a, const glm::vec3 &b,
-                                     const glm::vec3 &c) {
+inline float get_triangle_area(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 c) {
+
+  return 0.5f * glm::length(glm::cross(b - a, c - a));
+}
+
+inline glm::vec3 get_triangle_normal(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) {
 
   /*
   Manually compute cross product without constructing temp vectors and function

@@ -55,7 +55,6 @@ private:
   glm::quat orientation;
 
   // Physics state
-  Transform transform;
   MassProperties properties;
   glm::vec3 lin_velocity = glm::vec3(0.0f);
   glm::vec3 lin_momentum = glm::vec3(0.0f);
@@ -93,6 +92,8 @@ public:
   bool is_static = false;
   bool is_dragging = false;
 
+  Transform transform;
+
   void apply_force(glm::vec3 f, glm::vec3 point);
 
   void integrate(float dt);
@@ -105,20 +106,17 @@ public:
   }
   */
 
-  bool raycast(const Ray &world_ray, glm::vec3 &hit_point) {
+  bool raycast(const Ray &world_ray, float &t) {
 
     glm::mat4 inv_transform = transform.get_inverse_matrix();
     // Ray local_ray = transform.world_to_local(world_ray);
     // return collision.mesh.ray_intersect(local_ray, t);
 
     Ray local_ray;
-    local_ray.origin =
-        glm::vec3(inv_transform * glm::vec4(world_ray.origin, 1.0f));
-    local_ray.direction =
-        glm::vec3(inv_transform * glm::vec4(world_ray.direction, 0.0f));
+    local_ray.origin = glm::vec3(inv_transform * glm::vec4(world_ray.origin, 1.0f));
+    local_ray.direction = glm::vec3(inv_transform * glm::vec4(world_ray.direction, 0.0f));
 
     // glm::vec3 local_hit_point;
-    float t;
     int hit = collider.hull.raycast(local_ray, t);
 
     if (hit != 0) {
@@ -126,9 +124,10 @@ public:
       // &>(transform).get_matrix();
       glm::mat4 world_transform = transform.get_matrix();
       glm::vec3 local_hit_point = local_ray.origin + local_ray.direction * t;
-      hit_point = glm::vec3(world_transform * glm::vec4(local_hit_point, 1.0f));
       // hit_point = glm::vec3(world_transform *
       // glm::vec4(local_hit_point, 1.0f));
+      //  hit_point = glm::vec3(world_transform *
+      //  glm::vec4(local_hit_point, 1.0f));
       return true;
     }
 
@@ -142,24 +141,26 @@ public:
 
   glm::mat4 get_render_matrix() const {
 
-    // Get matrix (COM in world space)
-    glm::mat4 base = transform.get_matrix();
-
-    // Get offset translation matrix
+    glm::mat4 base = transform.get_matrix(); // Local COM space -> World space
     glm::mat4 offset = glm::translate(glm::mat4(1.0f), -model_origin_offset);
-    return base * offset;
+    return base * offset; // Model -> COM -> World
   }
 
-  glm::mat4 get_matrix() const {
+  glm::mat4 get_physics_matrix() const {
     // glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
     // glm::mat4 R = glm::mat4_cast(orientation);
     // return T * R;
-    return transform.get_matrix();
+    return transform.get_matrix(); // Local COM space -> World space
   }
 
   ConvexMesh get_mesh() const { return collider.hull.get_mesh(); }
 
-  RigidBody(Model model, float density, glm::vec3 position) {
+  RigidBody(const Model &model, const float &density, const glm::vec3 &position) {
+
+    this->render_model = model;
+    this->position = position;
+    this->density = density;
+    this->orientation = glm::quat(1, 0, 0, 0);
 
     // 1. Build collision geometry
     QuickHull qh;
@@ -169,28 +170,24 @@ public:
     properties = MassProperties::compute(mesh, density);
     model_origin_offset = properties.centre_of_mass;
 
-    // 3. Shift vertices so COM is at origin
-    for (auto &v : mesh.vertices) {
+    // 3. Shift vertices so COM centered at origin
+    for (glm::vec3 &v : mesh.vertices) {
       v -= properties.centre_of_mass;
     }
 
     // 4. Recompute mass properties (COM should be ~(0, 0, 0))
-    properties = MassProperties::compute(mesh, density);
+    // properties = MassProperties::compute(mesh, density);
     geometric_origin_offset = mesh.compute_geometric_centroid();
 
     // 5. Build collision geometry
     collider.hull = CollisionGeometry(mesh);
 
     // 6. Transform into world space
-    this->position = position;
-    this->orientation = glm::quat(1, 0, 0, 0);
-
-    // transform.set_position(position);
-    // transform.set_orientation(orientation);
-    //
     update_transform();
 
-    render_model = model;
+    std::cout << "CONVEX MESH VERTICES: " << mesh.vertices.size() << std::endl;
+    std::cout << "CONVEX MESH FACES: " << mesh.faces.size() << std::endl;
+    std::cout << "CONVEX MESH EDGES: " << mesh.half_edges.size() << std::endl;
   }
 
   /*
@@ -271,13 +268,11 @@ public:
 
       // ANGULAR MOTION
       glm::mat3 R = glm::mat3_cast(orientation);
-      glm::mat3 world_inertia =
-          R * properties.inv_inertia_tensor * glm::transpose(R);
+      glm::mat3 world_inertia = R * properties.inv_inertia_tensor * glm::transpose(R);
       ang_velocity = world_inertia * ang_momentum;
 
       // Update orientation
-      glm::quat omega_quat(0.0f, ang_velocity.x, ang_velocity.y,
-                           ang_velocity.z);
+      glm::quat omega_quat(0.0f, ang_velocity.x, ang_velocity.y, ang_velocity.z);
       glm::quat dt_orientation = 0.5f * dt * omega_quat * orientation;
       orientation += dt_orientation;
       orientation = glm::normalize(orientation);
@@ -306,8 +301,8 @@ public:
 
   void rotate(float x_offset, float y_offset) {
 
-    x_offset *= 0.1f;
-    y_offset *= 0.1f;
+    x_offset *= 0.01f;
+    y_offset *= 0.01f;
 
     // Movement along y-axis rotates about x-axis and vice versa
     glm::quat rot_x = glm::angleAxis(-y_offset, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -377,6 +372,7 @@ public:
 
   void draw(Shader &shader) { render_model.draw(shader); }
 
+  // Returns world space position
   glm::vec3 get_centre_of_mass() const { return position; }
 
   // Returns geometric_centroid in world space
@@ -386,7 +382,6 @@ public:
     // glm::mat4 offset =
     //    glm::translate(glm::mat4(1.0f), -geometric_origin_offset);
 
-    return glm::vec3(transform.get_matrix() *
-                     glm::vec4(geometric_origin_offset, 1.0f));
+    return glm::vec3(transform.get_matrix() * glm::vec4(geometric_origin_offset, 1.0f));
   }
 };

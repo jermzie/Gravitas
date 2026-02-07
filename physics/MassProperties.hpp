@@ -17,13 +17,16 @@ struct MassProperties {
     glm::mat3 inertia;
 
     // constants
-    const float mult[10] = {1.0f / 6,   1.0f / 24, 1.0f / 24, 1.0f / 24,
-                            1.0f / 60,  1.0f / 60, 1.0f / 60, 1.0f / 120,
-                            1.0f / 120, 1.0f / 120};
+    const float mult[10] = {
+        1.0f / 6, 1.0f / 24, 1.0f / 24, 1.0f / 24, 1.0f / 60, 1.0f / 60, 1.0f / 60, 1.0f / 120, 1.0f / 120, 1.0f / 120};
 
     // volume integrals order: 1, x, y, z, x^2, y^2, z^2, xy, yz, zx
     float intg[10] = {0.0f};
 
+    glm::vec3 mesh_centroid = mesh.compute_geometric_centroid();
+
+    // debug
+    int flipped_faces = 0;
     int negative_contrib = 0;
     float total_volume_contrib = 0.0f;
 
@@ -42,6 +45,15 @@ struct MassProperties {
       glm::vec3 e1 = v1 - v0;
       glm::vec3 e2 = v2 - v0;
       glm::vec3 n = glm::cross(e1, e2);
+
+      glm::vec3 face_center = (v0 + v1 + v2) / 3.0f;
+      glm::vec3 outward_direction = face_center - mesh_centroid;
+
+      // flip normal
+      if (glm::dot(n, outward_direction) < 0.0f) {
+        n = -n;
+        flipped_faces++;
+      }
 
       // surface integral shortcuts
 
@@ -85,9 +97,14 @@ struct MassProperties {
     }
 
     // DEBUG OUTPUT
+
+    /*
+    printf("=== Mass Properties Calculation ===\n");
     printf("Total faces: %zu\n", mesh.faces.size());
     printf("Faces with negative contribution: %d\n", negative_contrib);
+    printf("Faces that needed flipping: %d\n", flipped_faces);
     printf("Raw volume integral: %f\n", total_volume_contrib);
+    */
 
     // multiply constants
     for (size_t i = 0; i < 10; i++) {
@@ -98,8 +115,7 @@ struct MassProperties {
 
     // Volume should be positive!
     if (vol <= 0) {
-      printf(
-          "ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
+      printf("ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
       // You might want to flip all normals and try again
     }
 
@@ -125,10 +141,8 @@ struct MassProperties {
     inertia[1][2] = inertia[2][1] = Iyz_origin + mass * com.y * com.z;
     inertia[2][0] = inertia[0][2] = Izx_origin + mass * com.z * com.x;
 
-    return MassProperties{.mass = mass,
-                          .centre_of_mass = com,
-                          .inertia_tensor = inertia,
-                          .inv_inertia_tensor = glm::inverse(inertia)};
+    return MassProperties{
+        .mass = mass, .centre_of_mass = com, .inertia_tensor = inertia, .inv_inertia_tensor = glm::inverse(inertia)};
 
     /*
     // xx, yx, zx
@@ -183,9 +197,8 @@ struct MassProperties {
 
 private:
   // helper function for computing surface integrals
-  static void compute_subexpressions(float w0, float w1, float w2, float &f1,
-                                     float &f2, float &f3, float &g0, float &g1,
-                                     float &g2) {
+  static void compute_subexpressions(
+      float w0, float w1, float w2, float &f1, float &f2, float &f3, float &g0, float &g1, float &g2) {
 
     float temp0 = w0 + w1;
     f1 = temp0 + w2;
