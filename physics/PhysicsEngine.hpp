@@ -70,7 +70,6 @@ public:
         }
 
         else if (sat.poly_poly_collision(b1, b2, debug)) {
-          std::cout << "HIT OBJECT" << std::endl;
         }
       }
     }

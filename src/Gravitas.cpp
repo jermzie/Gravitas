@@ -151,27 +151,27 @@ void Gravitas::init_scene() {
   RigidBody light(cube_model, 1.0, glm::vec3(2.0, 2.0, 2.0));
   // RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 1.0, 4.0));
   RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
-  RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
-  //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
-  RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
-  // RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
-  //    RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
-  // RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //    RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //    RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
+  // RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
+  //   RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
+  // RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
+  //  RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
+  //     RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  //  RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //     RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //     RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
   // scene.add_rigid_body(std::move(tetra));
   scene.add_rigid_body(std::move(cube));
-  scene.add_rigid_body(std::move(cyl));
-  // scene.add_rigid_body(std::move(ball));
-  scene.add_rigid_body(std::move(suzanne));
-  // scene.add_rigid_body(std::move(teapot));
-  //      scene.addRigidBody(std::move(david));
-  // scene.add_rigid_body(std::move(cow));
-  //   scene.add_rigid_body(std::move(bunny));
-  //   scene.add_rigid_body(std::move(dragon));
+  // scene.add_rigid_body(std::move(cyl));
+  //  scene.add_rigid_body(std::move(ball));
+  // scene.add_rigid_body(std::move(suzanne));
+  //  scene.add_rigid_body(std::move(teapot));
+  //       scene.addRigidBody(std::move(david));
+  //  scene.add_rigid_body(std::move(cow));
+  //    scene.add_rigid_body(std::move(bunny));
+  //    scene.add_rigid_body(std::move(dragon));
 
   scene.set_debugger(&debug);
   /*
@@ -379,7 +379,7 @@ void Gravitas::render() {
     debug.draw_line(start, end, glm::vec3(1.0f, 0.0f, 0.0f));
     */
 
-    debug.draw_mesh(scene.bodies[i].get_mesh(), scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
+    // debug.draw_mesh(scene.bodies[i].get_mesh(), scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
 
     if (i == selected_object) {
 
@@ -430,7 +430,7 @@ void Gravitas::render() {
       glDisable(GL_DEPTH_TEST);
 
       outline_shader.use();
-      glm::vec3 com = scene.bodies[i].get_geometric_centriod();
+      glm::vec3 com = scene.bodies[i].get_geometric_centroid();
       glm::mat4 t1 = glm::translate(glm::mat4(1.0f), com);
       glm::mat4 s = glm::scale(glm::mat4(1.0f), glm::vec3(1.1f));
       glm::mat4 t0 = glm::translate(glm::mat4(1.0f), -com);

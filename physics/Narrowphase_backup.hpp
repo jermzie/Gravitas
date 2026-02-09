@@ -274,47 +274,42 @@ private:
           float cross_len = glm::length(cross);
 
           if (cross_len > 0.005f * glm::sqrt(glm::length2(edge_A) * glm::length2(edge_B))) {
-          }
 
-          // normalized separated axis
-          glm::vec3 axis = cross / cross_len;
+            // compute separating axis
+            glm::vec3 axis = cross / cross_len;
 
-          // ensure axis points from A to B
-          if (glm::dot(axis, p1 - centroid_A) < 0.0f) {
-            axis = -axis;
-          }
+            // ensure axis points from A to B
+            if (glm::dot(axis, centroid_B - centroid_A) < 0.0f) {
+              axis = -axis;
+            }
 
-          float separation = glm::dot(axis, p2 - p1);
+            auto proj = [](const glm::vec3 &v, const glm::vec3 &axis) { return glm::dot(axis, v); };
 
-          /*
-          auto proj = [](const glm::vec3 &v, const glm::vec3 &axis) { return glm::dot(axis, v); };
+            // projections of edge A in B-local space (we already had p1 and
+            // q1)
+            float a1 = proj(p1, axis);
+            float a2 = proj(q1, axis);
+            float min_A = std::min(a1, a2);
+            float max_A = std::max(a1, a2);
 
-          // projections of edge A in B-local space (we already had p1 and
-          // q1)
-          float a1 = proj(p1, axis);
-          float a2 = proj(q1, axis);
-          float min_A = std::min(a1, a2);
-          float max_A = std::max(a1, a2);
+            // projections of edge B (p2, q2 are in B-local space)
+            float b1 = proj(p2, axis);
+            float b2 = proj(q2, axis);
+            float min_B = std::min(b1, b2);
+            float max_B = std::max(b1, b2);
 
-          // projections of edge B (p2, q2 are in B-local space)
-          float b1 = proj(p2, axis);
-          float b2 = proj(q2, axis);
-          float min_B = std::min(b1, b2);
-          float max_B = std::max(b1, b2);
+            // separation = distance between intervals (positive = separated)
+            // float separation = std::max(min_B - max_A, min_A - max_B);
+            float forward_pen = max_A - min_B;
+            float reverse_pen = max_B - min_A;
 
-          // separation = distance between intervals (positive = separated)
-          // float separation = std::max(min_B - max_A, min_A - max_B);
-          float forward_pen = max_A - min_B;
-          float reverse_pen = max_B - min_A;
+            float separation = std::min(forward_pen, reverse_pen);
 
-
-          float separation = std::min(forward_pen, reverse_pen);
-          */
-
-          // tiny epsilon to avoid numeric noise
-          if (separation > max_distance + 1e-6f) {
-            max_distance = separation;
-            max_index = {i, j};
+            // tiny epsilon to avoid numeric noise
+            if (separation > max_distance + 1e-6f) {
+              max_distance = separation;
+              max_index = {i, j};
+            }
           }
         }
       }

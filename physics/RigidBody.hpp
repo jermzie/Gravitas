@@ -175,8 +175,17 @@ public:
       v -= properties.centre_of_mass;
     }
 
+    // 3.5 UPDATE PLANES TO MATCH NEW VERTEX POSITIONS
+    for (auto &face : mesh.faces) {
+      // Recalculate plane.point using shifted vertices
+      auto verts = mesh.get_face_vertices(face);
+      face.plane.point = mesh.vertices[verts[0]];
+
+      // Recalculate plane.distance (assuming normal is still correct)
+      face.plane.distance = -glm::dot(face.plane.normal, face.plane.point);
+    }
     // 4. Recompute mass properties (COM should be ~(0, 0, 0))
-    // properties = MassProperties::compute(mesh, density);
+    properties = MassProperties::compute(mesh, density);
     geometric_origin_offset = mesh.compute_geometric_centroid();
 
     // 5. Build collision geometry
@@ -375,8 +384,11 @@ public:
   // Returns world space position
   glm::vec3 get_centre_of_mass() const { return position; }
 
+  glm::vec3 get_local_centre_of_mass() const { return properties.centre_of_mass; }
+
+  glm::vec3 get_local_geometric_centroid() const { return geometric_origin_offset; }
   // Returns geometric_centroid in world space
-  glm::vec3 get_geometric_centriod() const {
+  glm::vec3 get_geometric_centroid() const {
 
     // Get offset translation matrix
     // glm::mat4 offset =

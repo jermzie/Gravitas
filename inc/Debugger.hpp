@@ -77,15 +77,25 @@ public:
   }
 
   // draw polygon face w/ no triangles
-  static void draw_unordered_polygon(std::vector<glm::vec3> points, const glm::vec3 &color) {
+  void draw_unordered_polygon(std::vector<glm::vec3> points, const glm::vec3 &color) {
+    int size = points.size();
 
-    if (points.size() < 3)
+    if (size < 3)
       return;
 
+    for (int i = 0; i < size; i++) {
+      glm::vec3 p0 = points[i];
+      glm::vec3 p1 = points[(i + 1) % size];
+
+      draw_line(p0, p1, glm::vec3(1.0, 0.0, 0.0));
+    }
+
+    /*
     glm::vec3 centroid(0.0f);
     for (const auto &p : points)
       centroid += p;
     centroid /= static_cast<float>(points.size());
+    */
   }
 
   // draw mesh with no triangles
