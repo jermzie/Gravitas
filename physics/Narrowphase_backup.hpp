@@ -88,7 +88,7 @@ public:
 
     // Check all face normals of A -- O(n^2)
     FaceCollision fa = query_face_normals(poly_A, poly_B, model_A);
-    std::cout << "polyA normals: " << fa.separation << std::endl;
+    // std::cout << "polyA normals: " << fa.separation << std::endl;
     if (fa.separation > 0.0f) {
       return false;
     }
@@ -96,14 +96,14 @@ public:
     // FIXME: Computing inverse matrix every frame
     // Check all face normals of B -- O(n^2)
     FaceCollision fb = query_face_normals(poly_B, poly_A, glm::inverse(model_A));
-    std::cout << "polyB normals: " << fb.separation << std::endl;
+    // std::cout << "polyB normals: " << fb.separation << std::endl;
     if (fb.separation > 0.0f) {
       return false;
     }
 
     // Check all edge combos between -- O(n^2)
     EdgeCollision eab = query_edge_combos(poly_A, poly_B);
-    std::cout << "edge combos: " << eab.separation << std::endl;
+    // std::cout << "edge combos: " << eab.separation << std::endl;
     if (eab.separation > 0.0f) {
       return false;
     }
@@ -112,27 +112,31 @@ public:
     // assume all separation results are negative
     // axis of separation is axis w/ smallest separation distance (i.e. closest
     // to zero)
-    /*
+
+    // WARNING: FLOATING POINT INACCURACY?
     bool contact_face_A = fa.separation > eab.separation;
     bool contact_face_B = fb.separation > eab.separation;
     if (contact_face_A && contact_face_B) {
-      // std::cerr << "FACE COLLISION" << std::endl;
+      std::cerr << "FACE COLLISION" << std::endl;
       ContactManifold out = create_face_contact(fa, fb, poly_A, poly_B);
-      // std::cerr << "NUM CONTACTS: " << out.num_points << std::endl;
+      std::cerr << "NUM CONTACTS: " << out.num_points << std::endl;
 
       if (debug) {
         auto transform_A = poly_A.get_physics_matrix();
         std::vector<glm::vec3> points;
         for (int i = 0; i < 4; i++) {
 
-          points.push_back(glm::vec3(transform_A * glm::vec4(out.point[i].point, 1.0f)));
+          debug->draw_vertex(out.point[i].point, glm::vec3(1.0, 0.0, 0.0));
+          points.push_back(out.point[i].point);
+          printf("CONTACT %d: ", i + 1);
+          print_vector(out.point[i].point);
         }
         debug->draw_unordered_polygon(points, glm::vec3(1.0, 0.0, 0.0f));
       }
 
     } else {
-      // std::cerr << "EDGE COLLISION" << std::endl;
-      // ContactManifold out = create_edge_contact(eab, poly_A, poly_B);
+      std::cerr << "EDGE COLLISION" << std::endl;
+      ContactManifold out = create_edge_contact(eab, poly_A, poly_B);
       // std::cerr << "NUM CONTACTS: " << out.num_points << std::endl;
 
       if (debug) {
@@ -152,7 +156,6 @@ public:
         debug->draw_vertex(out.point[0].point, glm::vec3(1.0, 0.0, 0.0));
       }
     }
-    */
 
     return true;
   }
@@ -274,42 +277,47 @@ private:
           float cross_len = glm::length(cross);
 
           if (cross_len > 0.005f * glm::sqrt(glm::length2(edge_A) * glm::length2(edge_B))) {
+          }
 
-            // compute separating axis
-            glm::vec3 axis = cross / cross_len;
+          // normalized separated axis
+          glm::vec3 axis = cross / cross_len;
 
-            // ensure axis points from A to B
-            if (glm::dot(axis, centroid_B - centroid_A) < 0.0f) {
-              axis = -axis;
-            }
+          // ensure axis points from A to B
+          if (glm::dot(axis, p1 - centroid_A) < 0.0f) {
+            axis = -axis;
+          }
 
-            auto proj = [](const glm::vec3 &v, const glm::vec3 &axis) { return glm::dot(axis, v); };
+          float separation = glm::dot(axis, p2 - p1);
 
-            // projections of edge A in B-local space (we already had p1 and
-            // q1)
-            float a1 = proj(p1, axis);
-            float a2 = proj(q1, axis);
-            float min_A = std::min(a1, a2);
-            float max_A = std::max(a1, a2);
+          /*
+          auto proj = [](const glm::vec3 &v, const glm::vec3 &axis) { return glm::dot(axis, v); };
 
-            // projections of edge B (p2, q2 are in B-local space)
-            float b1 = proj(p2, axis);
-            float b2 = proj(q2, axis);
-            float min_B = std::min(b1, b2);
-            float max_B = std::max(b1, b2);
+          // projections of edge A in B-local space (we already had p1 and
+          // q1)
+          float a1 = proj(p1, axis);
+          float a2 = proj(q1, axis);
+          float min_A = std::min(a1, a2);
+          float max_A = std::max(a1, a2);
 
-            // separation = distance between intervals (positive = separated)
-            // float separation = std::max(min_B - max_A, min_A - max_B);
-            float forward_pen = max_A - min_B;
-            float reverse_pen = max_B - min_A;
+          // projections of edge B (p2, q2 are in B-local space)
+          float b1 = proj(p2, axis);
+          float b2 = proj(q2, axis);
+          float min_B = std::min(b1, b2);
+          float max_B = std::max(b1, b2);
 
-            float separation = std::min(forward_pen, reverse_pen);
+          // separation = distance between intervals (positive = separated)
+          // float separation = std::max(min_B - max_A, min_A - max_B);
+          float forward_pen = max_A - min_B;
+          float reverse_pen = max_B - min_A;
 
-            // tiny epsilon to avoid numeric noise
-            if (separation > max_distance + 1e-6f) {
-              max_distance = separation;
-              max_index = {i, j};
-            }
+
+          float separation = std::min(forward_pen, reverse_pen);
+          */
+
+          // tiny epsilon to avoid numeric noise
+          if (separation > max_distance + 1e-6f) {
+            max_distance = separation;
+            max_index = {i, j};
           }
         }
       }
@@ -318,10 +326,11 @@ private:
     return EdgeCollision(max_distance, max_index);
   }
 
+  // WARNING: POLY VERTICES MUST BE IN COMMON WORLD SPACE COORDINATES
   // use SutherlandHodgeman clipping to fin contact area????
   // we alr have face idx of colliding face
   ContactManifold create_face_contact(
-      const FaceCollision &fab, const FaceCollision &fb, const RigidBody &poly_A, const RigidBody &poly_B) {
+      const FaceCollision &fa, const FaceCollision &fb, const RigidBody &poly_A, const RigidBody &poly_B) {
 
     ContactManifold out;
     out.num_points = 0;
@@ -333,9 +342,25 @@ private:
     // FIXME:
     // NEED TO BIAS ONE POLY OVER THE OTHER (CONSISTENT CONTACTS FOR COHERENCE)
     // BIAS ONE POLY AS REFERENCE
-    ConvexMesh::Face reference_face = mesh_A.faces[fab.reference_face_index];
-    ConvexMesh::Face incident_face =
-        find_incident_face(reference_face.plane.normal, poly_B, poly_B.get_physics_matrix());
+    ConvexMesh::Face reference_face;
+    ConvexMesh::Face incident_face;
+    ConvexMesh reference_mesh;
+    ConvexMesh incident_mesh;
+
+    // If separation is equal, we bias mesh B as reference
+    const float REFERENCE_BIAS = 0.001f;
+    bool is_reference_A = fa.separation > fb.separation + REFERENCE_BIAS;
+    if (is_reference_A) {
+      reference_face = mesh_A.faces[fa.reference_face_index];
+      incident_face = find_incident_face(reference_face.plane.normal, poly_B, poly_B.get_physics_matrix());
+      reference_mesh = poly_A.get_mesh();
+      incident_mesh = poly_B.get_mesh();
+    } else {
+      reference_face = mesh_B.faces[fb.reference_face_index];
+      incident_face = find_incident_face(reference_face.plane.normal, poly_A, poly_A.get_physics_matrix());
+      reference_mesh = poly_B.get_mesh();
+      incident_mesh = poly_A.get_mesh();
+    }
 
     // Get world-space incident face vertices
     glm::mat4 transform_B = poly_B.get_physics_matrix();
@@ -363,7 +388,7 @@ private:
 
       // Perhaps flip if side normal is pointing inwards?
       glm::vec3 edge_direction = glm::normalize(v1 - v0);
-      glm::vec3 side_normal = glm::cross(edge_direction, reference_face.plane.normal);
+      glm::vec3 side_normal = glm::cross(edge_direction, reference_plane.normal);
 
       // Side planes must be perpendicular to refernce face?
       Plane side_plane(side_normal, v0);
@@ -374,10 +399,11 @@ private:
     std::vector<ContactPoint> all_contacts;
 
     for (const auto &point : incident_polygon) {
-      float penetration = -get_signed_distance_to_plane(point, reference_plane);
+      float penetration = get_signed_distance_to_plane(point, reference_plane);
 
+      // WARNING: ?
       // Keep points that are penetrating (below the reference plane)
-      if (penetration >= -1e-6f) { // Small epsilon for numerical tolerance
+      if (penetration <= -1e-6f) { // Small epsilon for numerical tolerance
         ContactPoint contact;
         contact.point = point;
         contact.normal = reference_plane.normal;
@@ -763,4 +789,6 @@ private:
 
     return out;
   }
+
+  void print_vector(glm::vec3 v) { printf("(%f, %f, %f)\n", v.x, v.y, v.z); }
 };

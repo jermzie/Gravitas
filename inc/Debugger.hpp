@@ -154,7 +154,7 @@ public:
 
     // Add option to enable/disable
     // Disable depth test so debug always draws on top
-    // glDisable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
 
     debug_shader.use();
     // debug_shader.set_vec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
@@ -169,20 +169,20 @@ public:
     if (!lines.empty()) {
 
       glBufferData(GL_ARRAY_BUFFER, lines.size() * sizeof(DebugVertex), lines.data(), GL_DYNAMIC_DRAW);
-      glLineWidth(2.0f);
+      glLineWidth(5.0f);
       glDrawArrays(GL_LINES, 0, lines.size());
     }
 
     // Draw points
     if (!points.empty()) {
       glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(DebugVertex), points.data(), GL_DYNAMIC_DRAW);
-      glPointSize(5.0f);
+      glPointSize(15.0f);
       glDrawArrays(GL_POINTS, 0, points.size());
     }
 
     glBindVertexArray(0);
 
     // Re-enable depth test
-    // glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
   }
 };

@@ -494,7 +494,7 @@ void QuickHull::create_half_edge_mesh() {
     }
 
     // Merge coplanar faces after adding new faces
-    // merge_new_faces(new_faces);
+    merge_new_faces(new_faces);
 
     // Assign disabled conflict lists to new faces
     for (auto &conflict_list : disabled_conflict_lists) {

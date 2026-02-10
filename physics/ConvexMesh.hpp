@@ -91,7 +91,30 @@ public:
     }
   }
 
-  std::array<size_t, 3> get_face_vertices(const Face &f) const {
+  std::vector<size_t> get_face_vertices(const Face &f) const {
+
+    std::vector<size_t> vertices;
+
+    size_t initial_half_edge = f.he;
+    size_t current_half_edge = initial_half_edge;
+    size_t safety_count = 0;
+    const size_t max_iterations = half_edges.size();
+
+    do {
+      vertices.push_back(half_edges[current_half_edge].vert);
+      current_half_edge = half_edges[current_half_edge].next;
+
+      if (++safety_count > max_iterations) {
+        std::cerr << "ERROR: Infinite loop in get_face_vertices" << std::endl;
+        break;
+      }
+    } while (current_half_edge != initial_half_edge);
+
+    return vertices;
+  }
+
+  // Deprecated - assumes triangular faces
+  std::array<size_t, 3> get_face_vertices_tri(const Face &f) const {
 
     std::array<size_t, 3> v;
 
@@ -105,7 +128,9 @@ public:
   }
 
   std::vector<size_t> get_face_half_edges(const Face &f) const {
+
     std::vector<size_t> edges;
+
     size_t initial_half_edge = f.he;
     size_t current_half_edge = initial_half_edge;
     size_t safety_count = 0;
@@ -114,8 +139,9 @@ public:
     do {
       edges.push_back(current_half_edge);
       current_half_edge = half_edges[current_half_edge].next;
+
       if (++safety_count > max_iterations) {
-        std::cerr << "ERROR: Infinite loop detected" << std::endl;
+        std::cerr << "ERROR: Infinite loop in get_face_half_edges" << std::endl;
         break;
       }
     } while (current_half_edge != initial_half_edge);
@@ -123,25 +149,9 @@ public:
     return edges;
   }
 
-  // Keep triangular version for backwards compatibility
+  // Deprecated - assumes triangular faces
   std::array<size_t, 3> get_face_half_edges_tri(const Face &f) const {
     return {f.he, half_edges[f.he].next, half_edges[half_edges[f.he].next].next};
-  }
-
-  std::vector<size_t> get_vertices(const Face &f) const {
-
-    std::vector<size_t> out;
-
-    size_t initial_half_edge = f.he;
-    size_t current_half_edge = half_edges[initial_half_edge].next;
-    while (current_half_edge != initial_half_edge) {
-
-      const HalfEdge *he = &half_edges[current_half_edge];
-      out.push_back(he->vert);
-      current_half_edge = half_edges[current_half_edge].next;
-    }
-
-    return out;
   }
 
   std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const { return {half_edges[he.twin].vert, he.vert}; }
