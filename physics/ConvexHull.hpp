@@ -4,13 +4,13 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 
-#include "../inc/Mesh.hpp"
 #include "../inc/Model.hpp"
 #include "../inc/Plane.hpp"
 #include "../inc/Ray.hpp"
 #include "../inc/Shader.hpp"
 #include "../inc/WorldTransform.hpp"
 #include "HalfEdgeMesh.hpp"
+#include "Mesh.hpp"
 #include "MeshBuilder.hpp"
 
 class ConvexMesh {
@@ -106,9 +106,8 @@ public:
 
   ConvexHull() = default;
 
-  ConvexHull(const ConvexMeshBuilder &buildMesh,
-             const std::vector<glm::vec3> &pointCloud, bool CCW,
-             bool useOriginalIndices) {
+  ConvexHull(
+      const ConvexMeshBuilder &buildMesh, const std::vector<glm::vec3> &pointCloud, bool CCW, bool useOriginalIndices) {
 
     if (!useOriginalIndices) {
       optimizedVBO.reset(new std::vector<glm::vec3>());
@@ -132,8 +131,7 @@ public:
     }
 
     const size_t isCCW = CCW ? 1 : 0;
-    const size_t faceCount =
-        buildMesh.faces.size() - buildMesh.disabled_faces.size();
+    const size_t faceCount = buildMesh.faces.size() - buildMesh.disabled_faces.size();
     indices.reserve(faceCount * 3);
 
     size_t i = 0;
@@ -152,8 +150,7 @@ public:
         auto he = buildMesh.get_face_half_edges(buildMesh.faces[topIdx]);
 
         // Push neighboring faces onto stack
-        size_t adjacentFaces[] = {
-            buildMesh.half_edges[buildMesh.half_edges[he[0]].twin].face,
+        size_t adjacentFaces[] = {buildMesh.half_edges[buildMesh.half_edges[he[0]].twin].face,
             buildMesh.half_edges[buildMesh.half_edges[he[1]].twin].face,
             buildMesh.half_edges[buildMesh.half_edges[he[2]].twin].face};
         for (auto f : adjacentFaces) {
@@ -163,8 +160,7 @@ public:
         }
 
         // Process face vertices
-        auto faceVertices =
-            buildMesh.get_face_vertices(buildMesh.faces[topIdx]);
+        auto faceVertices = buildMesh.get_face_vertices(buildMesh.faces[topIdx]);
         if (!useOriginalIndices) {
           for (auto &v : faceVertices) {
             auto itv = mapVertex2Index.find(v);
@@ -204,8 +200,7 @@ public:
     std::string name = objectName.substr(0, dotPos);
     std::string ext = objectName.substr(dotPos);
     hullName = name + "_convexhull.obj";
-    std::string const &path =
-        std::string(PROJECT_SOURCE_DIR) + "/resources/" + hullName;
+    std::string const &path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + hullName;
 
     // Rendering & Writing
     // Compute convex hull centroid for rendering & transformations
@@ -233,11 +228,9 @@ public:
     // debugState();
   }
 
-  void writeOBJ(const std::string &fileName,
-                const std::string &objectName = "quickhull") const {
+  void writeOBJ(const std::string &fileName, const std::string &objectName = "quickhull") const {
 
-    string const &path =
-        std::string(PROJECT_SOURCE_DIR) + "/resources/" + fileName;
+    string const &path = std::string(PROJECT_SOURCE_DIR) + "/resources/" + fileName;
     std::ofstream objFile;
     objFile.open(path);
     objFile << "o " << objectName << "\n";
@@ -274,9 +267,8 @@ public:
   const std::array<float, 6> getExtrema() const {
 
     std::array<size_t, 6> outIndices{0, 0, 0, 0, 0, 0};
-    std::array<float, 6> extremeValues{vertices[0].x, vertices[0].x,
-                                       vertices[0].y, vertices[0].y,
-                                       vertices[0].z, vertices[0].z};
+    std::array<float, 6> extremeValues{
+        vertices[0].x, vertices[0].x, vertices[0].y, vertices[0].y, vertices[0].z, vertices[0].z};
 
     for (size_t i = 1; i < vertices.size(); i++) {
 
@@ -434,8 +426,8 @@ public:
   const glm::vec3 getLocalCentroid() const { return localCentroid; }
 
   // helper function for computing surface integrals
-  void computeSubexpressions(float w0, float w1, float w2, float &f1, float &f2,
-                             float &f3, float &g0, float &g1, float &g2) {
+  void computeSubexpressions(
+      float w0, float w1, float w2, float &f1, float &f2, float &f3, float &g0, float &g1, float &g2) {
 
     float temp0 = w0 + w1;
     f1 = temp0 + w2;
@@ -451,13 +443,11 @@ public:
     g2 = f2 + w2 * (f1 + w2);
   }
 
-  void computeMassProperties(float density, float &mass, glm::vec3 &com,
-                             glm::mat3 &inertia) {
+  void computeMassProperties(float density, float &mass, glm::vec3 &com, glm::mat3 &inertia) {
 
     // volume integrals order: 1, x, y, z, x^2, y^2, z^2, xy, yz, zx
-    const float mult[10] = {1.0f / 6,   1.0f / 24, 1.0f / 24, 1.0f / 24,
-                            1.0f / 60,  1.0f / 60, 1.0f / 60, 1.0f / 120,
-                            1.0f / 120, 1.0f / 120};
+    const float mult[10] = {
+        1.0f / 6, 1.0f / 24, 1.0f / 24, 1.0f / 24, 1.0f / 60, 1.0f / 60, 1.0f / 60, 1.0f / 120, 1.0f / 120, 1.0f / 120};
     float intg[10] = {0.0f};
 
     int negative_contrib = 0;
@@ -534,8 +524,7 @@ public:
 
     // Volume should be positive!
     if (vol <= 0) {
-      printf(
-          "ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
+      printf("ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
       // You might want to flip all normals and try again
     }
 

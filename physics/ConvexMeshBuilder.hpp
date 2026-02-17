@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-#include "../inc/Plane.hpp"
+#include "Plane.hpp"
 
 // Container for half-edge representation of polygon mesh
 // Makes iterating over edges & faces easier

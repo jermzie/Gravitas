@@ -1,15 +1,15 @@
 #pragma once
 
-#include "../inc/Debugger.hpp"
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <limits>
 #include <numeric>
 
-#include "../inc/Debugger.hpp"
 #include "CollisionGeometry.hpp"
+#include "Config.hpp"
 #include "ConvexMesh.hpp"
 #include "ConvexMeshBuilder.hpp"
+#include "Debugger.hpp"
 #include "RigidBody.hpp"
 
 /**
@@ -89,7 +89,8 @@ public:
 
     // Check all face normals of A -- O(n^2)
     FaceCollision fa = query_face_normals(poly_A, poly_B, model_A);
-    std::cout << "polyA normals: " << fa.separation << std::endl;
+    CLOGI("Poly A Normals: %.5f", fa.separation);
+    // std::cout << "polyA normals: " << fa.separation << std::endl;
     if (fa.separation > 0.0f) {
       return false;
     }
@@ -97,13 +98,15 @@ public:
     // FIXME: Computing inverse matrix every frame
     // Check all face normals of B -- O(n^2)
     FaceCollision fb = query_face_normals(poly_B, poly_A, glm::inverse(model_A));
-    std::cout << "polyB normals: " << fb.separation << std::endl;
+    CLOGI("Poly B Normals: %.5f", fb.separation);
+    // std::cout << "polyB normals: " << fb.separation << std::endl;
     if (fb.separation > 0.0f) {
       return false;
     }
 
     // Check all edge combos between -- O(n^2)
     EdgeCollision eab = query_edge_combos(poly_A, poly_B);
+    CLOGI("Edge Cross Product: %.5f", eab.separation);
     // std::cout << "edge combos: " << eab.separation << std::endl;
     if (eab.separation > 0.0f) {
       return false;
@@ -118,9 +121,12 @@ public:
     bool contact_face_A = fa.separation > eab.separation;
     bool contact_face_B = fb.separation > eab.separation;
     if (contact_face_A && contact_face_B) {
-      std::cerr << "FACE COLLISION" << std::endl;
+      CLOGI("FACE COLLISION");
+
       ContactManifold out = create_face_contact(fa, fb, poly_A, poly_B);
-      std::cerr << "NUM CONTACTS: " << out.num_points << std::endl;
+
+      CLOGI("NUM CONTACTS: %d", out.num_points);
+      // std::cerr << "NUM CONTACTS: " << out.num_points << std::endl;
 
       if (debug) {
         auto transform_A = poly_A.get_physics_matrix();
@@ -130,13 +136,16 @@ public:
           debug->draw_vertex(out.point[i].point, glm::vec3(1.0, 0.0, 0.0));
           points.push_back(out.point[i].point);
           printf("CONTACT %d: ", i + 1);
+          CLOGI("CONTACT %d: ", i + 1);
           print_vector(out.point[i].point);
         }
         debug->draw_unordered_polygon(points, glm::vec3(1.0, 0.0, 0.0f));
       }
 
     } else {
-      std::cerr << "EDGE COLLISION" << std::endl;
+      CLOGI("EDGE COLLISION");
+      // std::cerr << "EDGE COLLISION" << std::endl;
+
       ContactManifold out = create_edge_contact(eab, poly_A, poly_B);
       // std::cerr << "NUM CONTACTS: " << out.num_points << std::endl;
 
@@ -279,13 +288,15 @@ private:
           float cross_len = glm::length(cross);
 
           if (cross_len > 0.005f * glm::sqrt(glm::length2(edge_A) * glm::length2(edge_B))) {
+            continue;
           }
 
           // normalized separated axis
           glm::vec3 axis = cross / cross_len;
 
           // ensure axis points from A to B
-          if (glm::dot(axis, p1 - centroid_A) < 0.0f) {
+          if (glm::dot(axis, centroid_B - centroid_A) < 0.0f) {
+            // if (glm::dot(axis, p1 - centroid_A) < 0.0f) {
             axis = -axis;
           }
 

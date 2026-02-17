@@ -23,11 +23,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../inc/Mesh.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Plane.hpp"
-#include "../inc/Ray.hpp"
-#include "../inc/Shader.hpp"
+#include "Mesh.hpp"
+#include "Model.hpp"
+#include "Plane.hpp"
+#include "Ray.hpp"
+#include "Shader.hpp"
 // #include "CollisionGeometry.hpp"
 #include "ConvexMesh.hpp"
 #include "ConvexMeshBuilder.hpp"

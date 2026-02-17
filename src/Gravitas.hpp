@@ -16,21 +16,21 @@
 #include <vector>
 
 // Rendering
-#include "../inc/Camera.hpp"
-#include "../inc/Mesh.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Shader.hpp"
+#include "Camera.hpp"
+#include "Mesh.hpp"
+#include "Model.hpp"
+#include "Shader.hpp"
 
 // Debugging
-#include "../inc/Debugger.hpp"
-#include "../inc/Gui.hpp"
+#include "Debugger.hpp"
+#include "Gui.hpp"
 
 // Physics
-#include "../physics/PhysicsEngine.hpp"
-#include "../physics/RigidBody.hpp"
+#include "PhysicsEngine.hpp"
+#include "RigidBody.hpp"
 
-#include "../inc/Plane.hpp"
-#include "../inc/Ray.hpp"
+#include "Plane.hpp"
+#include "Ray.hpp"
 
 class Gravitas {
 public:
@@ -114,9 +114,7 @@ private:
   // static callback wrappers
   static void frame_buf_size_cb(GLFWwindow *window, int width, int height);
   static void scroll_cb(GLFWwindow *window, double xoffset, double yoffset);
-  static void key_cb(GLFWwindow *window, int key, int scancode, int action,
-                     int mods);
-  static void mouse_btn_cb(GLFWwindow *window, int button, int action,
-                           int mods);
+  static void key_cb(GLFWwindow *window, int key, int scancode, int action, int mods);
+  static void mouse_btn_cb(GLFWwindow *window, int button, int action, int mods);
   static void cursor_pos_cb(GLFWwindow *window, double xpos, double ypos);
 };

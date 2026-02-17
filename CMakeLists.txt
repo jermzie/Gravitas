@@ -12,7 +12,17 @@ endif()
 project (Gravitas)
 set(EXECUTABLE_NAME gravitas)
 add_compile_definitions(PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-add_executable (${EXECUTABLE_NAME} "./src/Gravitas.cpp" "./src/stb_image.cpp" "./physics/QuickHull.cpp")
+
+add_executable (${EXECUTABLE_NAME} 
+          src/Gravitas.cpp 
+          src/stb_image.cpp 
+          physics/QuickHull.cpp
+)
+
+target_include_directories(${EXECUTABLE_NAME} PUBLIC
+          ${CMAKE_SOURCE_DIR}/include
+          ${CMAKE_SOURCE_DIR}/physics
+)
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 17)
 

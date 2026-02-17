@@ -6,11 +6,11 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 
-#include "../inc/Mesh.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Plane.hpp"
-#include "../inc/Ray.hpp"
-#include "../inc/Shader.hpp"
+#include "Mesh.hpp"
+#include "Model.hpp"
+#include "Plane.hpp"
+#include "Ray.hpp"
+#include "Shader.hpp"
 // #include "AABB.hpp"
 // #include "BoundingSphere.hpp"
 #include "ConvexMesh.hpp"
@@ -198,7 +198,7 @@ public:
 
   // same tmax as far plane from perspective matrix???
   // int raycast(const Ray &ray, glm::vec3 &hit_point, float t_max = 500.0f) {
-  int raycast(const Ray &ray, float &t, float t_max = 500.0f) {
+  int raycast(const Ray &ray, float &t, float t_max = 500.0f) const {
 
     // MISSED		:	return 0
     // FRONT FACE	:	return 1

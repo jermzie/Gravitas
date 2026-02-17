@@ -8,14 +8,14 @@
 #include <iostream>
 #include <vector>
 
-// #include "../inc/Gui.hpp"
-#include "../inc/Mesh.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Plane.hpp"
-#include "../inc/Ray.hpp"
-#include "../inc/Shader.hpp"
-#include "../physics/AABB.hpp"
-#include "../physics/ConvexMesh.hpp"
+// #include "Gui.hpp"
+#include "AABB.hpp"
+#include "ConvexMesh.hpp"
+#include "Mesh.hpp"
+#include "Model.hpp"
+#include "Plane.hpp"
+#include "Ray.hpp"
+#include "Shader.hpp"
 // #include "../physics/RigidBody.hpp"
 
 class Debugger {
@@ -131,14 +131,17 @@ public:
         {aabb.min.x, aabb.max.y, aabb.max.z}};
 
     // Bottom face
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) {
       draw_line(corner_vertices[i], corner_vertices[(i + 1) % 4], color);
+    }
     // Top face
-    for (int i = 4; i < 8; i++)
+    for (int i = 4; i < 8; i++) {
       draw_line(corner_vertices[i], corner_vertices[4 + (i + 1) % 4], color);
+    }
     // Vertical edges
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) {
       draw_line(corner_vertices[i], corner_vertices[i + 4], color);
+    }
   }
 
   // draw translucent square face
@@ -169,14 +172,14 @@ public:
     if (!lines.empty()) {
 
       glBufferData(GL_ARRAY_BUFFER, lines.size() * sizeof(DebugVertex), lines.data(), GL_DYNAMIC_DRAW);
-      glLineWidth(5.0f);
+      glLineWidth(2.0f);
       glDrawArrays(GL_LINES, 0, lines.size());
     }
 
     // Draw points
     if (!points.empty()) {
       glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(DebugVertex), points.data(), GL_DYNAMIC_DRAW);
-      glPointSize(15.0f);
+      glPointSize(5.0f);
       glDrawArrays(GL_POINTS, 0, points.size());
     }
 

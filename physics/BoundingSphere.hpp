@@ -2,10 +2,10 @@
 
 #include <glm/glm.hpp>
 
-#include "../inc/Camera.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Ray.hpp"
-#include "../inc/Transform.hpp"
+#include "Camera.hpp"
+#include "Model.hpp"
+#include "Ray.hpp"
+#include "Transform.hpp"
 
 const float PI = 3.14159265358979323846f;
 
@@ -41,8 +41,7 @@ public:
     for (auto &mesh : model.meshes) {
       for (auto &vertex : mesh.vertices) {
 
-        float distSq = glm::dot((vertex.position - localCentroid),
-                                (vertex.position - localCentroid));
+        float distSq = glm::dot((vertex.position - localCentroid), (vertex.position - localCentroid));
 
         maxDistSq = std::max(distSq, maxDistSq);
       }
@@ -50,8 +49,7 @@ public:
 
     radius = std::sqrt(maxDistSq);
 
-    glm::vec4 objectWorldTrans =
-        objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
+    glm::vec4 objectWorldTrans = objectTrans.GetMatrix() * glm::vec4(localCentroid, 1.0f);
     worldCentroid = glm::vec3(objectWorldTrans);
     worldTrans.SetRelPosition(worldCentroid);
 
