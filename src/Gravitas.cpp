@@ -55,7 +55,7 @@ void Gravitas::run() {
     gui.render();
 
     glfwSwapBuffers(window);
-    // glfwSwapInterval(1); // VSYNC disabled; limits fps to refresh rate (144hz)
+    // glfwSwapInterval(0); // VSYNC disabled; limits fps to refresh rate (144hz)
   }
 }
 
@@ -126,6 +126,20 @@ void Gravitas::init_callbacks() {
   glfwSetCursorPosCallback(window, &Gravitas::cursor_pos_cb);
 }
 
+int random(int min, int max) {
+  std::random_device rand_dev;
+  std::mt19937 generator(rand_dev());
+  std::uniform_int_distribution<int> distr(min, max);
+  return distr(generator);
+}
+glm::vec3 rand_pos() {
+
+  int min = -30;
+  int max = 30;
+
+  return glm::vec3(random(min, max), random(min, max), 0.0f);
+}
+
 void Gravitas::init_scene() {
 
   // Compile Shaders
@@ -150,38 +164,38 @@ void Gravitas::init_scene() {
   // Transformations
   RigidBody light(cube_model, 1.0, glm::vec3(2.0, 2.0, 2.0));
   // RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 1.0, 4.0));
-  RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  // RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
   // RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
-  //   RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
+  //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
   // RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
-  //  RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
-  //     RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
-  //  RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //     RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //     RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
+  //      RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
+  //         RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  //      RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //         RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //         RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
   // scene.add_rigid_body(std::move(tetra));
-  scene.add_rigid_body(std::move(cube));
+  // scene.add_rigid_body(std::move(cube));
   // scene.add_rigid_body(std::move(cyl));
-  //  scene.add_rigid_body(std::move(ball));
+  //   scene.add_rigid_body(std::move(ball));
   // scene.add_rigid_body(std::move(suzanne));
-  //  scene.add_rigid_body(std::move(teapot));
-  //       scene.addRigidBody(std::move(david));
-  //  scene.add_rigid_body(std::move(cow));
-  //    scene.add_rigid_body(std::move(bunny));
-  //    scene.add_rigid_body(std::move(dragon));
+  //       scene.add_rigid_body(std::move(teapot));
+  //            scene.addRigidBody(std::move(david));
+  //       scene.add_rigid_body(std::move(cow));
+  //         scene.add_rigid_body(std::move(bunny));
+  //         scene.add_rigid_body(std::move(dragon));
 
   scene.set_debugger(&debug);
-  /*
+
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
+
   for (int i = 0; i < 100; i++) {
-      RigidBody cube(cubeModel, 5.0, randPos(), glm::vec3(0.0, 0.0, 0.0),
-  glm::vec3(0.0, 0.0, 0.0)); scene.addRigidBody(std::move(cube));
+    RigidBody cube(cube_model, 5.0, rand_pos());
+    scene.add_rigid_body(std::move(cube));
   }
-  */
 }
 
 void Gravitas::process_inputs() {
@@ -213,20 +227,6 @@ void Gravitas::process_inputs() {
     camera.process_keyboard(RIGHT, dt);
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     camera.process_keyboard(UP, dt);
-}
-
-int random(int min, int max) {
-  std::random_device rand_dev;
-  std::mt19937 generator(rand_dev());
-  std::uniform_int_distribution<int> distr(min, max);
-  return distr(generator);
-}
-glm::vec3 rand_pos() {
-
-  int min = -10;
-  int max = 10;
-
-  return glm::vec3(random(min, max), random(min, max), 0.0f);
 }
 
 // UPDATE
@@ -277,6 +277,7 @@ void Gravitas::update() {
       // BRUTE FORCE -- SLOW
       // check ray-hull intersections for all bodies
       // should use Broadphase to raycast bvh first
+      /*
       for (int i = 0; i < scene.bodies.size(); ++i) {
 
         float t;
@@ -297,34 +298,24 @@ void Gravitas::update() {
           break;
         }
       }
-
-      // AABB initial intersection test
-      /*
-      for (AABB box : ) {
-
-          if (!ray_intersection(box, ray) {
-              continue;
-          }
-
-          glm::vec3 hit_point;
-          bool hit = scene.bodies[i].ray_intersection(ray, hit_point);
-          if(hit) {
-
-              selectedObjectId = i;
-              scene.bodies[i].disable();
-
-              // record initial object pos
-              oldPos = hitPoint;
-
-              // define drag plane
-              dragPlane.normal = -camera.Front;
-              dragPlane.point = hitPoint;
-
-              break;
-          }
-      }
-
       */
+
+      float t;
+      int id;
+      if (scene.raycast(ray, id, t)) {
+
+        glm::vec3 hit_point = ray.origin + ray.direction * t;
+        selected_object = id;
+        scene.bodies[id].disable();
+
+        std::cout << "PICKED RIGID BODY " << scene.bodies[id].id << std::endl;
+        // record initial object pos
+        old_position = hit_point;
+
+        // define drag plane
+        drag_plane.normal = -camera.front_vector;
+        drag_plane.point = hit_point;
+      }
 
       // cannot translate & rotate object at same time
       is_dragging = !is_rotating;
@@ -363,8 +354,8 @@ void Gravitas::render() {
     std::cout << "(" << cen.x << ", " << cen.y << ", " << cen.z << ")\n";
     */
 
-    const auto mesh = scene.bodies[i].get_mesh();
-    debug.draw_vertex(scene.bodies[i].get_centre_of_mass(), glm::vec3(0.0f, 1.0f, 0.0f));
+    // const auto mesh = scene.bodies[i].get_mesh();
+    //  debug.draw_vertex(scene.bodies[i].get_centre_of_mass(), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // NEED EASIER METHOD OF TRANSFORMING VERTICES BETWEEN SPACES
     /*

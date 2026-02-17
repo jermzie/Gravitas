@@ -16,11 +16,11 @@
 
 #include <vector>
 
-#include "../inc/Mesh.hpp"
-#include "../inc/Model.hpp"
-#include "../inc/Ray.hpp"
-#include "../inc/Transform.hpp"
-// #include "AABB.hpp"
+#include "AABB.hpp"
+#include "Mesh.hpp"
+#include "Model.hpp"
+#include "Ray.hpp"
+#include "Transform.hpp"
 // #include "BoundingSphere.hpp"
 #include "CollisionGeometry.hpp"
 #include "MassProperties.hpp"
@@ -28,10 +28,13 @@
 
 struct CollisionData {
   CollisionGeometry hull;
-  // AABB local_aabb;
+  AABB local_aabb;
   // BoundingSphere local_sphere;
 
-  // AABB get_world_aabb(const Transform &transform) const;
+  // TODO: Compute local aabb once from extrema, update with world space transform for broadphase
+  AABB get_world_aabb(const Transform &transform) const {
+    return local_aabb.transform_arvo(local_aabb, transform.get_matrix());
+  }
   // BoundingSphere get_world_sphere(const Transform &transform) const;
 };
 
@@ -48,7 +51,6 @@ struct rigid_body_config_t {
 class RigidBody {
 private:
   // Geometry & collisions
-  CollisionData collider;
 
   // Transform (world space)
   glm::vec3 position;
@@ -88,11 +90,12 @@ private:
   float friction;
 
 public:
+  Transform transform;
+  CollisionData collider;
+
   int id;
   bool is_static = false;
   bool is_dragging = false;
-
-  Transform transform;
 
   void apply_force(glm::vec3 f, glm::vec3 point);
 
@@ -106,7 +109,7 @@ public:
   }
   */
 
-  bool raycast(const Ray &world_ray, float &t) {
+  bool raycast(const Ray &world_ray, float &t) const {
 
     glm::mat4 inv_transform = transform.get_inverse_matrix();
     // Ray local_ray = transform.world_to_local(world_ray);
@@ -190,6 +193,8 @@ public:
 
     // 5. Build collision geometry
     collider.hull = CollisionGeometry(mesh);
+    // FIXME: Reuse extrema + scale computed from quickhull construction for AABB size + fat margins
+    collider.local_aabb = AABB(mesh.get_extrema());
 
     // 6. Transform into world space
     update_transform();
