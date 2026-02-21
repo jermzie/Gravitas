@@ -62,9 +62,7 @@ private:
 
     nodes.emplace_back();
     int index = nodes.size() - 1;
-    CLOGI("Get new index");
     nodes[index].height = 1;
-    CLOGI("Set height");
     node_count++;
     return index;
   }
@@ -75,24 +73,6 @@ private:
     nodes[index].height = -1;        // mark as deleted
     free_node = index;
     node_count--;
-  }
-
-  // DONE?
-  // compute surface area cost of tree
-  float compute_cost() {
-    float cost = 0.0f;
-    for (int i = 0; i < node_count; i++) {
-      if (nodes[i].height < 0) {
-        continue;
-      }
-
-      // only compute cost of internal nodes -- surface area of leaves is always
-      // same
-      if (!nodes[i].is_leaf()) {
-        cost += nodes[i].box.surface_area();
-      }
-    }
-    return cost;
   }
 
   AABB get_node_aabb(int index) const {
@@ -167,175 +147,102 @@ private:
     return best_sibling;
   }
 
-  // AVL balancing
-  int balance_tree(int index) {
+  // DONE?
+  // compute surface area cost of tree
+  float compute_cost(int index) {
+    float cost = 0.0f;
+
+    std::stack<int> stack;
+    const Node &n = nodes[index];
+    stack.push(n.left);
+    stack.push(n.right);
+    for (int i = 0; i < node_count; i++) {
+      if (nodes[i].height < 0) {
+        continue;
+      }
+
+      // only compute cost of internal nodes -- surface area of leaves is always
+      // same
+      if (!nodes[i].is_leaf()) {
+        cost += nodes[i].box.surface_area();
+      }
+    }
+    return cost;
+  }
+
+  // Surface area based balancing
+  void balance_tree(int index) {
     if (index == NULL_INDEX || nodes[index].is_leaf() || nodes[index].height < 2) {
-      return index;
+      return;
     }
 
-    int left = nodes[index].left;
-    int right = nodes[index].right;
+    Node &parent_node = nodes[index];
 
-    // AVL trees can only have height difference of 1
-    // recall AVL trees can only have balance factor of {-1, 0, 1}, otherwise
-    // need to balance
-    int balance_factor = nodes[left].height - nodes[right].height;
+    int left = parent_node.left;
+    int right = parent_node.right;
+    Node &left_node = nodes[left];
+    Node &right_node = nodes[right];
+    if (left == NULL_INDEX || right == NULL_INDEX) {
+      return;
+    }
 
-    // Left-heavy - bring left child up
-    if (balance_factor > 1) {
+    if (!left_node.is_leaf()) {
+      int sub_left = left_node.left;
+      int sub_right = left_node.right;
 
-      int sub_left = nodes[left].left;
-      int sub_right = nodes[left].right;
+      AABB swap = combine(nodes[sub_right].box, right_node.box);
+      if (swap.surface_area() < left_node.box.surface_area()) {
+        // swap sub_left with right
+        parent_node.right = sub_left;
+        nodes[sub_left].parent = index;
 
-      // LR double rotation
-      if (get_height(sub_right) > get_height(sub_left)) {
-        // nodes[left].right = rotate_left(sub_right);
-        rotate_left(left);
-        CLOGI("LR Double Rotate");
+        // FIXME:?????????
+        left_node.right = right;
+        right_node.parent = left;
+
+        // refit parent
+        left_node.box = swap;
+        parent_node.box = combine(left_node.box, nodes[sub_left].box);
+        return;
       }
 
-      return rotate_right(index); // Return new root
+      swap = combine(nodes[sub_left].box, nodes[right].box);
+      if (swap.surface_area() < left_node.box.surface_area()) {
+
+        return;
+      }
     }
 
-    // Right-heavy - bring right child up
-    if (balance_factor < -1) {
+    if (!right_node.is_leaf()) {
+      int rl_index = right_node.left;
+      int rr_index = right_node.right;
 
-      int sub_left = nodes[right].left;
-      int sub_right = nodes[right].right;
+      AABB swap = combine(nodes[rr_index].box, left_node.box);
+      if (swap.surface_area() < right_node.box.surface_area()) {
 
-      // RL double rotation
-      if (get_height(sub_left) > get_height(sub_right)) {
-        // nodes[right].left = rotate_right(sub_left);
-        rotate_right(right);
-        CLOGI("RL Double Rotate");
+        right_node.right = left;
+        left_node.parent = right;
+        parent_node.left = rl_index;
+        nodes[rl_index].parent = index;
+
+        right_node.box = swap;
+        parent_node.box = combine(right_node.box, nodes[rl_index].box);
+        return;
       }
 
-      return rotate_left(index);
-    }
+      swap = combine(nodes[rl_index].box, left_node.box);
+      if (swap.surface_area() < right_node.box.surface_area()) {
 
-    return index;
-  }
+        right_node.right = left;
+        left_node.parent = right;
+        parent_node.left = rr_index;
+        nodes[rr_index].parent = index;
 
-  /*
-   * BEFORE:
-   *
-   *        A
-   *      /   \
-   *     X     B
-   *         /   \
-   *        Y     Z
-   *
-   * AFTER:
-   *
-   *        B
-   *      /   \
-   *     A     Z
-   *   /    \
-   *  X       Y
-   *
-   */
-  int rotate_left(int a_index) {
-    Node &node_A = nodes[a_index];
-
-    int b_index = node_A.right;
-    Node &node_B = nodes[b_index];
-
-    int y_index = node_B.left;
-
-    // Update child pointers
-    node_B.left = a_index;
-    node_B.parent = node_A.parent;
-    node_A.right = y_index;
-    node_A.parent = b_index;
-
-    // Update grandchild pointer
-    if (y_index != NULL_INDEX) {
-      nodes[y_index].parent = a_index;
-    }
-
-    // Update grandparent pointer
-    int grandparent = node_B.parent;
-    if (node_B.parent != NULL_INDEX) {
-      if (nodes[grandparent].left == a_index) {
-        nodes[grandparent].left = b_index;
-      } else {
-        nodes[grandparent].right = b_index;
+        right_node.box = swap;
+        parent_node.box = combine(right_node.box, nodes[rr_index].box);
+        return;
       }
-    } else {
-      root_index = b_index;
     }
-
-    // Update AABBs
-    // node_A.box = combine(nodes[node_A.left].fat_box, (y_index != NULL_INDEX) ? nodes[y_index].fat_box : AABB());
-    // node_B.box = combine(node_A.fat_box, nodes[node_B.right].fat_box);
-    node_A.box = combine(get_node_aabb(node_A.left), (y_index != NULL_INDEX) ? get_node_aabb(y_index) : AABB());
-    node_B.box = combine(get_node_aabb(a_index), get_node_aabb(node_B.right));
-
-    node_A.height = 1 + std::max(get_height(node_A.left), get_height(node_A.right));
-    node_B.height = 1 + std::max(get_height(node_B.left), get_height(node_B.right));
-
-    return b_index;
-  }
-
-  /*
-   * BEFORE:
-   *
-   *        A
-   *      /   \
-   *     B     Z
-   *   /    \
-   *  X       Y
-   *
-   * AFTER:
-   *
-   *        B
-   *      /   \
-   *     X     A
-   *         /   \
-   *        Y     Z
-   *
-   */
-  int rotate_right(int a_index) {
-    Node &node_A = nodes[a_index];
-
-    int b_index = node_A.left;
-    Node &node_B = nodes[b_index];
-
-    int y_index = node_B.right;
-
-    // Update child pointers
-    node_B.right = a_index;
-    node_B.parent = node_A.parent;
-    node_A.left = y_index;
-    node_A.parent = b_index;
-
-    // Update grandchild pointer
-    if (y_index != NULL_INDEX) {
-      nodes[y_index].parent = a_index;
-    }
-
-    // Update grandparent pointer
-    int grandparent = node_B.parent;
-    if (node_B.parent != NULL_INDEX) {
-      if (nodes[grandparent].left == a_index) {
-        nodes[grandparent].left = b_index;
-      } else {
-        nodes[grandparent].right = b_index;
-      }
-    } else {
-      root_index = b_index;
-    }
-
-    // Update AABBs
-    // node_A.fat_box = combine(nodes[node_A.right].fat_box, (y_index != NULL_INDEX) ? nodes[y_index].fat_box : AABB());
-    // node_B.fat_box = combine(node_A.fat_box, nodes[node_B.left].fat_box);
-    node_A.box = combine(get_node_aabb(node_A.right), (y_index != NULL_INDEX) ? get_node_aabb(y_index) : AABB());
-    node_B.box = combine(get_node_aabb(a_index), get_node_aabb(node_B.left));
-
-    node_A.height = 1 + std::max(get_height(node_A.left), get_height(node_A.right));
-    node_B.height = 1 + std::max(get_height(node_B.left), get_height(node_B.right));
-
-    return b_index;
   }
 
   void validate(int index = -2) {
@@ -364,8 +271,9 @@ private:
     int expected_height = 1 + std::max(get_height(left), get_height(right));
     assert(n.height == expected_height);
 
-    int bf = nodes.at(left).height - nodes.at(right).height;
-    assert(bf >= -1 && bf <= 1);
+    // TODO: BAD AVL BALANCING STRATEGY
+    // int bf = nodes.at(left).height - nodes.at(right).height;
+    // assert(bf >= -1 && bf <= 1);
 
     validate(left);
     validate(right);
@@ -514,7 +422,6 @@ public:
 
     // allocate new leaf
     int leaf_index = allocate_node();
-    CLOGI("Successfully allocated new node??");
     if (leaf_index < 0 || leaf_index >= nodes.size() || !nodes[leaf_index].is_leaf()) {
       // ?
       // body_node_map.erase(body_id);
@@ -527,7 +434,6 @@ public:
     nodes[leaf_index].body_id = body_id;
     nodes[leaf_index].height = 1;
     nodes[leaf_index].box = fatten(box, fat_margin); // store leaf aabb as fat box
-    CLOGI("Successful AABB Init");
 
     // base case -- zero leaves
     if (root_index == NULL_INDEX) {
@@ -538,7 +444,6 @@ public:
 
     // 1. -- find best leaf sibling for new leaf based on SA heuristic
     int sibling = find_best_sibling(leaf_index);
-    CLOGI("Found Sibling");
 
     // 2. -- create new internal parent node
     int old_parent = nodes[sibling].parent;
@@ -547,7 +452,6 @@ public:
     nodes[new_parent].parent = old_parent;
     // internal.box = combine(nodes[leaf_index].fat_box, nodes[sibling].fat_box);
     nodes[new_parent].box = combine(get_node_aabb(leaf_index), get_node_aabb(sibling));
-    CLOGI("Built Parent Node");
 
     if (old_parent != NULL_INDEX) {
 
@@ -562,13 +466,11 @@ public:
     else {
       root_index = new_parent;
     }
-    CLOGI("POINT SS");
 
     nodes[new_parent].left = sibling;
     nodes[new_parent].right = leaf_index;
     nodes[sibling].parent = new_parent;
     nodes[leaf_index].parent = new_parent;
-    CLOGI("Assigned Internal Node Pointers");
 
     // 3. -- walk up tree, refitting ancestor AABBs
     int index = new_parent;
@@ -581,34 +483,8 @@ public:
       nodes[index].box = combine(get_node_aabb(left), get_node_aabb(right));
       nodes[index].height = 1 + std::max(get_height(left), get_height(right));
 
-      /*
-      int pos = index;
-      int new_pos = balance_tree(pos);
-      itr++;
-      while (new_pos != pos) {
-
-        int pos_left = nodes[pos].left;
-        int pos_right = nodes[pos].right;
-        nodes[pos].height = 1 + std::max(get_height(pos_left), get_height(pos_right));
-
-        int new_pos_left = nodes[new_pos].left;
-        int new_pos_right = nodes[new_pos].right;
-        nodes[new_pos].height = 1 + std::max(get_height(new_pos_left), get_height(new_pos_right));
-
-        pos = new_pos;
-        new_pos = balance_tree(pos);
-        itr++;
-      }
-
-      // no balance needed
-      index = nodes[pos].parent;
-      CLOGI("Balanced Tree");
-      CLOGI("Number of balances: %d", itr);
-      */
       index = nodes[index].parent;
     }
-
-    CLOGI("Successful Insert");
   }
 
   void remove(int body_id) {
@@ -656,27 +532,6 @@ public:
         nodes[index].box = combine(get_node_aabb(left), get_node_aabb(right));
         nodes[index].height = 1 + std::max(get_height(left), get_height(right));
 
-        /*
-        int pos = index;
-        int new_pos = balance_tree(pos);
-        while (new_pos != pos) {
-
-          int pos_left = nodes[pos].left;
-          int pos_right = nodes[pos].right;
-          nodes[pos].height = 1 + std::max(get_height(pos_left), get_height(pos_right));
-
-          int new_pos_left = nodes[new_pos].left;
-          int new_pos_right = nodes[new_pos].right;
-          nodes[new_pos].height = 1 + std::max(get_height(new_pos_left), get_height(new_pos_right));
-
-          pos = new_pos;
-          new_pos = balance_tree(pos);
-        }
-
-        // no balance needed
-        index = nodes[pos].parent;
-        CLOGI("Balanced Tree");
-        */
         index = nodes[index].parent;
       }
 
@@ -768,7 +623,6 @@ public:
 
       // AABB ray test
       if (!node.box.ray_intersect(ray)) {
-        CLOGI("FAILED AABB RAY INTERSECT");
         continue;
       }
 

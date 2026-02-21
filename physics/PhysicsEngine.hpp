@@ -43,8 +43,8 @@ public:
     }*/
 
     // 2. broadphase (BVH) -- find potential colliding pairs
-    potential_collisions = bvh.update(bodies, debug);
-    CLOGI("NUM COLLISIONS %ld", potential_collisions.size());
+    potential_collisions = bvh.update(bodies, NULL);
+    // CLOGI("NUM COLLISIONS %ld", potential_collisions.size());
 
     for (auto pair : potential_collisions) {
       if (sat.poly_poly_collision(bodies[pair.first], bodies[pair.second], debug)) {

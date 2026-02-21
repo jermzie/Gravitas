@@ -55,7 +55,7 @@ void Gravitas::run() {
     gui.render();
 
     glfwSwapBuffers(window);
-    // glfwSwapInterval(0); // VSYNC disabled; limits fps to refresh rate (144hz)
+    // glfwSwapInterval(0); // VSYNC disabled; uncaps FPS
   }
 }
 
@@ -163,11 +163,11 @@ void Gravitas::init_scene() {
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
   RigidBody light(cube_model, 1.0, glm::vec3(2.0, 2.0, 2.0));
-  // RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 1.0, 4.0));
-  // RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
-  // RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
-  //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
-  // RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
+  RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 1.0, 4.0));
+  RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
+  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
+  RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
   //      RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
   //         RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
   //      RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
@@ -176,26 +176,27 @@ void Gravitas::init_scene() {
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
-  // scene.add_rigid_body(std::move(tetra));
+  scene.add_rigid_body(std::move(tetra));
   // scene.add_rigid_body(std::move(cube));
-  // scene.add_rigid_body(std::move(cyl));
-  //   scene.add_rigid_body(std::move(ball));
-  // scene.add_rigid_body(std::move(suzanne));
-  //       scene.add_rigid_body(std::move(teapot));
-  //            scene.addRigidBody(std::move(david));
-  //       scene.add_rigid_body(std::move(cow));
-  //         scene.add_rigid_body(std::move(bunny));
-  //         scene.add_rigid_body(std::move(dragon));
+  //  scene.add_rigid_body(std::move(cyl));
+  //  scene.add_rigid_body(std::move(ball));
+  //  scene.add_rigid_body(std::move(suzanne));
+  //         scene.add_rigid_body(std::move(teapot));
+  //              scene.addRigidBody(std::move(david));
+  //         scene.add_rigid_body(std::move(cow));
+  //           scene.add_rigid_body(std::move(bunny));
+  //           scene.add_rigid_body(std::move(dragon));
 
   scene.set_debugger(&debug);
 
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
-
+  /*
   for (int i = 0; i < 100; i++) {
     RigidBody cube(cube_model, 5.0, rand_pos());
     scene.add_rigid_body(std::move(cube));
   }
+  */
 }
 
 void Gravitas::process_inputs() {

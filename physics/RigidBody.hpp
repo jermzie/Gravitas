@@ -38,6 +38,15 @@ struct CollisionData {
   // BoundingSphere get_world_sphere(const Transform &transform) const;
 };
 
+typedef enum {
+  TETRAHEDRON,
+  CUBE,
+  SPHERE,
+  CONE,
+  CYLINDER,
+  CAPSULE,
+} primitive_type;
+
 // ? IS THIS NEEDED?
 struct rigid_body_config_t {
   Model &model;
@@ -193,7 +202,7 @@ public:
 
     // 5. Build collision geometry
     collider.hull = CollisionGeometry(mesh);
-    // FIXME: Reuse extrema + scale computed from quickhull construction for AABB size + fat margins
+    // FIXME: Reuse extrema + scale computed from quickhull construction
     collider.local_aabb = AABB(mesh.get_extrema());
 
     // 6. Transform into world space
