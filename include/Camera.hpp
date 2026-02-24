@@ -41,7 +41,7 @@ public:
     printf("UP: (%.2f, %.2f, %.2f)\n", up_vector.x, up_vector.y, up_vector.z);
     printf("WORLD UP: (%.2f, %.2f, %.2f)\n", world_up.x, world_up.y, world_up.z);
     printf("YAW: %.2f\n", yaw_angle);
-    printf("PITCH: (%.2f\n", pitch_angle);
+    printf("PITCH: %.2f\n", pitch_angle);
   }
 
   // constructor with vectors
@@ -75,8 +75,10 @@ public:
 
     this->position = pos;
     this->front_vector = front;
+    this->up_vector = up;
     this->yaw_angle = yaw;
     this->pitch_angle = pitch;
+
     update_camera_vectors();
   }
 
@@ -97,7 +99,8 @@ public:
     if (direction == RIGHT)
       position += right_vector * velocity;
     if (direction == UP)
-      position += up_vector * velocity;
+      position += world_up * velocity;
+    // position += up_vector * velocity;
   }
 
   // processes input received from a mouse input system. Expects the offset
@@ -132,7 +135,16 @@ public:
   }
 
   // calculates the front vector from the Camera's (updated) Euler Angles
-  void update_camera_vectors() {
+  void update_camera_vectors(GLboolean limit_pitch = true) {
+
+    // make sure that when pitch is out of bounds, screen doesn't get flipped
+    if (limit_pitch) {
+      if (pitch_angle > 89.0f)
+        pitch_angle = 89.0f;
+      if (pitch_angle < -89.0f)
+        pitch_angle = -89.0f;
+    }
+
     // calculate the new Front vector
     glm::vec3 new_front;
     new_front.x = cos(glm::radians(yaw_angle)) * cos(glm::radians(pitch_angle));

@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "AABB.hpp"
+#include "Debugger.hpp"
 #include "Mesh.hpp"
 #include "Model.hpp"
 #include "Ray.hpp"
@@ -62,12 +63,9 @@ private:
   // Geometry & collisions
 
   // Transform (world space)
-  glm::vec3 position;
-  glm::quat orientation;
 
   // Physics state
   MassProperties properties;
-  glm::vec3 lin_velocity = glm::vec3(0.0f);
   glm::vec3 lin_momentum = glm::vec3(0.0f);
   glm::vec3 ang_velocity = glm::vec3(0.0f);
   glm::vec3 ang_momentum = glm::vec3(0.0f);
@@ -101,6 +99,11 @@ private:
 public:
   Transform transform;
   CollisionData collider;
+
+  // FIXME: TEMPORARY MAKE PUBLIC
+  glm::vec3 position;
+  glm::quat orientation;
+  glm::vec3 lin_velocity = glm::vec3(0.0f);
 
   int id;
   bool is_static = false;
@@ -213,68 +216,10 @@ public:
     std::cout << "CONVEX MESH EDGES: " << mesh.half_edges.size() << std::endl;
   }
 
-  /*
-  // body created by singular model -- often imported models
-  RigidBody(Model& model, float rho, glm::vec3 position, glm::vec3 velocity,
-            glm::vec3 L) {
-
-    // basic physics properties
-    rigidbody_model = model;
-    density = rho;
-    lin_velocity = velocity;
-    ang_momentum = L;
-
-    // compute convex hull & half-edge mesh of model
-    QuickHull qh;
-    ConvexMesh mesh = qh.build_mesh(render_model.get_vertex_data());
-    glm::vec3 geometric_centre;
-
-    extrema = qh.get_extrema_vertices();
-
-    glm::vec3 model_origin_offset = hull.recentre_to_origin();
-
-    mass_props = MassProperties::compute(mesh, density);
-
-    collision.mesh = mesh;
-    collision.local_aabb;
-    collision.local_sphere;
-
-    // compute aabb
-    box.init(extrema);
-
-    // local com & inertia
-    hull.computeMassProperties(density, mass, local_com_offset, inertia);
-    inv_inertia = glm::inverse(inertia);
-    com = position + local_com_offset;
-
-    // transformations
-    world_transform.SetAbsPosition(position);
-    hull.getWorldTransform().SetAbsPosition(position);
-    hull.worldCentroid += position;
-
-    // model
-    hull.getHullModel(rigidbody_model, world_transform);
-  }
-  */
-
-  /*
-  // body created by collection of convex meshes -- manually defined
-  RigidBody(std::vector<ConvexHull>models, float rho, glm::vec3 position,
-  glm::vec3 velocity, glm::vec3 L) {
-
-          // basic physics properties
-          rigidbody_model = models;
-          density = rho;
-          lin_velocity = velocity;
-          ang_momentum = L;
-
-  }
-  */
-
   // apply force & torque
-  void integrateForces(double dt) {
+  void integrate_forces(double dt) {
 
-    glm::vec3 gravity(0.0f, -1.0f, 0.0f);
+    glm::vec3 gravity(0.0f, -9.81f, 0.0f);
     lin_velocity += gravity * dt;
   }
 
@@ -393,7 +338,13 @@ public:
   }
   */
 
-  void draw(Shader &shader) { render_model.draw(shader); }
+  void draw(Shader &shader, Debugger *debug = nullptr) {
+
+    if (debug) {
+      debug->draw_mesh(collider.hull.get_mesh(), transform.get_matrix(), glm::vec3(0.0f, 1.0f, 0.0f));
+    }
+    render_model.draw(shader);
+  }
 
   // Returns world space position
   glm::vec3 get_centre_of_mass() const { return position; }

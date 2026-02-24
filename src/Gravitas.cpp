@@ -48,6 +48,7 @@ void Gravitas::run() {
     // render scene
     render();
     debug.render(view, projection, glm::mat4(1.0f));
+    // camera.debug();
 
     // imgui shit
     gui.new_frame();
@@ -162,11 +163,11 @@ void Gravitas::init_scene() {
 
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
-  RigidBody light(cube_model, 1.0, glm::vec3(2.0, 2.0, 2.0));
-  RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 1.0, 4.0));
+  RigidBody light(cube_model, 1.0, glm::vec3(2.0, 3.0, 2.0));
+  RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 7.0, 4.0));
   RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
   RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
-  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
+  //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
   RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
   //      RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
   //         RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
@@ -177,15 +178,15 @@ void Gravitas::init_scene() {
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
   scene.add_rigid_body(std::move(tetra));
-  // scene.add_rigid_body(std::move(cube));
-  //  scene.add_rigid_body(std::move(cyl));
-  //  scene.add_rigid_body(std::move(ball));
-  //  scene.add_rigid_body(std::move(suzanne));
-  //         scene.add_rigid_body(std::move(teapot));
-  //              scene.addRigidBody(std::move(david));
-  //         scene.add_rigid_body(std::move(cow));
-  //           scene.add_rigid_body(std::move(bunny));
-  //           scene.add_rigid_body(std::move(dragon));
+  scene.add_rigid_body(std::move(cube));
+  scene.add_rigid_body(std::move(cyl));
+  //   scene.add_rigid_body(std::move(ball));
+  scene.add_rigid_body(std::move(suzanne));
+  //       scene.add_rigid_body(std::move(teapot));
+  //            scene.addRigidBody(std::move(david));
+  //       scene.add_rigid_body(std::move(cow));
+  //         scene.add_rigid_body(std::move(bunny));
+  //         scene.add_rigid_body(std::move(dragon));
 
   scene.set_debugger(&debug);
 
@@ -469,7 +470,7 @@ void Gravitas::render() {
         default_shader.set_vec3("lightPos", scene.bodies[0].get_centre_of_mass());
         default_shader.set_vec3("viewPos", camera.position);
 
-        scene.bodies[i].draw(default_shader);
+        scene.bodies[i].draw(default_shader, &debug);
       }
     }
 
@@ -522,7 +523,7 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
     // nothing currently active, claim key
     if (active_key == -1) {
       if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R || key == GLFW_KEY_1 ||
-          key == GLFW_KEY_2 || key == GLFW_KEY_3)
+          key == GLFW_KEY_2 || key == GLFW_KEY_3 || key == GLFW_KEY_4)
         active_key = key;
     }
     // ignore additional presses while another key is active
@@ -536,15 +537,18 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
   // specific key actions
   switch (active_key) {
   case GLFW_KEY_Q:
+    // drag_plane.normal = camera.up_vector;
     drag_plane.normal = glm::vec3(0.0f, 1.0f, 0.0f); // XZ-plane
     break;
 
   case GLFW_KEY_W:
-    drag_plane.normal = glm::vec3(1.0f, 0.0f, 0.0f); // YZ-plane
+    drag_plane.normal = camera.right_vector;
+    // drag_plane.normal = glm::vec3(1.0f, 0.0f, 0.0f); // YZ-plane
     break;
 
   case GLFW_KEY_E:
-    drag_plane.normal = glm::vec3(0.0f, 0.0f, 1.0f); // XY-plane
+    drag_plane.normal = camera.front_vector;
+    // drag_plane.normal = glm::vec3(0.0f, 0.0f, 1.0f); // XY-plane
     break;
 
   case GLFW_KEY_R:
@@ -566,6 +570,11 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
   case GLFW_KEY_3:
     camera.reset(
         glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), -270.0f, 0.0f);
+    break;
+
+  case GLFW_KEY_4:
+    camera.reset(
+        glm::vec3(0.0f, 20.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), -90.0f, -90.0f);
     break;
 
   default:

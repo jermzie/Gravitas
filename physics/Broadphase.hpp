@@ -285,7 +285,6 @@ public:
   std::vector<std::pair<int, int>> query_tree_pairs() {
     std::vector<std::pair<int, int>> collision_list;
     if (root_index == NULL_INDEX) {
-      CLOGW("No Bodies");
       return collision_list;
     }
 
@@ -425,7 +424,6 @@ public:
     if (leaf_index < 0 || leaf_index >= nodes.size() || !nodes[leaf_index].is_leaf()) {
       // ?
       // body_node_map.erase(body_id);
-      CLOGE("Failed to allocate new leaf node");
       return;
     }
 
@@ -555,7 +553,13 @@ public:
     for (int i = 0; i < nodes.size(); i++) {
 
       if (debug) {
-        debug->draw_aabb(nodes[i].box, glm::vec3(1.0f, 0.0f, 0.0f));
+        if (nodes[i].is_leaf()) {
+          debug->draw_aabb(nodes[i].box, glm::vec3(1.0f, 0.0f, 0.0f));
+        } else if (root_index == i) {
+          debug->draw_aabb(nodes[i].box, glm::vec3(0.0f, 0.0f, 1.0f));
+        } else {
+          debug->draw_aabb(nodes[i].box, glm::vec3(0.0f, 1.0f, 0.0f));
+        }
       }
 
       if (nodes[i].height < 0 || !nodes[i].is_leaf()) {
