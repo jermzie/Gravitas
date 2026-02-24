@@ -145,7 +145,49 @@ public:
   }
 
   // draw translucent square face
-  void draw_plane(const Plane &plane, float size, const glm::vec3 &color) {}
+  void draw_plane(const Plane &plane, float size, const glm::vec3 &color, int grid_lines = 10) {
+    // Build two orthogonal tangent vectors from the plane normal.
+    // Pick an arbitrary "up" that isn't parallel to the normal.
+    glm::vec3 n = glm::normalize(plane.normal);
+    glm::vec3 ref = (std::abs(n.y) < 0.99f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 t1 = glm::normalize(glm::cross(ref, n)); // tangent
+    glm::vec3 t2 = glm::cross(n, t1);                  // bitangent
+
+    glm::vec3 o = plane.point; // center of the drawn section
+
+    // -- Border --
+    glm::vec3 c0 = o + (-t1 - t2) * size;
+    glm::vec3 c1 = o + (t1 - t2) * size;
+    glm::vec3 c2 = o + (t1 + t2) * size;
+    glm::vec3 c3 = o + (-t1 + t2) * size;
+    draw_line(c0, c1, color);
+    draw_line(c1, c2, color);
+    draw_line(c2, c3, color);
+    draw_line(c3, c0, color);
+
+    // -- Grid lines --
+    if (grid_lines > 0) {
+      // Slightly dimmer colour for interior grid
+      glm::vec3 grid_color = color * 0.45f;
+
+      for (int i = 1; i < grid_lines; ++i) {
+        float t = (static_cast<float>(i) / grid_lines) * 2.0f - 1.0f; // [-1, 1]
+
+        // Lines parallel to t2
+        glm::vec3 a = o + t1 * (t * size) - t2 * size;
+        glm::vec3 b = o + t1 * (t * size) + t2 * size;
+        draw_line(a, b, grid_color);
+
+        // Lines parallel to t1
+        glm::vec3 c = o - t1 * size + t2 * (t * size);
+        glm::vec3 d = o + t1 * size + t2 * (t * size);
+        draw_line(c, d, grid_color);
+      }
+    }
+
+    // -- Normal indicator (short arrow from center) --
+    draw_line(o, o + n * (size * 0.15f), color);
+  }
 
   void draw_normal() {}
 
@@ -157,10 +199,9 @@ public:
 
     // Add option to enable/disable
     // Disable depth test so debug always draws on top
-    glDisable(GL_DEPTH_TEST);
+    // glDisable(GL_DEPTH_TEST);
 
     debug_shader.use();
-    // debug_shader.set_vec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
     debug_shader.set_mat4("view", view);
     debug_shader.set_mat4("projection", projection);
     debug_shader.set_mat4("model", model);
@@ -186,6 +227,6 @@ public:
     glBindVertexArray(0);
 
     // Re-enable depth test
-    glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_DEPTH_TEST);
   }
 };
