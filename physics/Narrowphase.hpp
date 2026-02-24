@@ -2,6 +2,7 @@
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/matrix.hpp>
 #include <limits>
 #include <numeric>
 
@@ -10,6 +11,7 @@
 #include "ConvexMesh.hpp"
 #include "ConvexMeshBuilder.hpp"
 #include "Debugger.hpp"
+#include "Plane.hpp"
 #include "RigidBody.hpp"
 
 /**
@@ -72,6 +74,72 @@ public:
     float max_penetration;
   };
 
+  bool poly_plane_collision(const RigidBody &poly, const Plane &plane, Debugger *debug = nullptr) {
+
+    FaceCollision out;
+    float max_distance = -std::numeric_limits<float>::max();
+    size_t max_index;
+
+    glm::mat4 transform = poly.get_physics_matrix();
+    glm::mat3 normal_matrix = get_normal_matrix(transform);
+    // glm::vec3 axis = get_normal_matrix(transform) * -plane.normal;
+
+    glm::vec3 axis_world = -plane.normal;
+    glm::vec3 axis_local = glm::transpose(normal_matrix) * axis_world;
+    glm::vec3 vertex = find_support_point(axis_local, poly);
+
+    float dist = get_signed_distance_to_plane(vertex, plane);
+
+    return dist <= 0.0f;
+  }
+
+  ContactManifold create_plane_contact(const RigidBody &poly, const Plane &plane, Debugger *debug = nullptr) {
+
+    ContactManifold out;
+    out.num_points = 0;
+    out.normal = plane.normal;
+    // out.max_penetration = -std::numeric_limits<float>::max();
+    out.max_penetration = 0.0f;
+
+    glm::mat4 transform = poly.get_physics_matrix();
+    const auto &local_vertices = poly.get_mesh().vertices;
+
+    std::vector<ContactPoint> candidates;
+    for (const auto &local : local_vertices) {
+      glm::vec3 world = glm::vec3(transform * glm::vec4(local, 1.0f));
+      float dist = get_signed_distance_to_plane(world, plane);
+
+      if (dist <= 0.0f) { // vertex is on/below the plane
+        ContactPoint c;
+        c.point = world; // world-space penetrating vertex
+        c.normal = plane.normal;
+        c.penetration = dist; // negative = depth below plane
+        c.contact_id = static_cast<int>(candidates.size());
+        candidates.push_back(c);
+
+        if (-dist > out.max_penetration) {
+          out.max_penetration = -dist;
+        }
+      }
+    }
+
+    if (candidates.empty()) {
+      return out;
+    }
+
+    std::vector<ContactPoint> reduced = reduce_contact_manifold(candidates, plane.normal);
+    out.num_points = std::min(4, static_cast<int>(reduced.size()));
+    for (int i = 0; i < out.num_points; ++i)
+      out.point[i] = reduced[i];
+
+    if (debug) {
+      for (int i = 0; i < out.num_points; ++i)
+        debug->draw_vertex(out.point[i].point, glm::vec3(1.0f, 0.0f, 0.0f));
+    }
+
+    return out;
+  }
+
   // Contact Creation
   // Need to identify axis of minimum penetration (ie. smallest penetration?)
   // choose between face A/B normals or edge-edge cross product
@@ -120,7 +188,7 @@ public:
     // WARNING: FLOATING POINT INACCURACY?
     bool contact_face_A = fa.separation > eab.separation;
     bool contact_face_B = fb.separation > eab.separation;
-    if (contact_face_A && contact_face_B) {
+    if (contact_face_A || contact_face_B) {
       CLOGI("FACE COLLISION");
 
       ContactManifold out = create_face_contact(fa, fb, poly_A, poly_B);
@@ -288,15 +356,16 @@ private:
           float cross_len = glm::length(cross);
 
           if (cross_len > 0.005f * glm::sqrt(glm::length2(edge_A) * glm::length2(edge_B))) {
-            continue;
+            // BUG:? continue; breaks edge collisions?
+            // continue;
           }
 
           // normalized separated axis
           glm::vec3 axis = cross / cross_len;
 
           // ensure axis points from A to B
-          if (glm::dot(axis, centroid_B - centroid_A) < 0.0f) {
-            // if (glm::dot(axis, p1 - centroid_A) < 0.0f) {
+          // if (glm::dot(axis, centroid_B - centroid_A) < 0.0f) {
+          if (glm::dot(axis, p1 - centroid_A) < 0.0f) {
             axis = -axis;
           }
 
@@ -379,7 +448,7 @@ private:
 
       glm::mat3 reference_norm_matrix = get_normal_matrix(reference_transform);
       glm::vec3 norm = glm::normalize(reference_norm_matrix * reference_face.plane.normal);
-      incident_face = find_incident_face(reference_face.plane.normal, poly_B, poly_B.get_physics_matrix());
+      incident_face = find_incident_face(norm, poly_B, poly_B.get_physics_matrix());
     } else {
       reference_poly = &poly_B;
       reference_mesh = poly_B.get_mesh();
@@ -391,7 +460,7 @@ private:
 
       glm::mat3 reference_norm_matrix = get_normal_matrix(reference_transform);
       glm::vec3 norm = glm::normalize(reference_norm_matrix * reference_face.plane.normal);
-      incident_face = find_incident_face(reference_face.plane.normal, poly_A, poly_A.get_physics_matrix());
+      incident_face = find_incident_face(norm, poly_A, poly_A.get_physics_matrix());
     }
 
     // Get world-space incident face vertices
