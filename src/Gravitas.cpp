@@ -133,12 +133,8 @@ int random(int min, int max) {
   std::uniform_int_distribution<int> distr(min, max);
   return distr(generator);
 }
-glm::vec3 rand_pos() {
-
-  int min = -30;
-  int max = 30;
-
-  return glm::vec3(random(min, max), random(min, max), 0.0f);
+glm::vec3 rand_pos(int min = -50, int max = 50) {
+  return glm::vec3(random(min, max), random(min, max), random(min, max));
 }
 
 void Gravitas::init_scene() {
@@ -163,7 +159,7 @@ void Gravitas::init_scene() {
 
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
-  RigidBody light(cube_model, 1.0, glm::vec3(2.0, 3.0, 2.0));
+  RigidBody light(cube_model, 1.0, glm::vec3(0.0, 3.0, 0.0));
   RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 7.0, 4.0));
   RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
   RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
@@ -177,24 +173,25 @@ void Gravitas::init_scene() {
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
-  scene.add_rigid_body(std::move(tetra));
+  // scene.add_rigid_body(std::move(tetra));
   scene.add_rigid_body(std::move(cube));
-  scene.add_rigid_body(std::move(cyl));
-  //   scene.add_rigid_body(std::move(ball));
-  scene.add_rigid_body(std::move(suzanne));
-  //       scene.add_rigid_body(std::move(teapot));
-  //            scene.addRigidBody(std::move(david));
-  //       scene.add_rigid_body(std::move(cow));
-  //         scene.add_rigid_body(std::move(bunny));
-  //         scene.add_rigid_body(std::move(dragon));
+  // scene.add_rigid_body(std::move(cyl));
+  //      scene.add_rigid_body(std::move(ball));
+  //  scene.add_rigid_body(std::move(suzanne));
+  //          scene.add_rigid_body(std::move(teapot));
+  //               scene.addRigidBody(std::move(david));
+  //          scene.add_rigid_body(std::move(cow));
+  //            scene.add_rigid_body(std::move(bunny));
+  //            scene.add_rigid_body(std::move(dragon));
 
   scene.set_debugger(&debug);
 
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
+
   /*
-  for (int i = 0; i < 100; i++) {
-    RigidBody cube(cube_model, 5.0, rand_pos());
+  for (int i = 0; i < 50; i++) {
+    RigidBody cube(cube_model, 5.0, rand_pos(-9, 9));
     scene.add_rigid_body(std::move(cube));
   }
   */
@@ -470,7 +467,8 @@ void Gravitas::render() {
         default_shader.set_vec3("lightPos", scene.bodies[0].get_centre_of_mass());
         default_shader.set_vec3("viewPos", camera.position);
 
-        scene.bodies[i].draw(default_shader, &debug);
+        // scene.bodies[i].draw(default_shader, &debug);
+        scene.bodies[i].draw(default_shader, NULL);
       }
     }
 
@@ -685,7 +683,7 @@ void Gravitas::on_mouse_press(int button, int action, int mods) {
       left_mouse_btn.is_down = false;
 
       if (selected_object != -1) {
-        scene.bodies[selected_object].is_static = false;
+        scene.bodies[selected_object].is_dragging = false;
       }
 
       // stop dragging/rotating on release

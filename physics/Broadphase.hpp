@@ -39,7 +39,8 @@ private:
   int free_node = NULL_INDEX; // head of free list
   int node_count = 0;
   int root_index = NULL_INDEX;
-  float fat_margin = 0.05f;
+  // float fat_margin = 0.05f;
+  float fat_margin = 0.5f;
 
   int get_height(int index) {
     if (index == NULL_INDEX) {
@@ -170,7 +171,8 @@ private:
     return cost;
   }
 
-  // Surface area based balancing
+  // Surface area based balancing (BVH is SA-based)
+  // AVL balancing is height-based (BAD quality)
   void balance_tree(int index) {
     if (index == NULL_INDEX || nodes[index].is_leaf() || nodes[index].height < 2) {
       return;
@@ -186,12 +188,14 @@ private:
       return;
     }
 
+    // Leaf nodes don't contribute to tree cost
     if (!left_node.is_leaf()) {
       int sub_left = left_node.left;
       int sub_right = left_node.right;
 
       AABB swap = combine(nodes[sub_right].box, right_node.box);
       if (swap.surface_area() < left_node.box.surface_area()) {
+
         // swap sub_left with right
         parent_node.right = sub_left;
         nodes[sub_left].parent = index;
@@ -213,33 +217,37 @@ private:
       }
     }
 
+    // Leaf nodes don't contribute to tree cost
     if (!right_node.is_leaf()) {
-      int rl_index = right_node.left;
-      int rr_index = right_node.right;
+      int sub_left = right_node.left;
+      int sub_right = right_node.right;
 
-      AABB swap = combine(nodes[rr_index].box, left_node.box);
+      AABB swap = combine(nodes[sub_right].box, left_node.box);
       if (swap.surface_area() < right_node.box.surface_area()) {
+
+        // swap
+        parent_node.left = sub_left;
+        nodes[sub_left].parent = index;
 
         right_node.right = left;
         left_node.parent = right;
-        parent_node.left = rl_index;
-        nodes[rl_index].parent = index;
 
+        // refit parent
         right_node.box = swap;
-        parent_node.box = combine(right_node.box, nodes[rl_index].box);
+        parent_node.box = combine(right_node.box, nodes[sub_left].box);
         return;
       }
 
-      swap = combine(nodes[rl_index].box, left_node.box);
+      swap = combine(nodes[sub_left].box, left_node.box);
       if (swap.surface_area() < right_node.box.surface_area()) {
 
         right_node.right = left;
         left_node.parent = right;
-        parent_node.left = rr_index;
-        nodes[rr_index].parent = index;
+        parent_node.left = sub_right;
+        nodes[sub_right].parent = index;
 
         right_node.box = swap;
-        parent_node.box = combine(right_node.box, nodes[rr_index].box);
+        parent_node.box = combine(right_node.box, nodes[sub_right].box);
         return;
       }
     }

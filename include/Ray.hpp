@@ -15,8 +15,7 @@ struct Ray {
 
   Ray() = default;
   Ray(glm::vec3 origin, glm::vec3 direction)
-      : origin(origin), direction(direction),
-        inverse_len_squared(1 / (glm::length2(direction))) {}
+      : origin(origin), direction(direction), inverse_len_squared(1 / (glm::length2(direction))) {}
 };
 
 inline float get_squared_distance_to_ray(const glm::vec3 &p, const Ray &r) {
@@ -31,9 +30,8 @@ inline float get_squared_distance_to_ray(const glm::vec3 &p, const Ray &r) {
 }
 
 // use raycasting to project mouse pos. as 3D ray for object picking
-inline Ray screen_to_world_ray(float x_pos, float y_pos, int screen_width,
-                               int screen_height, glm::mat4 projection_matrix,
-                               glm::mat4 view_matrix) {
+inline Ray screen_to_world_ray(
+    float x_pos, float y_pos, int screen_width, int screen_height, glm::mat4 projection_matrix, glm::mat4 view_matrix) {
 
   // Screen Space --> Clip Space (NDC)
   // Scale screen coordinates to NDC [-1, 1]
@@ -102,8 +100,7 @@ inline Ray world_to_local_ray(const Transform &transform, const Ray &ray) {
 
   glm::mat4 inverse_model_matrix = transform.get_inverse_matrix();
   glm::vec4 local_origin = inverse_model_matrix * glm::vec4(ray.origin, 1.0f);
-  glm::vec4 local_direction =
-      inverse_model_matrix * glm::vec4(ray.direction, 1.0f);
+  glm::vec4 local_direction = inverse_model_matrix * glm::vec4(ray.direction, 1.0f);
 
   Ray out;
   out.origin = glm::vec3(local_origin);
@@ -113,8 +110,8 @@ inline Ray world_to_local_ray(const Transform &transform, const Ray &ray) {
 }
 
 // Drag body along plane perpendicular to camera
-inline bool ray_plane_intersect(const Ray &ray, const glm::vec3 &normal,
-                                const glm::vec3 &point, float &t) {
+inline bool ray_plane_intersect(
+    const Ray &ray, const glm::vec3 &normal, const glm::vec3 &point, float &t, float t_max = 500.0f) {
 
   // Calculate ray-plane intersection
   float denom = glm::dot(normal, ray.direction);
@@ -129,5 +126,5 @@ inline bool ray_plane_intersect(const Ray &ray, const glm::vec3 &normal,
   // return t >= 0;
 
   // min max intersect distances
-  return (t >= 0.1f && t < 50.0f);
+  return (t >= 0.1f && t < t_max);
 }

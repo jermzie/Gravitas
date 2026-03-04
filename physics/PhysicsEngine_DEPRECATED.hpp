@@ -17,6 +17,7 @@
 // #include "BoundingSphere.hpp"
 #include "ConstraintSolver.hpp"
 #include "Narrowphase.hpp"
+#include "PersistentManifold.hpp"
 
 class PhysicsEngine {
 private:
@@ -28,6 +29,15 @@ private:
   AABB a;
   Plane bounds[8];
   int bounds_size;
+
+  PersistentManifold &get_or_create_manifold(RigidBody *a, RigidBody *b, Plane *plane = nullptr) {
+    for (auto &pm : persistent_contacts) {
+      if (pm.a == a && pm.b == b && pm.plane == plane)
+        return pm;
+    }
+    persistent_contacts.push_back({a, b, plane});
+    return persistent_contacts.back();
+  }
 
 public:
   PhysicsEngine() {
@@ -46,6 +56,7 @@ public:
   std::vector<RigidBody> bodies;
   std::vector<std::pair<int, int>> potential_collisions;
   std::vector<Narrowphase::ContactManifold> contacts;
+  std::vector<PersistentManifold> persistent_contacts;
 
   void step(float dt) {
     using clock = std::chrono::high_resolution_clock;
@@ -69,8 +80,19 @@ public:
     // 1. Integrate forces
     for (auto &b : bodies) {
       if (!b.is_static) {
-        // b.integrate_forces(dt);
+        b.integrate_forces(dt);
       }
+    }
+
+    for (auto &b : bodies) {
+      printf("body[%d] pos=(%.3f, %.3f, %.3f) vel=(%.3f, %.3f, %.3f)\n",
+          b.id,
+          b.position.x,
+          b.position.y,
+          b.position.z,
+          b.lin_velocity.x,
+          b.lin_velocity.y,
+          b.lin_velocity.z);
     }
 
     auto t1 = clock::now();
@@ -81,7 +103,9 @@ public:
     auto t2 = clock::now();
 
     // 3a. Plane collisions
-    contacts.clear();
+    for (auto &pm : persistent_contacts)
+      pm.cull_stale_points();
+
     for (auto &b : bodies) {
       for (int i = 0; i < 6; i++) {
         Narrowphase::ContactManifold manifold;
@@ -90,7 +114,10 @@ public:
           manifold.a = &b;
           manifold.b = nullptr;
           if (manifold.num_points > 0) {
-            contacts.push_back(manifold);
+
+            PersistentManifold &pm = get_or_create_manifold(&b, nullptr, &bounds[i]);
+            for (int j = 0; j < manifold.num_points; j++)
+              pm.merge(manifold.points[j]); // ← merge instead of push_back
           }
         }
       }
@@ -106,26 +133,45 @@ public:
 
         manifold.a = &bodies[pair.first];
         manifold.b = &bodies[pair.second];
+
+        // Fix normal direction (A -> B)
         if (glm::dot(manifold.normal, manifold.b->position - manifold.a->position) < 0.0f) {
           manifold.normal = -manifold.normal;
-          for (int i = 0; i < manifold.num_points; i++)
-            manifold.points[i].normal = manifold.normal;
+          for (int j = 0; j < manifold.num_points; j++)
+            manifold.points[j].normal = manifold.normal;
         }
-        contacts.push_back(manifold);
+
+        PersistentManifold &pm = get_or_create_manifold(&bodies[pair.first], &bodies[pair.second]);
+        for (int j = 0; j < manifold.num_points; j++)
+          pm.merge(manifold.points[j]);
+      }
+    }
+
+    // After contacts are built, before pgs.solve()
+    for (auto &m : contacts) {
+      for (int i = 0; i < m.num_points; i++) {
+        float cached = pgs.find_cached_impulse(m.a, m.b, m.points[i].point);
+        printf("cp[%d]: warm=%s  cached_lambda=%.4f  pos=(%.3f,%.3f,%.3f)\n",
+            i,
+            cached > 0.f ? "HIT " : "MISS",
+            cached,
+            m.points[i].point.x,
+            m.points[i].point.y,
+            m.points[i].point.z);
       }
     }
 
     auto t4 = clock::now();
 
     // 4. Solver
-    // pgs.solve(contacts, dt);
+    pgs.solve(persistent_contacts, dt);
 
     auto t5 = clock::now();
 
     // 5. Integrate position
     for (auto &b : bodies) {
       if (!b.is_static) {
-        // b.update(dt);
+        b.update(dt);
       }
     }
 

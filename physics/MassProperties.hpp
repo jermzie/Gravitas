@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Config.hpp"
 #include "ConvexMesh.hpp"
 #include <stdio.h>
 
 struct MassProperties {
 
   float mass;
+  float inv_mass;
   glm::vec3 centre_of_mass; // Should be (0, 0, 0 ) in local space?
   glm::mat3 inertia_tensor; // At COM
   glm::mat3 inv_inertia_tensor;
@@ -13,6 +15,7 @@ struct MassProperties {
   static MassProperties compute(const ConvexMesh &mesh, float density) {
 
     float mass;
+    float inv_mass;
     glm::vec3 com;
     glm::mat3 inertia;
 
@@ -111,16 +114,20 @@ struct MassProperties {
       intg[i] *= mult[i];
     }
     float vol = intg[0];
-    printf("Final volume: %f\n", vol);
+    CLOGI("Final volume: %f\n", vol);
 
     // Volume should be positive!
     if (vol <= 0) {
-      printf("ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
+      CLOGI("ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
       // You might want to flip all normals and try again
     }
 
     // float vol = intg[0];
     mass = density * vol;
+    CLOGI("Final mass: %f\n", mass);
+
+    inv_mass = 1.0f / mass;
+    CLOGI("Final inverse mass: %f\n", inv_mass);
 
     com.x = intg[1] / vol;
     com.y = intg[2] / vol;
@@ -141,8 +148,11 @@ struct MassProperties {
     inertia[1][2] = inertia[2][1] = Iyz_origin + mass * com.y * com.z;
     inertia[2][0] = inertia[0][2] = Izx_origin + mass * com.z * com.x;
 
-    return MassProperties{
-        .mass = mass, .centre_of_mass = com, .inertia_tensor = inertia, .inv_inertia_tensor = glm::inverse(inertia)};
+    return MassProperties{.mass = mass,
+        .inv_mass = inv_mass,
+        .centre_of_mass = com,
+        .inertia_tensor = inertia,
+        .inv_inertia_tensor = glm::inverse(inertia)};
 
     /*
     // xx, yx, zx

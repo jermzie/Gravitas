@@ -30,7 +30,6 @@
 struct CollisionData {
   CollisionGeometry hull;
   AABB local_aabb;
-  // BoundingSphere local_sphere;
 
   // TODO: Compute local aabb once from extrema, update with world space transform for broadphase
   AABB get_world_aabb(const Transform &transform) const {
@@ -46,7 +45,7 @@ typedef enum {
   CONE,
   CYLINDER,
   CAPSULE,
-} primitive_type;
+} PrimitiveType;
 
 // ? IS THIS NEEDED?
 struct rigid_body_config_t {
@@ -60,18 +59,8 @@ struct rigid_body_config_t {
 
 class RigidBody {
 private:
-  // Geometry & collisions
-
-  // Transform (world space)
-
-  // Physics state
-  MassProperties properties;
-  glm::vec3 lin_momentum = glm::vec3(0.0f);
-  glm::vec3 ang_velocity = glm::vec3(0.0f);
-  glm::vec3 ang_momentum = glm::vec3(0.0f);
-
-  glm::vec3 force;
-  glm::vec3 torque;
+  glm::vec3 force_net = glm::vec3(0.0f);
+  glm::vec3 torque_net = glm::vec3(0.0f);
 
   // Rendering
   Model render_model;                // Just for drawing
@@ -90,36 +79,25 @@ private:
   glm::mat3 inertia = glm::mat3(1.0);
   glm::mat3 inv_inertia = glm::mat3(1.0);
 */
-  // mass properties
-  float mass;
-  float inv_mass;
   float density;
-  float friction;
+  float baumgarte_factor;
+  float restitution;
 
 public:
   Transform transform;
   CollisionData collider;
+  MassProperties properties;
 
   // FIXME: TEMPORARY MAKE PUBLIC
   glm::vec3 position;
   glm::quat orientation;
   glm::vec3 lin_velocity = glm::vec3(0.0f);
-
+  glm::vec3 ang_velocity = glm::vec3(0.0f);
+  glm::vec3 lin_momentum = glm::vec3(0.0f);
+  glm::vec3 ang_momentum = glm::vec3(0.0f);
   int id;
   bool is_static = false;
   bool is_dragging = false;
-
-  void apply_force(glm::vec3 f, glm::vec3 point);
-
-  void integrate(float dt);
-
-  /*
-  AABB get_world_aabb() const {
-    AABB local_box = collider.hull.compute_aabb();
-    // need to transfor to world?
-    return local_box;
-  }
-  */
 
   bool raycast(const Ray &world_ray, float &t) const {
 
@@ -168,14 +146,15 @@ public:
     return transform.get_matrix(); // Local COM space -> World space
   }
 
-  ConvexMesh get_mesh() const { return collider.hull.get_mesh(); }
+  const ConvexMesh &get_mesh() const { return collider.hull.get_mesh(); }
 
-  RigidBody(const Model &model, const float &density, const glm::vec3 &position) {
+  RigidBody(const Model &model, const float &density, const glm::vec3 &position, const bool &is_static = false) {
 
     this->render_model = model;
     this->position = position;
     this->density = density;
     this->orientation = glm::quat(1, 0, 0, 0);
+    this->is_static = is_static;
 
     // 1. Build collision geometry
     QuickHull qh;
@@ -216,55 +195,112 @@ public:
     std::cout << "CONVEX MESH EDGES: " << mesh.half_edges.size() << std::endl;
   }
 
-  // apply force & torque
+  void apply_global_force(glm::vec3 f) { force_net += f; }
+
+  void apply_point_force(glm::vec3 f, glm::vec3 p) {
+    force_net += f;
+    glm::vec3 r = p - position;
+    torque_net += glm::cross(r, f);
+  }
+
+  // Integral is just infinite sum of small intervals
   void integrate_forces(double dt) {
 
     glm::vec3 gravity(0.0f, -9.81f, 0.0f);
+    force_net += gravity * properties.mass;
+
+    // Use Euler's rule
+
+    // Integrate linear velocity
+    // \Delta v(t) = \frac{1}{m} \int F(t) dt
+
+    lin_velocity += properties.inv_mass * force_net * dt;
+
+    // Integrate angular velocity
+    // \Delta \omega (t) = I^{-1} \int \tau (t) dt
+    glm::mat3 R = glm::mat3_cast(orientation);
+    glm::mat3 world_inv_inertia = R * properties.inv_inertia_tensor * glm::transpose(R);
+    ang_velocity += world_inv_inertia * torque_net * dt;
+
+    /*
+    // Integrate position
+    position += lin_velocity * dt;
+
+    // Integrate orientation
+    glm::quat omega_quat(0.0f, ang_velocity);
+    glm::quat dt_orientation = 0.5f * (float)dt * omega_quat * orientation;
+    orientation += dt_orientation;
+    orientation = glm::normalize(orientation);
+
+    // Update transformation matrix
+    update_transform();
+    */
+
+    // Reset forces
+    force_net = glm::vec3(0.0f);
+    torque_net = glm::vec3(0.0f);
+  }
+
+  /*
+  // WARNING: OLD. MAKES NO SENSE
+  // apply force & torque
+  void integrate_forces(double dt) {
+    glm::vec3 gravity(0.0f, -9.81f, 0.0f);
+
+    // Accumulate forces
+    force += properties.mass * gravity; // F_g = m*g
+
+    // Integrate momentum
+    lin_momentum += force * dt;
+    ang_momentum += torque * dt;
+
+    // Derive velocity
+    lin_velocity = lin_momentum * properties.inv_mass; // v = p/m
+
+    force = glm::vec3(0.0f);
+    torque = glm::vec3(0.0f);
+
     lin_velocity += gravity * dt;
   }
+  */
 
   void update(float dt) {
 
-    if (is_static) {
+    if (is_static || is_dragging) {
 
       // DO SOMETHING
+      return;
     } else {
 
-      // LINEAR MOTION
+      // LINEAR POS
       glm::vec3 dt_position = dt * lin_velocity;
       position += dt_position;
 
-      // ANGULAR MOTION
-      glm::mat3 R = glm::mat3_cast(orientation);
-      glm::mat3 world_inertia = R * properties.inv_inertia_tensor * glm::transpose(R);
-      ang_velocity = world_inertia * ang_momentum;
-
-      // Update orientation
-      glm::quat omega_quat(0.0f, ang_velocity.x, ang_velocity.y, ang_velocity.z);
-      glm::quat dt_orientation = 0.5f * dt * omega_quat * orientation;
+      // ANGULAR POS
+      glm::quat omega_quat(0.0f, ang_velocity);
+      glm::quat dt_orientation = 0.5f * (float)dt * omega_quat * orientation;
       orientation += dt_orientation;
       orientation = glm::normalize(orientation);
 
-      // TRANSFORMATION MATRIX
-      // transform.set_displacement(dt_position);
-      // transform.set_rotation(dt_orientation);
-      //
       update_transform();
     }
   }
 
   void drag(glm::vec3 delta) {
 
-    // dragVelocity = 100.0f * displacement;
-    //  update model transformations
-
-    // Update transform
-    // transform.set_displacement(delta);
-
-    // Update COM position
+    // Drag rigid body
     position += delta;
+
+    // TODO: Compute implied velocity
+    // lin_velocity = delta / dt;
+    // lin_momentum = properties.mass * lin_velocity;
+
+    // Stop angular motion
+    ang_velocity = glm::vec3(0.0f);
+    ang_momentum = glm::vec3(0.0f);
+
+    // Update transformation matrix
     update_transform();
-    // track xyz offSets and deltaTime to accumulate velocity while dragging???
   }
 
   void rotate(float x_offset, float y_offset) {
@@ -296,10 +332,9 @@ public:
     // hull.getWorldTransform().SetRelRotation(rotation);
   }
 
-  // Body is static and unable to move
+  // disable dynamics
   void disable() {
-
-    is_static = true;
+    is_dragging = true;
     lin_velocity = glm::vec3(0.0f);
   }
 
@@ -344,6 +379,11 @@ public:
       debug->draw_mesh(collider.hull.get_mesh(), transform.get_matrix(), glm::vec3(0.0f, 1.0f, 0.0f));
     }
     render_model.draw(shader);
+  }
+
+  glm::mat3 get_world_inverse_inertia() const {
+    glm::mat3 R = glm::mat3_cast(orientation);
+    return R * properties.inv_inertia_tensor * glm::transpose(R);
   }
 
   // Returns world space position

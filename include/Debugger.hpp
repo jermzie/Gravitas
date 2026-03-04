@@ -168,7 +168,8 @@ public:
     // -- Grid lines --
     if (grid_lines > 0) {
       // Slightly dimmer colour for interior grid
-      glm::vec3 grid_color = color * 0.45f;
+      // glm::vec3 grid_color = color * 0.45f;
+      glm::vec3 grid_color = glm::vec3(1, 1, 1) * 0.45f;
 
       for (int i = 1; i < grid_lines; ++i) {
         float t = (static_cast<float>(i) / grid_lines) * 2.0f - 1.0f; // [-1, 1]
@@ -199,7 +200,7 @@ public:
 
     // Add option to enable/disable
     // Disable depth test so debug always draws on top
-    // glDisable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
 
     debug_shader.use();
     debug_shader.set_mat4("view", view);
@@ -227,6 +228,6 @@ public:
     glBindVertexArray(0);
 
     // Re-enable depth test
-    // glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
   }
 };
