@@ -76,6 +76,8 @@ public:
     RigidBody *b;
   };
 
+  bool poly_sphere_collision(ContactManifold &out, const RigidBody &poly);
+
   bool poly_plane_collision(
       ContactManifold &out, const RigidBody &poly, const Plane &plane, Debugger *debug = nullptr) {
 
@@ -102,52 +104,6 @@ public:
     }
 
     return true;
-  }
-
-  ContactManifold create_plane_contact(const RigidBody &poly, const Plane &plane, Debugger *debug = nullptr) {
-
-    ContactManifold out;
-    out.num_points = 0;
-    out.normal = plane.normal;
-    out.max_penetration = -std::numeric_limits<float>::max();
-    // out.max_penetration = 0.0f;
-
-    glm::mat4 transform = poly.get_physics_matrix();
-    const auto &local_vertices = poly.get_mesh().vertices;
-
-    std::vector<ContactPoint> candidates;
-    for (const auto &local : local_vertices) {
-      glm::vec3 world = glm::vec3(transform * glm::vec4(local, 1.0f));
-
-      float separation = get_signed_distance_to_plane(world, plane);
-
-      // vertex is on/below the plane
-      if (separation <= 0.0f) {
-
-        ContactPoint c;
-        c.point = world;
-        c.normal = plane.normal;
-        c.penetration = -separation; // store penetration as positive
-        c.contact_id = static_cast<int>(candidates.size());
-        candidates.push_back(c);
-
-        if (c.penetration > out.max_penetration) {
-          out.max_penetration = c.penetration;
-        }
-      }
-    }
-
-    if (candidates.empty()) {
-      return out;
-    }
-
-    std::vector<ContactPoint> reduced = reduce_contact_manifold(candidates, plane.normal);
-    out.num_points = std::min(4, static_cast<int>(reduced.size()));
-    for (int i = 0; i < out.num_points; ++i) {
-      out.points[i] = reduced[i];
-    }
-
-    return out;
   }
 
   // Contact Creation
@@ -260,41 +216,39 @@ public:
   }
 
 private:
-  struct TransformCache {};
-
   FaceCollision query_face_normals(const RigidBody &poly_A, const RigidBody &poly_B, glm::mat4 transform) {
 
-    float max_distance = -std::numeric_limits<float>::max();
+    float max_separation = -std::numeric_limits<float>::max();
     size_t max_index;
 
     const size_t face_count = poly_A.get_mesh().faces.size();
     for (size_t i = 0; i < face_count; i++) {
+
       const ConvexMesh::Face face = poly_A.get_mesh().faces[i];
       Plane plane = face.plane;
 
       // Transform normal into hull B's local space
-      // FIXME: RECOMPUTING EACH FRAME (glm::inverse() IS SLOW AF)
-      glm::mat3 normal_matrix = get_normal_matrix(transform);
-      glm::vec3 axis = normal_matrix * -plane.normal;
+      glm::mat3 norm_mat = get_normal_matrix(transform);
+      glm::vec3 axis = norm_mat * plane.normal;
 
       // Find furthest vertex in direction opposite to normal
-      glm::vec3 vertex = find_support_point(axis, poly_B);
+      glm::vec3 vertex = find_support_point(-axis, poly_B);
 
       // Compute separation distance between vertex and face plane
-      plane.normal = normal_matrix * plane.normal;
+      plane.normal = norm_mat * plane.normal;
       plane.point = glm::vec3(transform * glm::vec4(plane.point, 1.0f));
       plane.distance = -glm::dot(plane.normal, plane.point);
 
       float separation = get_signed_distance_to_plane(vertex, plane);
 
       const float EPSILON = 1e-4f;
-      if (separation > max_distance + EPSILON) {
-        max_distance = separation;
+      if (separation > max_separation + EPSILON) {
+        max_separation = separation;
         max_index = i;
       }
     }
 
-    return FaceCollision(max_distance, max_index);
+    return FaceCollision(max_separation, max_index);
   }
 
   EdgeCollision query_edge_combos(const RigidBody &poly_A,
@@ -662,6 +616,52 @@ private:
 
     out.points[0].normal = out.normal;
     out.points[0].contact_id = 0;
+
+    return out;
+  }
+
+  ContactManifold create_plane_contact(const RigidBody &poly, const Plane &plane, Debugger *debug = nullptr) {
+
+    ContactManifold out;
+    out.num_points = 0;
+    out.normal = plane.normal;
+    out.max_penetration = -std::numeric_limits<float>::max();
+    // out.max_penetration = 0.0f;
+
+    glm::mat4 transform = poly.get_physics_matrix();
+    const auto &local_vertices = poly.get_mesh().vertices;
+
+    std::vector<ContactPoint> candidates;
+    for (const auto &local : local_vertices) {
+      glm::vec3 world = glm::vec3(transform * glm::vec4(local, 1.0f));
+
+      float separation = get_signed_distance_to_plane(world, plane);
+
+      // vertex is on/below the plane
+      if (separation <= 0.0f) {
+
+        ContactPoint c;
+        c.point = world;
+        c.normal = plane.normal;
+        c.penetration = -separation; // store penetration as positive
+        c.contact_id = static_cast<int>(candidates.size());
+        candidates.push_back(c);
+
+        if (c.penetration > out.max_penetration) {
+          out.max_penetration = c.penetration;
+        }
+      }
+    }
+
+    if (candidates.empty()) {
+      return out;
+    }
+
+    std::vector<ContactPoint> reduced = reduce_contact_manifold(candidates, plane.normal);
+    out.num_points = std::min(4, static_cast<int>(reduced.size()));
+    for (int i = 0; i < out.num_points; ++i) {
+      out.points[i] = reduced[i];
+    }
 
     return out;
   }

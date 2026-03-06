@@ -53,9 +53,9 @@ private:
   float prev_frame = 0.0f;
 
   // camera & input
-  Camera camera{glm::vec3(0.0f, 0.0f, 20.0f)}; // initial camera pos.
-  bool first_mouse = true;                     // initial mouse jittering
-  float prev_x, prev_y;                        // previous mouse pos.
+  Camera camera{glm::vec3(0.0f, -25.0f, 20.0f)}; // initial camera pos.
+  bool first_mouse = true;                       // initial mouse jittering
+  float prev_x, prev_y;                          // previous mouse pos.
 
   // mouse picking/dragging
   struct MouseState {
@@ -88,6 +88,21 @@ private:
   Shader outline_shader;
   Shader lighting_shader;
   Shader default_shader;
+
+  // Spectral-10 color palette (OpenGL color range 0.0 - 1.0)
+  // https://loading.io/color/feature/Spectral-10/
+  glm::vec3 color_palette[10] = {
+      glm::vec3(158, 1, 66) / 255.0f,
+      glm::vec3(213, 62, 79) / 255.0f,
+      glm::vec3(244, 109, 67) / 255.0f,
+      glm::vec3(253, 174, 97) / 255.0f,
+      glm::vec3(254, 224, 139) / 255.0f,
+      glm::vec3(230, 245, 152) / 255.0f,
+      glm::vec3(171, 221, 164) / 255.0f,
+      glm::vec3(102, 194, 165) / 255.0f,
+      glm::vec3(50, 136, 189) / 255.0f,
+      glm::vec3(94, 79, 162) / 255.0f,
+  };
 
   // transformations
   glm::mat4 projection;

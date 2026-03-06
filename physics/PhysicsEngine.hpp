@@ -23,7 +23,7 @@ private:
   Debugger *debug = nullptr;
   Narrowphase sat;
   Broadphase bvh;
-  ConstraintSolver pgs;
+  ConstraintSolver solver;
 
   AABB a;
   Plane bounds[8];
@@ -32,7 +32,7 @@ private:
 public:
   PhysicsEngine() {
 
-    bounds_size = 10;
+    bounds_size = 50;
     glm::vec3 axes[] = {{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
     for (int i = 0; i < 6; i++) {
       glm::vec3 normal = axes[i % 3];
@@ -53,7 +53,7 @@ public:
     if (debug) {
       for (int i = 0; i < 6; i++) {
         // debug->draw_plane(bounds[i], bounds_size, glm::vec3(1, 1, 1));
-        debug->draw_plane(bounds[i], bounds_size, glm::vec3(1, 0, 0));
+        debug->draw_plane(bounds[i], bounds_size, glm::vec3(0, 0, 0));
       }
     }
 
@@ -69,14 +69,28 @@ public:
     // 1. Integrate forces
     for (auto &b : bodies) {
       if (!b.is_static) {
-        // b.integrate_forces(dt);
+        b.integrate_forces(dt);
       }
+    }
+
+    for (auto &b : bodies) {
+      CLOGI("body[%d] pos=(%.3f, %.3f, %.3f) linear=(%.3f, %.3f, %.3f) angular=(%.3f, %.3f, %.3f)\n",
+          b.id,
+          b.position.x,
+          b.position.y,
+          b.position.z,
+          b.lin_velocity.x,
+          b.lin_velocity.y,
+          b.lin_velocity.z,
+          b.ang_velocity.x,
+          b.ang_velocity.y,
+          b.ang_velocity.z);
     }
 
     auto t1 = clock::now();
 
     // 2. Broadphase
-    potential_collisions = bvh.update(bodies, nullptr);
+    potential_collisions = bvh.update(bodies, debug);
 
     auto t2 = clock::now();
 
@@ -106,7 +120,10 @@ public:
 
         manifold.a = &bodies[pair.first];
         manifold.b = &bodies[pair.second];
-        if (glm::dot(manifold.normal, manifold.b->position - manifold.a->position) < 0.0f) {
+
+        // WARNING:
+        // OLD: if (glm::dot(manifold.normal, manifold.b->position - manifold.a->position) < 0.0f) {
+        if (glm::dot(manifold.normal, manifold.b->position - manifold.a->position) > 0.0f) {
           manifold.normal = -manifold.normal;
           for (int i = 0; i < manifold.num_points; i++)
             manifold.points[i].normal = manifold.normal;
@@ -118,14 +135,15 @@ public:
     auto t4 = clock::now();
 
     // 4. Solver
-    // pgs.solve(contacts, dt);
+    solver.build_constraints(contacts);
+    solver.solve_constraints(dt);
 
     auto t5 = clock::now();
 
     // 5. Integrate position
     for (auto &b : bodies) {
       if (!b.is_static) {
-        // b.update(dt);
+        b.update(dt);
       }
     }
 

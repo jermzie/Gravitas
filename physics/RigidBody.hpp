@@ -5,6 +5,7 @@
 #include "ConvexMesh.hpp"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/quaternion_trigonometric.hpp>
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -31,31 +32,34 @@ struct CollisionData {
   CollisionGeometry hull;
   AABB local_aabb;
 
-  // TODO: Compute local aabb once from extrema, update with world space transform for broadphase
   AABB get_world_aabb(const Transform &transform) const {
     return local_aabb.transform_arvo(local_aabb, transform.get_matrix());
   }
-  // BoundingSphere get_world_sphere(const Transform &transform) const;
 };
 
 typedef enum {
   TETRAHEDRON,
+  ICOSAHEDRON,
   CUBE,
   SPHERE,
   CONE,
   CYLINDER,
   CAPSULE,
-} PrimitiveType;
+  HULL,
+} rigid_body_type_t;
 
-// ? IS THIS NEEDED?
-struct rigid_body_config_t {
-  Model &model;
-  float mass;
+typedef struct {
   float density;
-  glm::vec3 position;
+  float beta;
+  float restitution_coeff;
+  float friction_coeff;
   glm::vec3 lin_velocity;
   glm::vec3 ang_velocity;
-};
+  glm::vec3 position;
+  glm::quat orientation;
+  glm::vec3 color;
+  Model *model;
+} rigid_body_config_t;
 
 class RigidBody {
 private:
@@ -79,11 +83,15 @@ private:
   glm::mat3 inertia = glm::mat3(1.0);
   glm::mat3 inv_inertia = glm::mat3(1.0);
 */
-  float density;
-  float baumgarte_factor;
-  float restitution;
 
 public:
+  float density;
+  float baumgarte_factor = 0.165f;
+  float restitution_coeff = 0.0f;
+  float friction_coeff = 0.6f;
+
+  glm::vec3 color = glm::vec3(1.0f);
+
   Transform transform;
   CollisionData collider;
   MassProperties properties;
@@ -93,8 +101,6 @@ public:
   glm::quat orientation;
   glm::vec3 lin_velocity = glm::vec3(0.0f);
   glm::vec3 ang_velocity = glm::vec3(0.0f);
-  glm::vec3 lin_momentum = glm::vec3(0.0f);
-  glm::vec3 ang_momentum = glm::vec3(0.0f);
   int id;
   bool is_static = false;
   bool is_dragging = false;
@@ -184,18 +190,11 @@ public:
 
     // 5. Build collision geometry
     collider.hull = CollisionGeometry(mesh);
-    // FIXME: Reuse extrema + scale computed from quickhull construction
     collider.local_aabb = AABB(mesh.get_extrema());
 
     // 6. Transform into world space
     update_transform();
-
-    std::cout << "CONVEX MESH VERTICES: " << mesh.vertices.size() << std::endl;
-    std::cout << "CONVEX MESH FACES: " << mesh.faces.size() << std::endl;
-    std::cout << "CONVEX MESH EDGES: " << mesh.half_edges.size() << std::endl;
   }
-
-  void apply_global_force(glm::vec3 f) { force_net += f; }
 
   void apply_point_force(glm::vec3 f, glm::vec3 p) {
     force_net += f;
@@ -209,11 +208,8 @@ public:
     glm::vec3 gravity(0.0f, -9.81f, 0.0f);
     force_net += gravity * properties.mass;
 
-    // Use Euler's rule
-
     // Integrate linear velocity
     // \Delta v(t) = \frac{1}{m} \int F(t) dt
-
     lin_velocity += properties.inv_mass * force_net * dt;
 
     // Integrate angular velocity
@@ -221,20 +217,6 @@ public:
     glm::mat3 R = glm::mat3_cast(orientation);
     glm::mat3 world_inv_inertia = R * properties.inv_inertia_tensor * glm::transpose(R);
     ang_velocity += world_inv_inertia * torque_net * dt;
-
-    /*
-    // Integrate position
-    position += lin_velocity * dt;
-
-    // Integrate orientation
-    glm::quat omega_quat(0.0f, ang_velocity);
-    glm::quat dt_orientation = 0.5f * (float)dt * omega_quat * orientation;
-    orientation += dt_orientation;
-    orientation = glm::normalize(orientation);
-
-    // Update transformation matrix
-    update_transform();
-    */
 
     // Reset forces
     force_net = glm::vec3(0.0f);
@@ -291,13 +273,8 @@ public:
     // Drag rigid body
     position += delta;
 
-    // TODO: Compute implied velocity
-    // lin_velocity = delta / dt;
-    // lin_momentum = properties.mass * lin_velocity;
-
-    // Stop angular motion
     ang_velocity = glm::vec3(0.0f);
-    ang_momentum = glm::vec3(0.0f);
+    lin_velocity = glm::vec3(0.0f);
 
     // Update transformation matrix
     update_transform();
@@ -330,12 +307,6 @@ public:
     // FAILS.
     // world_transform.SetRelRotation(rotation);
     // hull.getWorldTransform().SetRelRotation(rotation);
-  }
-
-  // disable dynamics
-  void disable() {
-    is_dragging = true;
-    lin_velocity = glm::vec3(0.0f);
   }
 
   // Body is reset to provided position

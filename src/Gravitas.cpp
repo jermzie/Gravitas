@@ -1,4 +1,5 @@
 ﻿#include "Gravitas.hpp"
+#include "RigidBody.hpp"
 #include <random>
 
 Gravitas::Gravitas(unsigned int width, unsigned int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
@@ -147,6 +148,7 @@ void Gravitas::init_scene() {
 
   // Load Models
   Model tetra_model("tetrahedron.obj");
+  Model icosa_model("icosahedron.obj");
   Model cube_model("cube.obj");
   Model ball_model("ball.obj");
   Model cylinder_model("cilindru.obj");
@@ -159,9 +161,10 @@ void Gravitas::init_scene() {
 
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
-  RigidBody light(cube_model, 1.0, glm::vec3(0.0, 3.0, 0.0));
-  RigidBody tetra(tetra_model, 5.0, glm::vec3(1.5, 7.0, 4.0));
-  RigidBody cube(cube_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  RigidBody light(cube_model, 10.0, glm::vec3(0.0, 0.0, 5.0), true);
+  RigidBody tetra(tetra_model, 50.0, glm::vec3(1.5, 7.0, 4.0));
+  RigidBody icosa(icosa_model, 100.0, glm::vec3(3.0, 2.0, 3.0));
+  RigidBody cube(cube_model, 50.0, glm::vec3(0.0, 3.0, 0.0));
   RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
   //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
   RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
@@ -173,21 +176,31 @@ void Gravitas::init_scene() {
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
-  // scene.add_rigid_body(std::move(tetra));
-  scene.add_rigid_body(std::move(cube));
-  // scene.add_rigid_body(std::move(cyl));
-  //      scene.add_rigid_body(std::move(ball));
-  //  scene.add_rigid_body(std::move(suzanne));
-  //          scene.add_rigid_body(std::move(teapot));
-  //               scene.addRigidBody(std::move(david));
-  //          scene.add_rigid_body(std::move(cow));
-  //            scene.add_rigid_body(std::move(bunny));
-  //            scene.add_rigid_body(std::move(dragon));
+  scene.add_rigid_body(std::move(tetra));
+  // scene.add_rigid_body(std::move(cube));
+  scene.add_rigid_body(std::move(icosa));
+  //   scene.add_rigid_body(std::move(cyl));
+  //        scene.add_rigid_body(std::move(ball));
+  scene.add_rigid_body(std::move(suzanne));
+  //            scene.add_rigid_body(std::move(teapot));
+  //                 scene.addRigidBody(std::move(david));
+  //            scene.add_rigid_body(std::move(cow));
+  //              scene.add_rigid_body(std::move(bunny));
+  //              scene.add_rigid_body(std::move(dragon));
 
   scene.set_debugger(&debug);
 
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
+
+  for (int i = 0; i < 25; i++) {
+    RigidBody cube(cube_model, 50.0, glm::vec3(0.0f, i * 2.0f, 0.0f));
+    scene.add_rigid_body(std::move(cube));
+  }
+
+  for (int i = 0; i < scene.bodies.size(); i++) {
+    scene.bodies[i].color = color_palette[i % 10];
+  }
 
   /*
   for (int i = 0; i < 50; i++) {
@@ -305,7 +318,7 @@ void Gravitas::update() {
 
         glm::vec3 hit_point = ray.origin + ray.direction * t;
         selected_object = id;
-        scene.bodies[id].disable();
+        scene.bodies[id].is_dragging = true;
 
         std::cout << "PICKED RIGID BODY " << scene.bodies[id].id << std::endl;
         // record initial object pos
@@ -342,77 +355,36 @@ void Gravitas::render() {
   for (int i = 0; i < scene.bodies.size(); ++i) {
 
     glm::mat4 model_matrix = scene.bodies[i].get_render_matrix();
-    // glm::vec3 position = objectTrans.GetPosition();
-    //
 
-    /*
-    glm::vec3 com = scene.bodies[i].getCentreOfMass();
-    glm::vec3 cen = scene.bodies[i].hull.getCentroid();
-
-    std::cout << "(" << com.x << ", " << com.y << ", " << com.z << ")         ";
-    std::cout << "(" << cen.x << ", " << cen.y << ", " << cen.z << ")\n";
-    */
-
-    // const auto mesh = scene.bodies[i].get_mesh();
-    //  debug.draw_vertex(scene.bodies[i].get_centre_of_mass(), glm::vec3(0.0f, 1.0f, 0.0f));
-
-    // NEED EASIER METHOD OF TRANSFORMING VERTICES BETWEEN SPACES
-    /*
-    glm::mat4 physics_matrix = scene.bodies[i].get_physics_matrix();
-    std::array<size_t, 2> edge =
-        mesh.get_half_edge_vertices(mesh.half_edges[0]);
-    glm::vec3 start =
-        glm::vec3(physics_matrix * glm::vec4(mesh.vertices[edge[0]], 1.0f));
-    glm::vec3 end =
-        glm::vec3(physics_matrix * glm::vec4(mesh.vertices[edge[1]], 1.0f));
-
-    debug.draw_line(start, end, glm::vec3(1.0f, 0.0f, 0.0f));
-    */
-
+    // draw convex mesh
     // debug.draw_mesh(scene.bodies[i].get_mesh(), scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
 
+    // picking shader
     if (i == selected_object) {
 
-      /*
-      glm::mat4 m = scene.bodies[i].get_matrix();
-      printf("\nTransform matrix\n");
-      for (int row = 0; row < 4; row++) {
-        printf("  %f %f %f %f\n", m[0][row], m[1][row],
-      m[2][row], m[3][row]);
-      }
-      */
-      // first pass -- render object normally & write to stencil
+      // first pass - render object normally & write to stencil
       // buffer
       glStencilFunc(GL_ALWAYS, 1, 0xFF);
       glStencilMask(0xFF);
       glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-      /* pickingShader.use();
-       pickingShader.setMat4("gWVP", projection * view *
-       bodyTrans.GetMatrix());
-       scene.bodies[i].draw(pickingShader);*/
-
       default_shader.use();
 
       // vert uniforms
-      // defaultShader.setMat4("gWVP", projection * view *
-      // bodyTrans.GetMatrix());
       default_shader.set_mat4("projection", projection);
       default_shader.set_mat4("view", view);
       default_shader.set_mat4("model", model_matrix);
 
       // frag uniforms
-      default_shader.set_vec3("objectColor", 0.0f, 1.0f, 0.0f);
-      default_shader.set_vec3("lightColor", 1.0f, 1.0f, 0.773f);
-
-      // defaultShader.setVec3("lightColor", 0.0f, 1.0f, 0.0f);
+      default_shader.set_vec3("objectColor", scene.bodies[i].color);
+      default_shader.set_vec3("lightColor", 1.0f, 1.0f, 1.0f);
       default_shader.set_vec3("lightPos", scene.bodies[0].get_centre_of_mass());
       default_shader.set_vec3("viewPos", camera.position);
 
       scene.bodies[i].draw(default_shader);
 
       // draw outline
-      // second pass -- render scaled down object & disable
+      // second pass - render scaled down object & disable
       // stencil writing
       glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
       glStencilMask(0x00);
@@ -430,8 +402,6 @@ void Gravitas::render() {
       outline_shader.set_mat4("view", view);
       outline_shader.set_mat4("model", outline_matrix);
 
-      // outlineShader.setMat4("gWVP", projection * view *
-      // originalMat4);
       scene.bodies[i].draw(outline_shader);
 
       glStencilFunc(GL_ALWAYS, 0, 0xFF);
@@ -455,15 +425,13 @@ void Gravitas::render() {
         default_shader.use();
 
         // vert uniforms
-        // defaultShader.setMat4("gWVP", projection * view *
-        // bodyTrans.GetMatrix());
         default_shader.set_mat4("projection", projection);
         default_shader.set_mat4("view", view);
         default_shader.set_mat4("model", model_matrix);
 
         // frag uniforms
-        default_shader.set_vec3("objectColor", 1.0f, 0.5f, 0.31f);
-        default_shader.set_vec3("lightColor", 1.0f, 1.0f, 0.773f);
+        default_shader.set_vec3("objectColor", scene.bodies[i].color);
+        default_shader.set_vec3("lightColor", 1.0f, 1.0f, 1.0f);
         default_shader.set_vec3("lightPos", scene.bodies[0].get_centre_of_mass());
         default_shader.set_vec3("viewPos", camera.position);
 

@@ -56,8 +56,8 @@ public:
 
     // Determine the size of the toggle based on the frame height.
     float height = ImGui::GetFrameHeight(); // Use the default frame height.
-    float width = height * 1.55f; // Width factor to make it look like a switch.
-    float radius = height * 0.50f; // Radius for the circle knob.
+    float width = height * 1.55f;           // Width factor to make it look like a switch.
+    float radius = height * 0.50f;          // Radius for the circle knob.
 
     // Reserve a space for the invisible button.
     if (ImGui::InvisibleButton(str_id, ImVec2(width, height)))
@@ -75,15 +75,13 @@ public:
     }
 
     // Draw the rounded rectangle as the toggle's background.
-    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg,
-                             height * 0.5f);
+    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
 
     // Calculate knob position: if toggle is ON, position it at the right,
     // otherwise left.
     float knob_x = *v ? (p.x + width - radius) : (p.x + radius);
     // Draw the knob as a filled circle.
-    draw_list->AddCircleFilled(ImVec2(knob_x, p.y + radius), radius - 1.5f,
-                               IM_COL32(255, 255, 255, 255));
+    draw_list->AddCircleFilled(ImVec2(knob_x, p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
 
     // Optionally, you can add a label next to the toggle by calling
     // ImGui::SameLine() and ImGui::Text() if you wish to display text.
@@ -101,11 +99,10 @@ public:
                                               // a format strings too)
 
     ImGui::SliderFloat("float", &f, 0.0f,
-                       1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
+        1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
 
     static float clear_color[3];
-    ImGui::ColorEdit3(
-        "clear color",
+    ImGui::ColorEdit3("clear color",
         (float *)&clear_color); // Edit 3 floats representing a color
 
     if (ImGui::Button("Button")) // Buttons return true when clicked (most
@@ -120,8 +117,8 @@ public:
     ImGui::SameLine();
     ImGui::Text(darkMode ? "ON" : "OFF");
 
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text(
+        "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
     /*ImGui::Checkbox("Show Debug Visuals", &);
     ImGui::SliderFloat("Drag Sensitivity", &dragSensitivity, 0.1f, 5.0f);
