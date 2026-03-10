@@ -4,15 +4,19 @@
 
 //
 #include <filesystem>
+#include <fstream>
 #include <glm/glm.hpp>
+#include <string>
 
 #include "Mesh.hpp"
 #include "Model.hpp"
 #include "Plane.hpp"
+#include "QuickHull.hpp"
 #include "Ray.hpp"
 #include "Shader.hpp"
 // #include "AABB.hpp"
 // #include "BoundingSphere.hpp"
+#include "Config.hpp"
 #include "ConvexMesh.hpp"
 #include "ConvexMeshBuilder.hpp"
 
@@ -25,17 +29,7 @@ private:
   ConvexMesh mesh;
   std::vector<size_t> render_indices;
 
-  // Rendering
-  // std::unique_ptr<std::vector<glm::vec3>> optimizedVBO;
-  // std::vector<glm::vec3> vertices;
-
   void build_render_indices(const ConvexMesh &mesh, bool is_counter_clockwise) {
-
-    /*
-    if (!use_original_indices) {
-      optimizedVBO.reset(new std::vector<glm::vec3>());
-    }
-    */
 
     std::vector<bool> is_face_processed(mesh.faces.size(), false);
     std::vector<size_t> face_stack;
@@ -78,7 +72,8 @@ private:
         auto he = mesh.get_face_half_edges(mesh.faces[top_index]);
 
         // Push neighboring faces onto stack
-        size_t adjacent_faces[] = {mesh.half_edges[mesh.half_edges[he[0]].twin].face,
+        size_t adjacent_faces[] = {
+            mesh.half_edges[mesh.half_edges[he[0]].twin].face,
             mesh.half_edges[mesh.half_edges[he[1]].twin].face,
             mesh.half_edges[mesh.half_edges[he[2]].twin].face};
         for (auto f : adjacent_faces) {
@@ -113,88 +108,72 @@ private:
         render_indices.push_back(face_vertices[2 - ccw]);
       }
     }
+  }
 
-    /*
-    if (!use_original_indices) {
-      vertices = std::vector<glm::vec3>(*optimizedVBO);
-    } else {
-      vertices = point_cloud;
-    }
-    */
+  static std::string hash_model(const std::string &path) {
+
+    // Use last modified timestamp as seed
+    auto seed = std::filesystem::last_write_time(path);
+    size_t hash = std::hash<std::string>{}(path);
+
+    // Based on boost::hash_combine
+    hash ^= std::hash<long long>{}(seed.time_since_epoch().count()) +
+            0x9e3779b9 + (hash << 6) + (hash >> 2);
+
+    return std::to_string(hash);
+  }
+
+  static void save_mesh(const std::string &path, const ConvexMesh &mesh) {
+    std::ofstream f(path, std::ios::binary);
+
+    // Vertices
+    uint32_t nv = mesh.vertices.size();
+    f.write((char *)&nv, sizeof(nv));
+    f.write((char *)mesh.vertices.data(), nv * sizeof(glm::vec3));
+
+    // Faces
+    uint32_t nf = mesh.faces.size();
+    f.write((char *)&nf, sizeof(nf));
+    f.write((char *)mesh.faces.data(), nf * sizeof(ConvexMesh::Face));
+
+    // Half-edges
+    uint32_t nhe = mesh.half_edges.size();
+    f.write((char *)&nhe, sizeof(nhe));
+    f.write((char *)mesh.half_edges.data(), nhe * sizeof(ConvexMesh::HalfEdge));
+  }
+
+  static ConvexMesh load_mesh(const std::string &path) {
+    std::ifstream f(path, std::ios::binary);
+    ConvexMesh mesh;
+
+    uint32_t nv;
+    f.read((char *)&nv, sizeof(nv));
+    mesh.vertices.resize(nv);
+    f.read((char *)mesh.vertices.data(), nv * sizeof(glm::vec3));
+
+    uint32_t nf;
+    f.read((char *)&nf, sizeof(nf));
+    mesh.faces.resize(nf);
+    f.read((char *)mesh.faces.data(), nf * sizeof(ConvexMesh::Face));
+
+    uint32_t nhe;
+    f.read((char *)&nhe, sizeof(nhe));
+    mesh.half_edges.resize(nhe);
+    f.read((char *)mesh.half_edges.data(), nhe * sizeof(ConvexMesh::HalfEdge));
+
+    return mesh;
   }
 
 public:
   CollisionGeometry() = default;
 
-  /*
-  CollisionGeometry(const ConvexMeshBuilder &mesh_builder,
-                    const std::vector<glm::vec3> &point_cloud,
-                    bool is_counter_clockwise = true,
+  CollisionGeometry(const ConvexMesh &mesh, bool is_counter_clockwise = true,
                     bool use_original_indices = true) {
-
-    // Create final mesh
-    mesh = ConvexMesh(mesh_builder, point_cloud);
-
-    // Build render indices from topology
-    build_render_indices(mesh_builder, is_counter_clockwise);
-  }
-  */
-
-  CollisionGeometry(const ConvexMesh &mesh, bool is_counter_clockwise = true, bool use_original_indices = true) {
 
     // Build render indices from topology
     build_render_indices(mesh, is_counter_clockwise);
     this->mesh = mesh;
   }
-  /*
-  const std::array<float, 6> get_extrema() const {
-
-    std::array<size_t, 6> extrema_indices{0, 0, 0, 0, 0, 0};
-    std::array<float, 6> extrema_vertices{vertices[0].x, vertices[0].x,
-                                          vertices[0].y, vertices[0].y,
-                                          vertices[0].z, vertices[0].z};
-
-    for (size_t i = 1; i < vertices.size(); i++) {
-
-      const glm::vec3 &pos = vertices[i];
-
-      // X-axis
-      if (pos.x > extrema_vertices[0]) {
-        extrema_vertices[0] = pos.x;
-        extrema_indices[0] = i;
-      }
-
-      else if (pos.x < extrema_vertices[1]) {
-        extrema_vertices[1] = pos.x;
-        extrema_indices[1] = i;
-      }
-
-      // Y-axis
-      if (pos.y > extrema_vertices[2]) {
-        extrema_vertices[2] = pos.y;
-        extrema_indices[2] = i;
-      }
-
-      else if (pos.y < extrema_vertices[3]) {
-        extrema_vertices[3] = pos.y;
-        extrema_indices[3] = i;
-      }
-
-      // Z-axis
-      if (pos.z > extrema_vertices[4]) {
-        extrema_vertices[4] = pos.z;
-        extrema_indices[4] = i;
-      }
-
-      else if (pos.z < extrema_vertices[5]) {
-        extrema_vertices[5] = pos.z;
-        extrema_indices[5] = i;
-      }
-    }
-
-    return extrema_vertices;
-  }
-  */
 
   // same tmax as far plane from perspective matrix???
   // int raycast(const Ray &ray, glm::vec3 &hit_point, float t_max = 500.0f) {
@@ -280,25 +259,31 @@ public:
 
   const ConvexMesh &get_mesh() const { return mesh; }
 
-  ConvexMesh &get_mesh() { return mesh; }
+  const std::vector<size_t> &get_render_indices() const {
+    return render_indices;
+  };
 
-  const std::vector<size_t> &get_render_indices() const { return render_indices; };
+  static ConvexMesh get_mesh_cache(const std::string &file_name,
+                                   const std::vector<glm::vec3> &vertices) {
+    namespace fs = std::filesystem;
 
-  /*
-  AABB compute_aabb() const {
+    const std::string &resource_dir =
+        std::string(PROJECT_SOURCE_DIR) + "/resources/";
+    const std::string &cache_dir = resource_dir + "cache/";
+    fs::create_directories(cache_dir);
 
-    std::array<float, 6U> extrema = mesh.get_extrema();
-    AABB box;
-    for (int i = 0; i < 6; i++) {
+    std::string file_path = resource_dir + file_name;
+    std::string cache_path = cache_dir + hash_model(file_path) + ".hull";
 
-       *   array structure:
-       *   0      1      2      3      4      5
-       *  [x_min, x_max, y_min, y_max, z_min, z_max]
-      (i % 2 == 0) ? box.min[i / 2] = extrema[i] : box.max[i / 2] = extrema[i];
+    if (fs::exists(cache_path)) {
+      CLOGI("%s cache exists. Fetching from disk...", file_name.c_str());
+      return load_mesh(cache_path);
     }
-    return box;
-  }
-  */
 
-  // BoundingSphere compute_sphere() const {}
+    CLOGI("%s cache doesn't exist. Rebuilding mesh...", file_name.c_str());
+    QuickHull qh;
+    ConvexMesh mesh = qh.build_convex_mesh(vertices);
+    save_mesh(cache_path, mesh);
+    return mesh;
+  }
 };
