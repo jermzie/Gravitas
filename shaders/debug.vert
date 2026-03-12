@@ -1,8 +1,8 @@
 #version 330
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec4 color;
 
-out vec3 vertColor;
+out vec4 frag_color;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -10,7 +10,7 @@ uniform mat4 projection;
 
 void main()
 {
-    vertColor = aColor;
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    frag_color = color;
+    gl_Position = projection * view * model * vec4(position, 1.0);
 }
 

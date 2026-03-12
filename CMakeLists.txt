@@ -17,6 +17,10 @@ add_executable (${EXECUTABLE_NAME}
           src/Gravitas.cpp 
           src/stb_image.cpp 
           physics/QuickHull.cpp
+          physics/RigidBody.cpp
+          physics/Broadphase.cpp
+          physics/Narrowphase.cpp
+          physics/PhysicsEngine.cpp
 )
 
 target_include_directories(${EXECUTABLE_NAME} PUBLIC

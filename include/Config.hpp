@@ -1,3 +1,4 @@
+#include <string>
 
 // Comment out to disable debug logs
 #define DEBUG

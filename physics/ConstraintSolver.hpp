@@ -10,7 +10,16 @@
 
 #define NUM_ITERATIONS 20
 
-typedef enum { DISTANCE, HINGE, SLIDER, PLANE, CONTACT, FRICTION, BALL_SOCKET, WELD } Type;
+typedef enum {
+  DISTANCE,
+  HINGE,
+  SLIDER,
+  PLANE,
+  CONTACT,
+  FRICTION,
+  BALL_SOCKET,
+  WELD
+} Type;
 
 template <int n> class Constraint {
 public:
@@ -29,7 +38,9 @@ public:
   float impulse_accum[n] = {}; // impulse magnitude
   float impulse_min[n] = {};   // for clamping impulses
   float impulse_max[n] = {};
-  float beta = 0.0f;
+
+  float slop_penetration = 0.005f; // 5 mm
+  float slop_restitution = 0.5f;   // 0.5 m/s
 
   Constraint() {
     for (int i = 0; i < n; i++) {
@@ -46,7 +57,8 @@ public:
   float compute_inital_velocity_error(int row) {
     const Jacobian &j = jacobian[row];
 
-    float jv = glm::dot(j.va, a->lin_velocity) + glm::dot(j.wa, a->ang_velocity);
+    float jv =
+        glm::dot(j.va, a->lin_velocity) + glm::dot(j.wa, a->ang_velocity);
 
     if (b != nullptr) {
       jv += glm::dot(j.vb, b->lin_velocity) + glm::dot(j.wb, b->ang_velocity);
@@ -59,12 +71,14 @@ public:
     const Jacobian &j = jacobian[row];
 
     glm::mat3 aii = a->get_world_inverse_inertia();
-    // float effective_mass = a->properties.inv_mass * glm::dot(j.va, j.va) + glm::dot(j.wa, aii * j.wa);
+    // float effective_mass = a->properties.inv_mass * glm::dot(j.va, j.va) +
+    // glm::dot(j.wa, aii * j.wa);
     float k = a->properties.inv_mass + glm::dot(j.wa, aii * j.wa);
 
     if (b != nullptr) {
       glm::mat3 bii = b->get_world_inverse_inertia();
-      // effective_mass += b->properties.inv_mass * glm::dot(j.vb, j.vb) + glm::dot(j.wb, bii * j.wb);
+      // effective_mass += b->properties.inv_mass * glm::dot(j.vb, j.vb) +
+      // glm::dot(j.wb, bii * j.wb);
       k += b->properties.inv_mass + glm::dot(j.wb, bii * j.wb);
     }
     // return effective_mass;
@@ -74,12 +88,19 @@ public:
   void apply_impulse(int row, float lambda) {
     const Jacobian &j = jacobian[row];
 
+    float damp = 0.9f;
     a->lin_velocity += a->properties.inv_mass * j.va * lambda;
     a->ang_velocity += a->get_world_inverse_inertia() * j.wa * lambda;
+
+    // a->lin_velocity *= damp;
+    // a->ang_velocity *= damp;
 
     if (b != nullptr) {
       b->lin_velocity += b->properties.inv_mass * j.vb * lambda;
       b->ang_velocity += b->get_world_inverse_inertia() * j.wb * lambda;
+
+      // b->lin_velocity *= damp;
+      // b->ang_velocity *= damp;
     }
   }
 
@@ -92,22 +113,19 @@ public:
 class ContactConstraint : public Constraint<1> {
 public:
   float penetration = 0.0f;
-  float slop_factor = 0.005f;
-
-  float lambda_test = 0.0f;
 
   glm::vec3 normal = glm::vec3(0.0f);
   glm::vec3 ra = glm::vec3(0.0f);
   glm::vec3 rb = glm::vec3(0.0f);
 
-  ContactConstraint(RigidBody *a, RigidBody *b, Narrowphase::ContactPoint cp) {
+  ContactConstraint(RigidBody *a, RigidBody *b, ContactPoint cp) {
     this->a = a;
     this->b = b;
 
-    normal = cp.normal;
-    penetration = cp.penetration;
-    ra = cp.point - a->get_centre_of_mass();
-    rb = (b != nullptr) ? cp.point - b->get_centre_of_mass() : glm::vec3(0.0f);
+    normal = cp.norm;
+    penetration = cp.pen_depth;
+    ra = cp.pos - a->get_centre_of_mass();
+    rb = (b != nullptr) ? cp.pos - b->get_centre_of_mass() : glm::vec3(0.0f);
 
     compute_jacobian();
 
@@ -119,29 +137,74 @@ public:
   inline bool is_inequality_constraint() const override { return true; }
   inline int get_degree() const override { return 1; }
 
+  float compute_baumgarte_term(float dt) {
+    float beta;
+    if (b != nullptr) {
+      beta = 0.5 * (a->baumgarte_factor + b->baumgarte_factor);
+    } else {
+      beta = a->baumgarte_factor;
+    }
+
+    // Allow slight overlap to avoid constantly apply impulses at rest
+    float slop = std::max(penetration - slop_penetration, 0.0f);
+    return -(beta / dt) * slop;
+  }
+
+  float compute_restitution_term(void) {
+    float restitution;
+    if (b != nullptr) {
+      restitution = 0.5 * (a->restitution_coeff + b->restitution_coeff);
+    } else {
+      restitution = a->restitution_coeff;
+    }
+
+    // relative velocity between bodies
+    glm::vec3 rel_velocity = -a->lin_velocity - glm::cross(a->ang_velocity, ra);
+    if (b != nullptr) {
+      rel_velocity += b->lin_velocity + glm::cross(b->ang_velocity, rb);
+    }
+
+    // relative velocity along normal
+    float norm_velocity = glm::dot(rel_velocity, normal);
+    float slop = std::max(norm_velocity - slop_restitution, 0.0f);
+
+    /*
+    float restitution_threshold = 1.0f;
+    float restitution_term = (std::abs(norm_velocity) > restitution_threshold)
+                                 ? restitution * norm_velocity
+                                 : 0.0f;
+    */
+
+    return restitution * slop;
+  }
+
   float compute_bias(float dt) {
 
     float beta;
     float restitution;
     if (b != nullptr) {
-      beta = a->baumgarte_factor * b->baumgarte_factor;
+      beta = 0.5 * (a->baumgarte_factor + b->baumgarte_factor);
       restitution = a->restitution_coeff * b->restitution_coeff;
     } else {
       beta = a->baumgarte_factor;
       restitution = a->restitution_coeff;
     }
 
-    float slop_penetration = std::max(penetration - slop_factor, 0.0f);
+    float slop_penetration = std::max(penetration - slop_penetration, 0.0f);
 
     glm::vec3 rel_velocity = -a->lin_velocity - glm::cross(a->ang_velocity, ra);
-
     if (b != nullptr) {
       rel_velocity += b->lin_velocity + glm::cross(b->ang_velocity, rb);
     }
 
     float norm_velocity = glm::dot(rel_velocity, normal);
 
-    return -(beta / dt) * slop_penetration + restitution * norm_velocity;
+    float restitution_threshold = 1.0f;
+    float restitution_term = (std::abs(norm_velocity) > restitution_threshold)
+                                 ? restitution * norm_velocity
+                                 : 0.0f;
+
+    return -(beta / dt) * slop_penetration + restitution_term;
   }
 
   void resolve(float dt) {
@@ -155,8 +218,6 @@ public:
     float old_lambda = impulse_accum[0];
     impulse_accum[0] = std::max(impulse_accum[0] + lambda, 0.0f);
     lambda = impulse_accum[0] - old_lambda;
-
-    lambda_test = lambda;
 
     apply_impulse(0, lambda);
   }
@@ -182,12 +243,9 @@ public:
   glm::vec3 ra = glm::vec3(0.0f);
   glm::vec3 rb = glm::vec3(0.0f);
 
-  FrictionConstraint(RigidBody *a,
-      RigidBody *b,
-      const glm::vec3 &normal,
-      const glm::vec3 &ra,
-      const glm::vec3 &rb,
-      ContactConstraint *contact) {
+  FrictionConstraint(RigidBody *a, RigidBody *b, const glm::vec3 &normal,
+                     const glm::vec3 &ra, const glm::vec3 &rb,
+                     ContactConstraint *contact) {
 
     this->a = a;
     this->b = b;
@@ -198,7 +256,9 @@ public:
     this->rb = rb;
 
     glm::vec3 vel_a = a->lin_velocity + glm::cross(a->ang_velocity, ra);
-    glm::vec3 vel_b = (b != nullptr) ? b->lin_velocity + glm::cross(b->ang_velocity, rb) : glm::vec3(0.f);
+    glm::vec3 vel_b = (b != nullptr)
+                          ? b->lin_velocity + glm::cross(b->ang_velocity, rb)
+                          : glm::vec3(0.f);
     glm::vec3 rel_velocity = vel_b - vel_a;
 
     compute_orthonormal_basis(normal, rel_velocity);
@@ -212,7 +272,8 @@ public:
   }
 
   /**
-   * @brief Friction force is dependent on normal force. Use current normal impulse to clmap friction impulses
+   * @brief Friction force is dependent on normal force. Use current normal
+   * impulse to clmap friction impulses
    */
   void update_friction_clamping() {
     if (contact_normal == nullptr) {
@@ -244,7 +305,8 @@ public:
 
       // clamp lambda
       float old_lambda = impulse_accum[row];
-      impulse_accum[row] = std::clamp(impulse_accum[row] + lambda, impulse_min[row], impulse_max[row]);
+      impulse_accum[row] = std::clamp(impulse_accum[row] + lambda,
+                                      impulse_min[row], impulse_max[row]);
       lambda = impulse_accum[row] - old_lambda;
 
       apply_impulse(row, lambda);
@@ -255,16 +317,19 @@ public:
   inline int get_degree() const override { return 2; }
 
 private:
-  void compute_orthonormal_basis(glm::vec3 normal, glm::vec3 relative_velocity) {
+  void compute_orthonormal_basis(glm::vec3 normal,
+                                 glm::vec3 relative_velocity) {
 
-    glm::vec3 vt = relative_velocity - glm::dot(relative_velocity, normal) * normal;
+    glm::vec3 vt =
+        relative_velocity - glm::dot(relative_velocity, normal) * normal;
 
     if (glm::length2(vt) > 1e-6f) {
       // Align u with the sliding direction — most physically meaningful
       u = glm::normalize(vt);
     } else {
       // Body is nearly stationary — fall back to arbitrary basis
-      glm::vec3 ref = (std::abs(normal.x) < 0.57f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+      glm::vec3 ref = (std::abs(normal.x) < 0.57f) ? glm::vec3(1, 0, 0)
+                                                   : glm::vec3(0, 1, 0);
       u = glm::normalize(glm::cross(normal, ref));
     }
     w = glm::normalize(glm::cross(normal, u));
@@ -293,7 +358,7 @@ private:
   std::vector<FrictionConstraint> friction_constraints;
 
 public:
-  void build_constraints(std::vector<Narrowphase::ContactManifold> contacts) {
+  void build_constraints(std::vector<ContactManifold> contacts) {
 
     size_t total_points = 0;
     for (auto &manifold : contacts) {
@@ -307,7 +372,8 @@ public:
 
     for (auto &manifold : contacts) {
       for (int i = 0; i < manifold.num_points; i++) {
-        contact_constraints.emplace_back(manifold.a, manifold.b, manifold.points[i]);
+        contact_constraints.emplace_back(manifold.a, manifold.b,
+                                         manifold.points[i]);
       }
     }
 
@@ -315,14 +381,26 @@ public:
     for (auto &manifold : contacts) {
       for (int i = 0; i < manifold.num_points; i++) {
         const auto &cp = manifold.points[i];
-        glm::vec3 ra = cp.point - manifold.a->get_centre_of_mass();
-        glm::vec3 rb = manifold.b ? cp.point - manifold.b->get_centre_of_mass() : glm::vec3(0.f);
-        friction_constraints.emplace_back(manifold.a, manifold.b, cp.normal, ra, rb, &contact_constraints[index++]);
+        glm::vec3 ra = cp.pos - manifold.a->get_centre_of_mass();
+        glm::vec3 rb = manifold.b ? cp.pos - manifold.b->get_centre_of_mass()
+                                  : glm::vec3(0.f);
+        friction_constraints.emplace_back(manifold.a, manifold.b, cp.norm, ra,
+                                          rb, &contact_constraints[index++]);
       }
     }
   }
 
   void solve_constraints(float dt) {
+
+    /*
+    for (auto &c : contact_constraints) {
+      c.apply_impulse(0, c.impulse_accum[0]);
+    }
+    for (auto &c : friction_constraints) {
+      c.apply_impulse(0, c.impulse_accum[0]);
+      c.apply_impulse(1, c.impulse_accum[1]);
+    }
+    */
 
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
 
@@ -349,7 +427,6 @@ public:
       CLOGI("contact[%d]: pen=%.4f  λ=%.4f  JV=%.6f  body_a=%d  body_b=%s\n",
           i,
           c.penetration,
-          c.lambda_test,
           c.compute_inital_velocity_error(0),
           c.a->id,
           c.b ? std::to_string(c.b->id).c_str() : "plane");
@@ -357,3 +434,13 @@ public:
     */
   }
 };
+
+// ====================================================
+// JOINTS
+// ====================================================
+
+class DistanceConstraint : public Constraint<1> {};
+class HingeConstraint : public Constraint<1> {};
+class SliderConstraint : public Constraint<1> {};
+class BallSocketConstraint : public Constraint<1> {};
+class WeldConstraint : public Constraint<1> {};

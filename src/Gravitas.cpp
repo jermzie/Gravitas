@@ -1,8 +1,10 @@
 ﻿#include "Gravitas.hpp"
 #include "RigidBody.hpp"
+#include <memory>
 #include <random>
 
-Gravitas::Gravitas(unsigned int width, unsigned int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
+Gravitas::Gravitas(unsigned int width, unsigned int height)
+    : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
 
   prev_x = width / 2.0f;
   prev_y = height / 2.0f;
@@ -49,7 +51,6 @@ void Gravitas::run() {
     // render scene
     render();
     debug.render(view, projection, glm::mat4(1.0f));
-    // camera.debug();
 
     // imgui shit
     gui.new_frame();
@@ -76,17 +77,19 @@ bool Gravitas::init_glfw() {
 
   // glfw window creation
   // --------------------
-  window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Gravitas", NULL, NULL);
+  window =
+      glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Gravitas", NULL, NULL);
   if (window == nullptr) {
     std::cout << "Failed to create GLFW window" << std::endl;
     glfwTerminate();
     return false;
   }
 
-  glfwMakeContextCurrent(window);         // make opengl context current immediately after window creation
+  glfwMakeContextCurrent(
+      window); // make opengl context current immediately after window creation
   glfwSetWindowUserPointer(window, this); // Add this line
   glfwSetInputMode(window, GLFW_CURSOR,
-      GLFW_CURSOR_CAPTURED); // tell glfw to capture our mouse
+                   GLFW_CURSOR_CAPTURED); // tell glfw to capture our mouse
 
   return true;
 }
@@ -107,7 +110,7 @@ bool Gravitas::init_glad() {
   glEnable(GL_STENCIL_TEST);
   glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
   glStencilOp(GL_KEEP, GL_KEEP,
-      GL_REPLACE); // pass/fail action for stencil test
+              GL_REPLACE); // pass/fail action for stencil test
 
   // glEnable(GL_BLEND);
   // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);      // Final color =
@@ -147,67 +150,68 @@ void Gravitas::init_scene() {
   outline_shader.init("stencilOutline.vert", "stencilOutline.frag");
 
   // Load Models
-  Model tetra_model("tetrahedron.obj");
-  Model icosa_model("icosahedron.obj");
-  Model cube_model("cube.obj");
-  Model ball_model("ball.obj");
-  Model cylinder_model("cilindru.obj");
-  Model suzanne_model("suzanne.obj");
-  Model teapot_model("teapot.obj");
-  Model david_model("david.obj");
-  Model cow_model("cow.obj");
-  Model bunny_model("stanford-bunny.obj");
-  Model dragon_model("dragon.obj");
+  // Use shared pointers so...
+  auto tetra_model = std::make_shared<Model>("tetrahedron.glb");
+  auto icosa_model = std::make_shared<Model>("icosahedron.glb");
+  auto cube_model = std::make_shared<Model>("cube.glb");
+  auto ball_model = std::make_shared<Model>("ball.glb");
+  auto cylinder_model = std::make_shared<Model>("cilindru.glb");
+  auto suzanne_model = std::make_shared<Model>("suzanne.glb");
+  auto teapot_model = std::make_shared<Model>("teapot.glb");
+  auto david_model = std::make_shared<Model>("david.glb");
+  auto cow_model = std::make_shared<Model>("cow.glb");
+  auto bunny_model = std::make_shared<Model>("stanford-bunny.glb");
+  auto dragon_model = std::make_shared<Model>("dragon.glb");
 
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
-  RigidBody light(cube_model, 10.0, glm::vec3(0.0, 0.0, 5.0), true);
-  RigidBody tetra(tetra_model, 50.0, glm::vec3(1.5, 7.0, 4.0));
-  RigidBody icosa(icosa_model, 100.0, glm::vec3(3.0, 2.0, 3.0));
-  RigidBody cube(cube_model, 50.0, glm::vec3(0.0, 3.0, 0.0));
+  RigidBody light(cube_model, 10.0, glm::vec3(0.0, 0.0, 5.0));
+  RigidBody tetra(tetra_model, 20.0, glm::vec3(-3.5, 7.0, 4.0));
+  RigidBody icosa(icosa_model, 20.0, glm::vec3(5.0, 2.0, 8.0));
+  RigidBody cube(cube_model, 50.0, glm::vec3(8.0, 3.0, 0.0));
   RigidBody cyl(cylinder_model, 5.0, glm::vec3(2.0, 2.0, 2.0));
-  //  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
-  RigidBody suzanne(suzanne_model, 1.0, glm::vec3(0.0, 0.0, 0.0));
-  //      RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
-  //         RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
-  //      RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //         RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //         RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
+  RigidBody ball(ball_model, 5.0, glm::vec3(3.0, 3.0, 3.0));
+  RigidBody suzanne(suzanne_model, 20.0, glm::vec3(3.0, 0.0, -8.0));
+  RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
+  RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  // RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
+  //           RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //           RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
 
   // Building Scene -- Dynamic BVH Tree
   scene.add_rigid_body(std::move(light));
-  scene.add_rigid_body(std::move(tetra));
+  // scene.add_rigid_body(std::move(tetra));
   // scene.add_rigid_body(std::move(cube));
-  scene.add_rigid_body(std::move(icosa));
-  //   scene.add_rigid_body(std::move(cyl));
-  //        scene.add_rigid_body(std::move(ball));
-  scene.add_rigid_body(std::move(suzanne));
-  //            scene.add_rigid_body(std::move(teapot));
-  //                 scene.addRigidBody(std::move(david));
-  //            scene.add_rigid_body(std::move(cow));
-  //              scene.add_rigid_body(std::move(bunny));
-  //              scene.add_rigid_body(std::move(dragon));
-
-  scene.set_debugger(&debug);
+  // scene.add_rigid_body(std::move(icosa));
+  // scene.add_rigid_body(std::move(cyl));
+  //          scene.add_rigid_body(std::move(ball));
+  // scene.add_rigid_body(std::move(suzanne));
+  //  scene.add_rigid_body(std::move(teapot));
+  //                   scene.addRigidBody(std::move(david));
+  //  scene.add_rigid_body(std::move(cow));
+  //                scene.add_rigid_body(std::move(bunny));
+  //                scene.add_rigid_body(std::move(dragon));
 
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
 
-  for (int i = 0; i < 25; i++) {
+  for (int i = 0; i < 10; i++) {
     RigidBody cube(cube_model, 50.0, glm::vec3(0.0f, i * 2.0f, 0.0f));
     scene.add_rigid_body(std::move(cube));
   }
+  /*
+  for (int i = 0; i < 100; i++) {
+    RigidBody cube(cube_model, 5.0, rand_pos(-45, 45));
+    scene.add_rigid_body(std::move(cube));
+  }
+  */
 
   for (int i = 0; i < scene.bodies.size(); i++) {
     scene.bodies[i].color = color_palette[i % 10];
   }
 
-  /*
-  for (int i = 0; i < 50; i++) {
-    RigidBody cube(cube_model, 5.0, rand_pos(-9, 9));
-    scene.add_rigid_body(std::move(cube));
-  }
-  */
+  scene.set_debugger(&debug);
+  gui.set_physics_engine(&scene);
 }
 
 void Gravitas::process_inputs() {
@@ -246,18 +250,23 @@ void Gravitas::process_inputs() {
 void Gravitas::update() {
 
   // update camera transformations
-  projection = glm::perspective(glm::radians(camera.zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
+  projection = glm::perspective(glm::radians(camera.zoom),
+                                (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+                                0.01f, 500.0f);
   view = camera.get_view_matrix();
 
   // update picking/dragging
   if (left_mouse_btn.is_down) {
 
     // convert 2D mouse coords to world space coords
-    Ray ray = screen_to_world_ray(left_mouse_btn.x, left_mouse_btn.y, SCREEN_WIDTH, SCREEN_HEIGHT, projection, view);
+    Ray ray =
+        screen_to_world_ray(left_mouse_btn.x, left_mouse_btn.y, SCREEN_WIDTH,
+                            SCREEN_HEIGHT, projection, view);
     // rotating
     if (is_rotating && selected_object != -1) {
 
-      scene.bodies[selected_object].rotate(left_mouse_btn.x_offset, left_mouse_btn.y_offset);
+      scene.bodies[selected_object].rotate(left_mouse_btn.x_offset,
+                                           left_mouse_btn.y_offset);
 
       // per-frame offsets -- rotations don't continue when mouse isn't moving
       left_mouse_btn.x_offset = 0.0f;
@@ -349,7 +358,9 @@ void Gravitas::render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
   // update transformations
-  projection = glm::perspective(glm::radians(camera.zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.01f, 500.0f);
+  projection = glm::perspective(glm::radians(camera.zoom),
+                                (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+                                0.01f, 500.0f);
   view = camera.get_view_matrix();
 
   for (int i = 0; i < scene.bodies.size(); ++i) {
@@ -357,7 +368,8 @@ void Gravitas::render() {
     glm::mat4 model_matrix = scene.bodies[i].get_render_matrix();
 
     // draw convex mesh
-    // debug.draw_mesh(scene.bodies[i].get_mesh(), scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
+    // debug.draw_mesh(scene.bodies[i].get_mesh(),
+    // scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
 
     // picking shader
     if (i == selected_object) {
@@ -432,7 +444,8 @@ void Gravitas::render() {
         // frag uniforms
         default_shader.set_vec3("objectColor", scene.bodies[i].color);
         default_shader.set_vec3("lightColor", 1.0f, 1.0f, 1.0f);
-        default_shader.set_vec3("lightPos", scene.bodies[0].get_centre_of_mass());
+        default_shader.set_vec3("lightPos",
+                                scene.bodies[0].get_centre_of_mass());
         default_shader.set_vec3("viewPos", camera.position);
 
         // scene.bodies[i].draw(default_shader, &debug);
@@ -488,8 +501,9 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
 
     // nothing currently active, claim key
     if (active_key == -1) {
-      if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E || key == GLFW_KEY_R || key == GLFW_KEY_1 ||
-          key == GLFW_KEY_2 || key == GLFW_KEY_3 || key == GLFW_KEY_4)
+      if (key == GLFW_KEY_Q || key == GLFW_KEY_W || key == GLFW_KEY_E ||
+          key == GLFW_KEY_R || key == GLFW_KEY_1 || key == GLFW_KEY_2 ||
+          key == GLFW_KEY_3 || key == GLFW_KEY_4)
         active_key = key;
     }
     // ignore additional presses while another key is active
@@ -525,22 +539,23 @@ void Gravitas::on_key(int key, int scancode, int action, int mods) {
     break;
 
   case GLFW_KEY_1:
-    camera.reset(glm::vec3(0.0f, 0.0f, 20.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
+    camera.reset(glm::vec3(0.0f, 0.0f, 20.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+                 glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
     break;
 
   case GLFW_KEY_2:
-    camera.reset(
-        glm::vec3(20.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -180.0f, 0.0f);
+    camera.reset(glm::vec3(20.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
+                 glm::vec3(0.0f, 1.0f, 0.0f), -180.0f, 0.0f);
     break;
 
   case GLFW_KEY_3:
-    camera.reset(
-        glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), -270.0f, 0.0f);
+    camera.reset(glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+                 glm::vec3(0.0f, 1.0f, 0.0f), -270.0f, 0.0f);
     break;
 
   case GLFW_KEY_4:
-    camera.reset(
-        glm::vec3(0.0f, 20.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), -90.0f, -90.0f);
+    camera.reset(glm::vec3(0.0f, 20.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
+                 glm::vec3(0.0f, 0.0f, -1.0f), -90.0f, -90.0f);
     break;
 
   default:

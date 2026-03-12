@@ -1,42 +1,48 @@
 # Gravitas
-3D Physics Engine
+3D physics engine built in OpenGL
 
 
 ## About The Project
 
-## Getting Started
+Built a 3D physics engine to learn more about graphics APIs and physics simulations.
+
+broad-phase collision detection uses dBVH tree to compute colliding pairs.
+narrow-phase collision detection uses SAT to compute contacts and is optimized via Gauss maps to reduce edge-edge checks.
+solver uses Sequential Impulse to resolve constraints.
+
+supported collision primitives are spheres, cylinders, capsules, cones, and convex polyhedrons.
+
+For non-convex 3D models, Quickhull is used to generate convex hull mesh for collisions.
+
+## Installation
 
 ### Dependencies
 
-### Installation
+### Windows
 1. Clone the repo
 ```
 git clone https://github.com/jermzie/Gravitas.git
 ```
-2. Link and install libraries with vcpkg
+2. Link and build libraries with vcpkg (may take a while)
 ```
 cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
 
 ## Usage
 
+### Demo Scenes
+
+### Scene Editing
+
 ### Importing Models
 
 ## Roadmap
-- [x] Fix centre of mass and inertia tensor computation
-- [x] Fix edge-edge collisions (SAT)
-- [ ] Fix contact creation for complex geometry
 - [ ] Add representation for concave polyhedra as compound of convex polyhedra
-- [x] Add broad phase collision detection (dBVH/Octrees)
-- [ ] Add collision response (Sequential Impulse/PGS iterative solvers)
-- [ ] Add better lighting?
-- [ ] Add ground plane/grid
-- [x] Add debugger to visualize points, vectors, & planes
 - [ ] Add mouse dragging force accumulation
 - [ ] Add more ImGui functionality
+- [ ] Add more Constraints and Joints to solver
+- [ ] Add threads to parallelize tasks
+- [ ] Add scene serialization and basic editing
 
-## Acknowledgements
-
-Dirk Gregorius, my beloved.
 
 

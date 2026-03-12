@@ -22,10 +22,10 @@ class Debugger {
 
   struct DebugVertex {
     glm::vec3 position;
-    glm::vec3 color;
+    glm::vec4 color;
   };
 
-  unsigned int VAO, VBO;
+  unsigned int vao, vbo;
   std::vector<DebugVertex> lines;
   std::vector<DebugVertex> points;
   std::vector<DebugVertex> triangles;
@@ -34,11 +34,11 @@ class Debugger {
 
 public:
   void init() {
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
     // Position attribute
     glEnableVertexAttribArray(0);
@@ -46,7 +46,7 @@ public:
 
     // Color attribute
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void *)offsetof(DebugVertex, color));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void *)offsetof(DebugVertex, color));
 
     glBindVertexArray(0);
 
@@ -59,25 +59,31 @@ public:
     triangles.clear();
   }
 
-  void draw_vertex(const glm::vec3 &pos, const glm::vec3 &color, float size = 50.0f) { points.push_back({pos, color}); }
+  void draw_vertex(const glm::vec3 &pos, const glm::vec4 &color, float size = 50.0f) { points.push_back({pos, color}); }
 
-  void draw_line(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color) {
+  void draw_line(const glm::vec3 &start, const glm::vec3 &end, const glm::vec4 &color) {
     lines.push_back({start, color});
     lines.push_back({end, color});
   }
 
-  void draw_ray(const Ray &ray, float length, const glm::vec3 &color) {
+  void draw_ray(const Ray &ray, float length, const glm::vec4 &color) {
     draw_line(ray.origin, (ray.origin + ray.direction * length), color);
   }
 
-  void draw_triangle(const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec3 &color) {
+  void draw_triangle(const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec4 &color) {
     draw_line(v0, v1, color);
     draw_line(v1, v2, color);
     draw_line(v2, v0, color);
   }
 
+  void draw_filled_triangle(const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec4 &color) {
+    triangles.push_back({v0, color});
+    triangles.push_back({v1, color});
+    triangles.push_back({v2, color});
+  }
+
   // draw polygon face w/ no triangles
-  void draw_unordered_polygon(std::vector<glm::vec3> points, const glm::vec3 &color) {
+  void draw_unordered_polygon(std::vector<glm::vec3> points, const glm::vec4 &color) {
     int size = points.size();
 
     if (size < 3)
@@ -87,7 +93,7 @@ public:
       glm::vec3 p0 = points[i];
       glm::vec3 p1 = points[(i + 1) % size];
 
-      draw_line(p0, p1, glm::vec3(1.0, 0.0, 0.0));
+      draw_line(p0, p1, glm::vec4(1.0, 0.0, 0.0, 1.0));
     }
 
     /*
@@ -99,7 +105,7 @@ public:
   }
 
   // draw mesh with no triangles
-  void draw_mesh(const ConvexMesh &mesh, const glm::mat4 &transform, const glm::vec3 &color) {
+  void draw_mesh(const ConvexMesh &mesh, const glm::mat4 &transform, const glm::vec4 &color) {
 
     std::unordered_set<size_t> visited_edges;
 
@@ -119,7 +125,7 @@ public:
     }
   }
 
-  void draw_aabb(const AABB &aabb, const glm::vec3 &color) {
+  void draw_aabb(const AABB &aabb, const glm::vec4 &color) {
 
     glm::vec3 corner_vertices[8] = {{aabb.min.x, aabb.min.y, aabb.min.z},
         {aabb.max.x, aabb.min.y, aabb.min.z},
@@ -145,7 +151,9 @@ public:
   }
 
   // draw translucent square face
-  void draw_plane(const Plane &plane, float size, const glm::vec3 &color, int grid_lines = 10) {
+  void draw_plane(
+      const Plane &plane, float size, const glm::vec4 &border_color, const glm::vec4 &fill_color, int grid_lines = 10) {
+
     // Build two orthogonal tangent vectors from the plane normal.
     // Pick an arbitrary "up" that isn't parallel to the normal.
     glm::vec3 n = glm::normalize(plane.normal);
@@ -160,16 +168,16 @@ public:
     glm::vec3 c1 = o + (t1 - t2) * size;
     glm::vec3 c2 = o + (t1 + t2) * size;
     glm::vec3 c3 = o + (-t1 + t2) * size;
-    draw_line(c0, c1, color);
-    draw_line(c1, c2, color);
-    draw_line(c2, c3, color);
-    draw_line(c3, c0, color);
+    draw_line(c0, c1, border_color);
+    draw_line(c1, c2, border_color);
+    draw_line(c2, c3, border_color);
+    draw_line(c3, c0, border_color);
 
     // -- Grid lines --
     if (grid_lines > 0) {
       // Slightly dimmer colour for interior grid
       // glm::vec3 grid_color = color * 0.45f;
-      glm::vec3 grid_color = glm::vec3(1, 1, 1) * 0.45f;
+      glm::vec4 grid_color = glm::vec4(1, 1, 1, 1) * 0.45f;
 
       for (int i = 1; i < grid_lines; ++i) {
         float t = (static_cast<float>(i) / grid_lines) * 2.0f - 1.0f; // [-1, 1]
@@ -187,7 +195,10 @@ public:
     }
 
     // -- Normal indicator (short arrow from center) --
-    draw_line(o, o + n * (size * 0.15f), color);
+    draw_line(o, o + n * (size * 0.15f), border_color);
+
+    draw_filled_triangle(c0, c1, c2, fill_color);
+    draw_filled_triangle(c0, c2, c3, fill_color);
   }
 
   void draw_normal() {}
@@ -201,14 +212,16 @@ public:
     // Add option to enable/disable
     // Disable depth test so debug always draws on top
     glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     debug_shader.use();
     debug_shader.set_mat4("view", view);
     debug_shader.set_mat4("projection", projection);
     debug_shader.set_mat4("model", model);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
     // Draw lines
     if (!lines.empty()) {
@@ -225,8 +238,15 @@ public:
       glDrawArrays(GL_POINTS, 0, points.size());
     }
 
+    if (!triangles.empty()) {
+      glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(DebugVertex), triangles.data(), GL_DYNAMIC_DRAW);
+      glDrawArrays(GL_TRIANGLES, 0, triangles.size());
+    }
+
     glBindVertexArray(0);
 
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
     // Re-enable depth test
     glEnable(GL_DEPTH_TEST);
   }

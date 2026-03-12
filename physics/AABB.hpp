@@ -116,10 +116,18 @@ inline bool aabb_intersect(const AABB &a, const AABB &b) {
           a.max.z >= b.min.z);
 }
 
+/**
+ * @brief Combine AABB extents
+ * @return struct AABB
+ */
 inline AABB combine(const AABB &a, const AABB &b) {
   return {glm::min(a.min, b.min), glm::max(a.max, b.max)};
 }
 
+/**
+ * @brief Expand AABB dimensions
+ *
+ */
 inline AABB fatten(const AABB &box, float margin) {
 
   return {box.min - glm::vec3(margin), box.max + glm::vec3(margin)};
