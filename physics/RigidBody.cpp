@@ -86,16 +86,10 @@ RigidBody::RigidBody(const std::shared_ptr<Model> &model, const float &density,
 
   // 5. Build collision geometry
   collider.hull = CollisionGeometry(mesh);
-  collider.local_aabb = AABB(mesh.get_extrema());
+  collider.aabb = AABB(mesh.get_extrema());
 
   // 6. Transform into world space
   update_transform();
-}
-
-void RigidBody::apply_point_force(glm::vec3 f, glm::vec3 p) {
-  force_net += f;
-  glm::vec3 r = p - position;
-  torque_net += glm::cross(r, f);
 }
 
 // Integral is just infinite sum of small intervals
@@ -129,11 +123,11 @@ void RigidBody::integrate_positions(float dt) {
   } else {
 
     // LINEAR POS
-    glm::vec3 dt_position = dt * lin_velocity;
+    glm::vec3 dt_position = dt * (lin_velocity + psuedo_lin_velocity);
     position += dt_position;
 
     // ANGULAR POS
-    glm::quat omega_quat(0.0f, ang_velocity);
+    glm::quat omega_quat(0.0f, (ang_velocity + psuedo_ang_velocity));
     glm::quat dt_orientation = 0.5f * (float)dt * omega_quat * orientation;
     orientation += dt_orientation;
     orientation = glm::normalize(orientation);
@@ -152,24 +146,27 @@ void RigidBody::drag(glm::vec3 delta) {
 
   // Update transformation matrix
   update_transform();
+  is_dragging = true;
 }
 
-void RigidBody::rotate(float x_offset, float y_offset) {
+void RigidBody::rotate(const glm::vec3 &x_axis, const glm::vec3 &y_axis,
+                       float x_offset, float y_offset) {
 
   x_offset *= 0.01f;
   y_offset *= 0.01f;
 
   // Movement along y-axis rotates about x-axis and vice versa
-  glm::quat rot_x = glm::angleAxis(-y_offset, glm::vec3(1.0f, 0.0f, 0.0f));
-  glm::quat rot_y = glm::angleAxis(x_offset, glm::vec3(0.0f, 1.0f, 0.0f));
+  glm::quat rot_x = glm::angleAxis(-y_offset, x_axis);
+  glm::quat rot_y = glm::angleAxis(x_offset, y_axis);
   glm::quat rotation = rot_y * rot_x;
-
-  // transform.set_rotation(rotation);
-
   orientation = rotation * orientation;
   orientation = glm::normalize(orientation);
 
+  ang_velocity = glm::vec3(0.0f);
+  lin_velocity = glm::vec3(0.0f);
+
   update_transform();
+  is_dragging = true;
 }
 
 void RigidBody::draw(Shader &shader, Debugger *debug) {
@@ -179,4 +176,24 @@ void RigidBody::draw(Shader &shader, Debugger *debug) {
                      glm::vec4(0, 1, 0, 1));
   }
   render_model->draw(shader);
+}
+
+void RigidBody::log_initial_state() {
+
+  CLOGI("vertices: %lu", collider.hull.get_mesh().vertices.size());
+  CLOGI("faces: %lu", collider.hull.get_mesh().faces.size());
+  CLOGI("half edges: %lu", collider.hull.get_mesh().half_edges.size());
+  CLOGI("volume: %.4f", properties.mass / density);
+  CLOGI("mass: %.4f", properties.mass);
+}
+
+void RigidBody::log_kinematic_state() {
+
+  CLOGI("position: (%.2f, %.2f, %.2f)", position.x, position.y, position.z);
+  CLOGI("orientation: (%.2f, %.2f, %.2f, %.2f)", orientation.x, orientation.y,
+        orientation.z, orientation.w);
+  CLOGI("linear velocity: (%.2f, %.2f, %.2f)", lin_velocity.x, lin_velocity.y,
+        lin_velocity.z);
+  CLOGI("angular velocity: (%.2f, %.2f, %.2f)", ang_velocity.x, ang_velocity.y,
+        ang_velocity.z);
 }

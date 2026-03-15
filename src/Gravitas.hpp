@@ -53,7 +53,7 @@ private:
   float prev_frame = 0.0f;
 
   // camera & input
-  Camera camera{glm::vec3(0.0f, -25.0f, 20.0f)}; // initial camera pos.
+  Camera camera{glm::vec3(0.0f, -50.0f, 20.0f)}; // initial camera pos.
   bool first_mouse = true;                       // initial mouse jittering
   float prev_x, prev_y;                          // previous mouse pos.
 
@@ -92,16 +92,11 @@ private:
   // Spectral-10 color palette (OpenGL color range 0.0 - 1.0)
   // https://loading.io/color/feature/Spectral-10/
   glm::vec3 color_palette[10] = {
-      glm::vec3(158, 1, 66) / 255.0f,
-      glm::vec3(213, 62, 79) / 255.0f,
-      glm::vec3(244, 109, 67) / 255.0f,
-      glm::vec3(253, 174, 97) / 255.0f,
-      glm::vec3(254, 224, 139) / 255.0f,
-      glm::vec3(230, 245, 152) / 255.0f,
-      glm::vec3(171, 221, 164) / 255.0f,
-      glm::vec3(102, 194, 165) / 255.0f,
-      glm::vec3(50, 136, 189) / 255.0f,
-      glm::vec3(94, 79, 162) / 255.0f,
+      glm::vec3(158, 1, 66) / 255.0f,    glm::vec3(213, 62, 79) / 255.0f,
+      glm::vec3(244, 109, 67) / 255.0f,  glm::vec3(253, 174, 97) / 255.0f,
+      glm::vec3(254, 224, 139) / 255.0f, glm::vec3(230, 245, 152) / 255.0f,
+      glm::vec3(171, 221, 164) / 255.0f, glm::vec3(102, 194, 165) / 255.0f,
+      glm::vec3(50, 136, 189) / 255.0f,  glm::vec3(94, 79, 162) / 255.0f,
   };
 
   // transformations
@@ -129,7 +124,9 @@ private:
   // static callback wrappers
   static void frame_buf_size_cb(GLFWwindow *window, int width, int height);
   static void scroll_cb(GLFWwindow *window, double xoffset, double yoffset);
-  static void key_cb(GLFWwindow *window, int key, int scancode, int action, int mods);
-  static void mouse_btn_cb(GLFWwindow *window, int button, int action, int mods);
+  static void key_cb(GLFWwindow *window, int key, int scancode, int action,
+                     int mods);
+  static void mouse_btn_cb(GLFWwindow *window, int button, int action,
+                           int mods);
   static void cursor_pos_cb(GLFWwindow *window, double xpos, double ypos);
 };

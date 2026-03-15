@@ -28,10 +28,10 @@
 
 struct CollisionData {
   CollisionGeometry hull;
-  AABB local_aabb;
+  AABB aabb;
 
   AABB get_world_aabb(const Transform &transform) const {
-    return local_aabb.transform_arvo(local_aabb, transform.get_matrix());
+    return aabb.transform_arvo(aabb, transform.get_matrix());
   }
 };
 
@@ -58,7 +58,7 @@ typedef struct {
   glm::quat orientation;
   glm::vec3 color;
   Model *model;
-} rb_config_t;
+} RigidBodyDef;
 
 class RigidBody {
 private:
@@ -93,6 +93,8 @@ public:
   glm::quat orientation;
   glm::vec3 lin_velocity = glm::vec3(0.0f);
   glm::vec3 ang_velocity = glm::vec3(0.0f);
+  glm::vec3 psuedo_lin_velocity = glm::vec3(0.0f);
+  glm::vec3 psuedo_ang_velocity = glm::vec3(0.0f);
   int id;
   bool is_static = false;
   bool is_dragging = false;
@@ -116,7 +118,9 @@ public:
   void integrate_positions(float dt);
 
   void drag(glm::vec3 delta);
-  void rotate(float x_offset, float y_offset);
+  void rotate(const glm::vec3 &x_axis, const glm::vec3 &y_axis, float x_offset,
+              float y_offset);
+
   void draw(Shader &shader, Debugger *debug = nullptr);
 
   glm::mat3 get_world_inverse_inertia() const {
@@ -138,4 +142,7 @@ public:
     return glm::vec3(transform.get_matrix() *
                      glm::vec4(geometric_origin_offset, 1.0f));
   }
+
+  void log_initial_state();
+  void log_kinematic_state();
 };

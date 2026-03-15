@@ -20,8 +20,9 @@ struct MassProperties {
     glm::mat3 inertia;
 
     // constants
-    const float mult[10] = {
-        1.0f / 6, 1.0f / 24, 1.0f / 24, 1.0f / 24, 1.0f / 60, 1.0f / 60, 1.0f / 60, 1.0f / 120, 1.0f / 120, 1.0f / 120};
+    const float mult[10] = {1.0f / 6,   1.0f / 24, 1.0f / 24, 1.0f / 24,
+                            1.0f / 60,  1.0f / 60, 1.0f / 60, 1.0f / 120,
+                            1.0f / 120, 1.0f / 120};
 
     // volume integrals order: 1, x, y, z, x^2, y^2, z^2, xy, yz, zx
     float intg[10] = {0.0f};
@@ -114,20 +115,21 @@ struct MassProperties {
       intg[i] *= mult[i];
     }
     float vol = intg[0];
-    CLOGI("Final volume: %f\n", vol);
+    // CLOGI("volume: %.5f", vol);
 
     // Volume should be positive!
     if (vol <= 0) {
-      CLOGI("ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
+      CLOGI(
+          "ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
       // You might want to flip all normals and try again
     }
 
     // float vol = intg[0];
     mass = density * vol;
-    CLOGI("Final mass: %f\n", mass);
+    // CLOGI("mass: %.5f", mass);
 
     inv_mass = 1.0f / mass;
-    CLOGI("Final inverse mass: %f\n", inv_mass);
+    // CLOGI("inverse mass: %.5f", inv_mass);
 
     com.x = intg[1] / vol;
     com.y = intg[2] / vol;
@@ -149,10 +151,10 @@ struct MassProperties {
     inertia[2][0] = inertia[0][2] = Izx_origin + mass * com.z * com.x;
 
     return MassProperties{.mass = mass,
-        .inv_mass = inv_mass,
-        .centre_of_mass = com,
-        .inertia_tensor = inertia,
-        .inv_inertia_tensor = glm::inverse(inertia)};
+                          .inv_mass = inv_mass,
+                          .centre_of_mass = com,
+                          .inertia_tensor = inertia,
+                          .inv_inertia_tensor = glm::inverse(inertia)};
 
     /*
     // xx, yx, zx
@@ -207,8 +209,9 @@ struct MassProperties {
 
 private:
   // helper function for computing surface integrals
-  static void compute_subexpressions(
-      float w0, float w1, float w2, float &f1, float &f2, float &f3, float &g0, float &g1, float &g2) {
+  static void compute_subexpressions(float w0, float w1, float w2, float &f1,
+                                     float &f2, float &f3, float &g0, float &g1,
+                                     float &g2) {
 
     float temp0 = w0 + w1;
     f1 = temp0 + w2;

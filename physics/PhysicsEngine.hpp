@@ -25,17 +25,19 @@ private:
   Broadphase bvh;
   ConstraintSolver solver;
 
-  AABB a;
   Plane bounds[8];
   int bounds_size;
+
+  int next_id = 0;
+  std::unordered_map<int, int> id_to_index;
 
 public:
   PhysicsEngine() {
 
     bodies.reserve(256);
-    global_beta = 0.2f;
+    global_beta = 0.1f;
     global_restitution = 0.0f;
-    global_friction = 0.5f;
+    global_friction = 1.0f;
     bounds_size = 50;
     glm::vec3 axes[] = {
         {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
@@ -58,19 +60,7 @@ public:
   void step(float dt);
   bool raycast(const Ray &ray, int &id, float &t);
 
-  void add_rigid_body(RigidBody &&body) {
-    int id = (int)bodies.size();
-    AABB aabb = body.collider.local_aabb;
-    body.id = id;
-    bodies.push_back(std::move(body));
-    bvh.insert(aabb, id);
-    CLOGI("ADDED BODY %d", id);
-  }
-
-  void remove_rigid_body(RigidBody body) {
-
-    // bodies.erase();s
-  }
-
-  void remove_all_bodies() { bodies.clear(); }
+  void add_rigid_body(RigidBody &&body);
+  void remove_rigid_body(int id);
+  void remove_all_bodies();
 };

@@ -21,12 +21,11 @@ struct Node {
   int parent = NULL_INDEX;
   int left = NULL_INDEX;
   int right = NULL_INDEX;
-  int height = -1;
+  int height = NULL_INDEX;
 
   AABB box; // for object movement (leaves only)
 
-  int body_id = -1;
-
+  int body_id = NULL_INDEX;
   bool is_leaf() const { return left == NULL_INDEX && right == NULL_INDEX; };
 };
 
@@ -36,7 +35,7 @@ private:
   std::unordered_map<int, int> body_node_map;
   int free_node = NULL_INDEX; // head of free list
   int node_count = 0;
-  int root_index = NULL_INDEX;
+  int root_idx = NULL_INDEX;
   // float fat_margin = 0.05f;
   float fat_margin = 0.5f;
 
@@ -57,12 +56,12 @@ private:
   int allocate_node() {
     // Reuse deleted node memory
     if (free_node != NULL_INDEX) {
-      int index = free_node;
-      free_node = nodes[index].parent; // point to next free node
-      nodes[index] = Node();           /// reset node
-      nodes[index].height = 1;
+      int idx = free_node;
+      free_node = nodes[idx].parent; // point to next free node
+      nodes[idx] = Node();           /// reset node
+      nodes[idx].height = 1;
       node_count++;
-      return index;
+      return idx;
     }
 
     nodes.emplace_back();
@@ -103,6 +102,8 @@ public:
   std::vector<int> query_node(const AABB &box) const;
   void insert(AABB box, int body_id);
   void remove(int body_id);
-  std::vector<std::pair<int, int>> update(const std::vector<RigidBody> &bodies, Debugger *debug = nullptr);
-  bool raycast(const std::vector<RigidBody> &bodies, const Ray &ray, int &id, float &t, float tmax = 500.0f);
+  std::vector<std::pair<int, int>> update(const std::vector<RigidBody> &bodies,
+                                          Debugger *debug = nullptr);
+  bool raycast(const std::vector<RigidBody> &bodies, const Ray &ray, int &id,
+               float &t, float tmax = 500.0f);
 };

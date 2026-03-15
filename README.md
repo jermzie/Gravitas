@@ -12,7 +12,7 @@ solver uses Sequential Impulse to resolve constraints.
 
 supported collision primitives are spheres, cylinders, capsules, cones, and convex polyhedrons.
 
-For non-convex 3D models, Quickhull is used to generate convex hull mesh for collisions.
+For imported non-convex 3D models, Quickhull is used to generate convex hull mesh for collider.
 
 ## Installation
 
@@ -25,6 +25,7 @@ git clone https://github.com/jermzie/Gravitas.git
 ```
 2. Link and build libraries with vcpkg (may take a while)
 ```
+cd Gravitas/
 cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
 

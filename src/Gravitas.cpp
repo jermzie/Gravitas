@@ -2,6 +2,7 @@
 #include "RigidBody.hpp"
 #include <memory>
 #include <random>
+#include <unordered_map>
 
 Gravitas::Gravitas(unsigned int width, unsigned int height)
     : SCREEN_WIDTH(width), SCREEN_HEIGHT(height) {
@@ -32,7 +33,12 @@ bool Gravitas::init() {
 }
 
 void Gravitas::run() {
+
+  int frame_cnt = 0;
   while (!glfwWindowShouldClose(window)) {
+    CLOGI("FRAME[%d]\n", frame_cnt);
+    if (frame_cnt == 60) {
+    }
 
     debug.new_frame();
 
@@ -59,6 +65,8 @@ void Gravitas::run() {
 
     glfwSwapBuffers(window);
     // glfwSwapInterval(0); // VSYNC disabled; uncaps FPS
+
+    frame_cnt++;
   }
 }
 
@@ -162,6 +170,8 @@ void Gravitas::init_scene() {
   auto cow_model = std::make_shared<Model>("cow.glb");
   auto bunny_model = std::make_shared<Model>("stanford-bunny.glb");
   auto dragon_model = std::make_shared<Model>("dragon.glb");
+  auto cone_model = std::make_shared<Model>("cone.obj");
+  auto capsule_model = std::make_shared<Model>("capsule.glb");
 
   // Initialize Bodies -- Physics Properties, Collision Geometry,
   // Transformations
@@ -175,28 +185,31 @@ void Gravitas::init_scene() {
   RigidBody teapot(teapot_model, 5.0, glm::vec3(0.0, 1.0, 0.0));
   RigidBody cow(cow_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
   // RigidBody dragon(dragon_model, 10.0, glm::vec3(2.0f, -2.0f, 2.0f));
-  //           RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
-  //           RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  //  RigidBody bunny(bunny_model, 20.0, glm::vec3(4.0f, 4.0f, 4.0f));
+  //             RigidBody david(david_model, 5.0, glm::vec3(0.0, 0.0, 0.0));
+  //   RigidBody cone(cone_model, 30.0, glm::vec3(5.0, 1.0, 0.0));
+  //   RigidBody capsule(capsule_model, 30.0, glm::vec3(4.0f, 4.0f, 4.0f));
 
   // Building Scene -- Dynamic BVH Tree
-  scene.add_rigid_body(std::move(light));
+  // scene.add_rigid_body(std::move(light));
   // scene.add_rigid_body(std::move(tetra));
   // scene.add_rigid_body(std::move(cube));
   // scene.add_rigid_body(std::move(icosa));
   // scene.add_rigid_body(std::move(cyl));
   //          scene.add_rigid_body(std::move(ball));
   // scene.add_rigid_body(std::move(suzanne));
-  //  scene.add_rigid_body(std::move(teapot));
+  // scene.add_rigid_body(std::move(teapot));
   //                   scene.addRigidBody(std::move(david));
   //  scene.add_rigid_body(std::move(cow));
-  //                scene.add_rigid_body(std::move(bunny));
-  //                scene.add_rigid_body(std::move(dragon));
+  // scene.add_rigid_body(std::move(bunny));
+  // scene.add_rigid_body(std::move(dragon));
+  // scene.add_rigid_body(std::move(capsule));
 
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
 
-  for (int i = 0; i < 10; i++) {
-    RigidBody cube(cube_model, 50.0, glm::vec3(0.0f, i * 2.0f, 0.0f));
+  for (int i = 0; i < 3; i++) {
+    RigidBody cube(cube_model, 50.0, glm::vec3(0.0f, (i * 1.0f) - 50, 0.0f));
     scene.add_rigid_body(std::move(cube));
   }
   /*
@@ -265,8 +278,9 @@ void Gravitas::update() {
     // rotating
     if (is_rotating && selected_object != -1) {
 
-      scene.bodies[selected_object].rotate(left_mouse_btn.x_offset,
-                                           left_mouse_btn.y_offset);
+      scene.bodies[selected_object].rotate(
+          camera.right_vector, camera.up_vector, left_mouse_btn.x_offset,
+          left_mouse_btn.y_offset);
 
       // per-frame offsets -- rotations don't continue when mouse isn't moving
       left_mouse_btn.x_offset = 0.0f;
@@ -368,12 +382,12 @@ void Gravitas::render() {
     glm::mat4 model_matrix = scene.bodies[i].get_render_matrix();
 
     // draw convex mesh
-    // debug.draw_mesh(scene.bodies[i].get_mesh(),
-    // scene.bodies[i].get_physics_matrix(), glm::vec3(1.0f, 0.0f, 0.0f));
+    debug.draw_mesh(scene.bodies[i].get_mesh(),
+                    scene.bodies[i].get_physics_matrix(),
+                    glm::vec4(0.0f, 1.0f, 0.0f, 0.5f));
 
     // picking shader
     if (i == selected_object) {
-
       // first pass - render object normally & write to stencil
       // buffer
       glStencilFunc(GL_ALWAYS, 1, 0xFF);
@@ -422,7 +436,6 @@ void Gravitas::render() {
       glEnable(GL_DEPTH_TEST);
 
     } else {
-
       glStencilFunc(GL_ALWAYS, 0, 0xFF);
       glStencilMask(0xFF);
 

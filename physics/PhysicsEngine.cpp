@@ -1,4 +1,5 @@
 #include "PhysicsEngine.hpp"
+#include "RigidBody.hpp"
 
 void PhysicsEngine::step(float dt) {
   using clock = std::chrono::high_resolution_clock;
@@ -58,7 +59,7 @@ void PhysicsEngine::step(float dt) {
   for (auto &b : bodies) {
     for (int i = 0; i < 6; i++) {
       ContactManifold manifold;
-      if (sat.poly_plane_collision(manifold, b, bounds[i], debug)) {
+      if (sat.poly_plane_collision(manifold, b, bounds[i], nullptr)) {
 
         manifold.a = &b;
         manifold.b = nullptr;
@@ -112,6 +113,13 @@ void PhysicsEngine::step(float dt) {
   auto t6 = clock::now();
 
   /*
+  for (auto &b : bodies) {
+    CLOGI("RIGID BODY - ID: %d", b.id);
+    b.log_kinematic_state();
+  }
+  */
+
+  /*
   CLOGI("potential pairs: %zu\n", potential_collisions.size());
   CLOGI("force integration: %ldus\n",
         std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count());
@@ -131,3 +139,34 @@ void PhysicsEngine::step(float dt) {
 bool PhysicsEngine::raycast(const Ray &ray, int &id, float &t) {
   return bvh.raycast(bodies, ray, id, t);
 }
+
+void PhysicsEngine::add_rigid_body(RigidBody &&body) {
+  int id = next_id++;
+  int idx = bodies.size();
+  id_to_index[id] = idx;
+
+  body.id = id;
+  bodies.push_back(std::move(body));
+  bvh.insert(bodies.back().collider.aabb, id);
+
+  CLOGI("ADDED RIGID BODY - ID: %d", id);
+  bodies.back().log_initial_state();
+}
+
+// Swap and pop to avoid shifting elements
+void PhysicsEngine::remove_rigid_body(int id) {
+  int idx = id_to_index[id];
+  int last_idx = bodies.size() - 1;
+
+  if (idx != last_idx) {
+
+    std::swap(bodies[idx], bodies[last_idx]); // Swap with last body
+    id_to_index[bodies[idx].id] = idx; // Update swapped body's index in map
+  }
+
+  bodies.pop_back();
+  id_to_index.erase(id);
+  bvh.remove(id);
+}
+
+void PhysicsEngine::remove_all_bodies() { bodies.clear(); }
