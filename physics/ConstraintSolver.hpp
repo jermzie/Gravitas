@@ -7,7 +7,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_cross_product.hpp" // glm::matrixCross3()
 
-#define NUM_ITERATIONS 20
+#define NUM_ITERATIONS 70
 
 typedef enum {
   DISTANCE,
@@ -366,7 +366,7 @@ private:
   std::vector<FrictionConstraint> friction_constraints;
 
 public:
-  void build_constraints(const std::vector<ContactManifold> &contacts) {
+  void build_constraints(const std::vector<Manifold> &contacts) {
 
     size_t total_points = 0;
     for (auto &manifold : contacts) {

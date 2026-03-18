@@ -1,4 +1,5 @@
 #include "RigidBody.hpp"
+#include "MassProperties.hpp"
 
 bool RigidBody::raycast(const Ray &world_ray, float &t) const {
 
@@ -183,8 +184,9 @@ void RigidBody::log_initial_state() {
   CLOGI("vertices: %lu", collider.hull.get_mesh().vertices.size());
   CLOGI("faces: %lu", collider.hull.get_mesh().faces.size());
   CLOGI("half edges: %lu", collider.hull.get_mesh().half_edges.size());
-  CLOGI("volume: %.4f", properties.mass / density);
-  CLOGI("mass: %.4f", properties.mass);
+  CLOGI("volume: %.4f m^3", properties.mass / density);
+  CLOGI("mass: %.4f kg", properties.mass);
+  CLOGI("density: %.4f kg m^-3", density);
 }
 
 void RigidBody::log_kinematic_state() {

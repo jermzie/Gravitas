@@ -42,11 +42,13 @@ public:
 
     // Position attribute
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex),
+                          (void *)0);
 
     // Color attribute
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void *)offsetof(DebugVertex, color));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(DebugVertex),
+                          (void *)offsetof(DebugVertex, color));
 
     glBindVertexArray(0);
 
@@ -59,9 +61,13 @@ public:
     triangles.clear();
   }
 
-  void draw_vertex(const glm::vec3 &pos, const glm::vec4 &color, float size = 50.0f) { points.push_back({pos, color}); }
+  void draw_vertex(const glm::vec3 &pos, const glm::vec4 &color,
+                   float size = 50.0f) {
+    points.push_back({pos, color});
+  }
 
-  void draw_line(const glm::vec3 &start, const glm::vec3 &end, const glm::vec4 &color) {
+  void draw_line(const glm::vec3 &start, const glm::vec3 &end,
+                 const glm::vec4 &color) {
     lines.push_back({start, color});
     lines.push_back({end, color});
   }
@@ -70,20 +76,23 @@ public:
     draw_line(ray.origin, (ray.origin + ray.direction * length), color);
   }
 
-  void draw_triangle(const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec4 &color) {
+  void draw_triangle(const glm::vec3 &v0, const glm::vec3 &v1,
+                     const glm::vec3 &v2, const glm::vec4 &color) {
     draw_line(v0, v1, color);
     draw_line(v1, v2, color);
     draw_line(v2, v0, color);
   }
 
-  void draw_filled_triangle(const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec4 &color) {
+  void draw_filled_triangle(const glm::vec3 &v0, const glm::vec3 &v1,
+                            const glm::vec3 &v2, const glm::vec4 &color) {
     triangles.push_back({v0, color});
     triangles.push_back({v1, color});
     triangles.push_back({v2, color});
   }
 
   // draw polygon face w/ no triangles
-  void draw_unordered_polygon(std::vector<glm::vec3> points, const glm::vec4 &color) {
+  void draw_unordered_polygon(std::vector<glm::vec3> points,
+                              const glm::vec4 &color) {
     int size = points.size();
 
     if (size < 3)
@@ -105,7 +114,8 @@ public:
   }
 
   // draw mesh with no triangles
-  void draw_mesh(const ConvexMesh &mesh, const glm::mat4 &transform, const glm::vec4 &color) {
+  void draw_mesh(const ConvexMesh &mesh, const glm::mat4 &transform,
+                 const glm::vec4 &color) {
 
     std::unordered_set<size_t> visited_edges;
 
@@ -118,8 +128,10 @@ public:
       visited_edges.insert(&he - &mesh.half_edges[0]);
       auto edge_vertices = mesh.get_half_edge_vertices(he);
 
-      glm::vec3 p0 = glm::vec3(transform * glm::vec4(mesh.vertices[edge_vertices[0]], 1.0f));
-      glm::vec3 p1 = glm::vec3(transform * glm::vec4(mesh.vertices[edge_vertices[1]], 1.0f));
+      glm::vec3 p0 = glm::vec3(
+          transform * glm::vec4(mesh.vertices[edge_vertices[0]], 1.0f));
+      glm::vec3 p1 = glm::vec3(
+          transform * glm::vec4(mesh.vertices[edge_vertices[1]], 1.0f));
 
       draw_line(p0, p1, color);
     }
@@ -128,13 +140,13 @@ public:
   void draw_aabb(const AABB &aabb, const glm::vec4 &color) {
 
     glm::vec3 corner_vertices[8] = {{aabb.min.x, aabb.min.y, aabb.min.z},
-        {aabb.max.x, aabb.min.y, aabb.min.z},
-        {aabb.max.x, aabb.max.y, aabb.min.z},
-        {aabb.min.x, aabb.max.y, aabb.min.z},
-        {aabb.min.x, aabb.min.y, aabb.max.z},
-        {aabb.max.x, aabb.min.y, aabb.max.z},
-        {aabb.max.x, aabb.max.y, aabb.max.z},
-        {aabb.min.x, aabb.max.y, aabb.max.z}};
+                                    {aabb.max.x, aabb.min.y, aabb.min.z},
+                                    {aabb.max.x, aabb.max.y, aabb.min.z},
+                                    {aabb.min.x, aabb.max.y, aabb.min.z},
+                                    {aabb.min.x, aabb.min.y, aabb.max.z},
+                                    {aabb.max.x, aabb.min.y, aabb.max.z},
+                                    {aabb.max.x, aabb.max.y, aabb.max.z},
+                                    {aabb.min.x, aabb.max.y, aabb.max.z}};
 
     // Bottom face
     for (int i = 0; i < 4; i++) {
@@ -151,13 +163,14 @@ public:
   }
 
   // draw translucent square face
-  void draw_plane(
-      const Plane &plane, float size, const glm::vec4 &border_color, const glm::vec4 &fill_color, int grid_lines = 10) {
+  void draw_plane(const Plane &plane, float size, const glm::vec4 &border_color,
+                  const glm::vec4 &fill_color, int grid_lines = 10) {
 
     // Build two orthogonal tangent vectors from the plane normal.
     // Pick an arbitrary "up" that isn't parallel to the normal.
     glm::vec3 n = glm::normalize(plane.normal);
-    glm::vec3 ref = (std::abs(n.y) < 0.99f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 ref = (std::abs(n.y) < 0.99f) ? glm::vec3(0.0f, 1.0f, 0.0f)
+                                            : glm::vec3(1.0f, 0.0f, 0.0f);
     glm::vec3 t1 = glm::normalize(glm::cross(ref, n)); // tangent
     glm::vec3 t2 = glm::cross(n, t1);                  // bitangent
 
@@ -201,9 +214,15 @@ public:
     draw_filled_triangle(c0, c2, c3, fill_color);
   }
 
-  void draw_normal() {}
+  void draw_normal(const Plane &plane, const glm::vec4 &color) {
 
-  void render(const glm::mat4 &view, const glm::mat4 &projection, const glm::mat4 &model) {
+    glm::vec3 n = glm::normalize(plane.normal);
+    glm::vec3 o = plane.point; // center of the drawn section
+    draw_line(o, o + n, color);
+  }
+
+  void render(const glm::mat4 &view, const glm::mat4 &projection,
+              const glm::mat4 &model) {
 
     if (lines.empty() && points.empty()) {
       return; // Nothing to draw
@@ -226,20 +245,23 @@ public:
     // Draw lines
     if (!lines.empty()) {
 
-      glBufferData(GL_ARRAY_BUFFER, lines.size() * sizeof(DebugVertex), lines.data(), GL_DYNAMIC_DRAW);
+      glBufferData(GL_ARRAY_BUFFER, lines.size() * sizeof(DebugVertex),
+                   lines.data(), GL_DYNAMIC_DRAW);
       glLineWidth(2.0f);
       glDrawArrays(GL_LINES, 0, lines.size());
     }
 
     // Draw points
     if (!points.empty()) {
-      glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(DebugVertex), points.data(), GL_DYNAMIC_DRAW);
+      glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(DebugVertex),
+                   points.data(), GL_DYNAMIC_DRAW);
       glPointSize(5.0f);
       glDrawArrays(GL_POINTS, 0, points.size());
     }
 
     if (!triangles.empty()) {
-      glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(DebugVertex), triangles.data(), GL_DYNAMIC_DRAW);
+      glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(DebugVertex),
+                   triangles.data(), GL_DYNAMIC_DRAW);
       glDrawArrays(GL_TRIANGLES, 0, triangles.size());
     }
 

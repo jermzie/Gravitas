@@ -1,21 +1,27 @@
 #include "Broadphase.hpp"
+#include "Contacts.hpp"
 #include "Narrowphase.hpp"
 
 struct ContactCache {
-  ContactID id;
-  float normal_impulse_accum;
-  float tangent_impulse_accum[2];
+  glm::vec3 pos_local;
+  float norm_impulse = 0.0f;
+  float tangent_impulse[2] = {};
+
+  ContactID cid;
 };
 
-struct ManifoldCache {
-  ContactCache contacts[4];
-  int num_points;
+struct PersistentManifold {
+  RigidBody *a = nullptr;
+  RigidBody *b = nullptr;
+
+  ContactCache point_cache[4];
+  size_t num_points;
 };
 
 class myClass {
 
   // Match Collision body IDs to a some cached Manifold
-  std::unordered_map<uint64_t, ManifoldCache> contact_cache;
+  std::unordered_map<uint64_t, PersistentManifold> contact_cache;
 
   // void update(std::vector<std::pair<int, int>> collision_pairs);
   void update(std::vector<std::pair<int, int>> collision_pairs) {
@@ -24,9 +30,9 @@ class myClass {
       // 1. check if existing contact exists via contact cache map
       contact_cache_lookup(p.first, p.second);
 
-      // 2. if exists
+      // 2. if exists, pass [..] to narrowphase and update cache
 
-      // 3. doesn't exist
+      // 3. doesn't exist, create new contact? and build contacts in narrowphase
     }
   }
 

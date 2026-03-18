@@ -8,6 +8,7 @@
 
 #include "CollisionGeometry.hpp"
 #include "Config.hpp"
+#include "Contacts.hpp"
 #include "ConvexMesh.hpp"
 #include "ConvexMeshBuilder.hpp"
 #include "Debugger.hpp"
@@ -42,61 +43,26 @@ struct FaceContactInfo {
   const size_t ref_face_idx;
 };
 
-// For Contact Caching & Warm Starting
-//   body_id:    upper 32 bits = A id,        lower 32 bits = B id
-//   feature_id: upper 32 bits = A feature,   lower 32 bits = B feature
-struct ContactID {
-  uint64_t body_id = 0;
-  uint64_t feature_id = 0;
-};
-
-struct ContactPoint {
-  ContactID cid;
-  glm::vec3 pos; // world-space contact point
-  glm::vec3 norm;
-  float pen_depth; // penetration depth
-
-  float restitution;
-  float kinetic_fric_coeff;
-  float static_fric_coeff;
-};
-
-struct ContactManifold {
-  ContactPoint points[4];
-  size_t num_points = 0;
-
-  glm::vec3 norm = glm::vec3(0.0f); // contact normal from A -> B
-  float max_pen_depth = 0;
-
-  RigidBody *a = nullptr;
-  RigidBody *b = nullptr;
-};
-
 class Narrowphase {
 public:
-  bool poly_sphere_collision(ContactManifold &out, const RigidBody &poly);
-  bool poly_plane_collision(ContactManifold &out, const RigidBody &poly,
+  bool poly_sphere_collision(Manifold &out, const RigidBody &poly);
+  bool poly_plane_collision(Manifold &out, const RigidBody &poly,
                             const Plane &plane, Debugger *debug = nullptr);
-  bool poly_poly_collision(ContactManifold &out, const RigidBody &poly_A,
+  bool poly_poly_collision(Manifold &out, const RigidBody &poly_A,
                            const RigidBody &poly_B, Debugger *debug = nullptr);
 
 private:
-  FaceColInfo query_face_normals(const RigidBody &poly_A,
-                                 const RigidBody &poly_B, glm::mat4 transform);
-  EdgeColInfo query_edge_combos(const RigidBody &poly_A,
-                                const RigidBody &poly_B, glm::mat4 matrix_A,
-                                glm::mat4 matrix_B, glm::mat4 A_to_B);
+  FaceColInfo test_face_normals(const RigidBody &poly_A,
+                                const RigidBody &poly_B, glm::mat4 transform);
+  EdgeColInfo test_edge_combos(const RigidBody &poly_A, const RigidBody &poly_B,
+                               glm::mat4 A_to_B);
 
-  ContactManifold create_face_contact(const RigidBody &poly_A,
-                                      const RigidBody &poly_B,
-                                      const FaceColInfo &fa,
-                                      const FaceColInfo &fb);
-  ContactManifold create_edge_contact(const RigidBody &poly_A,
-                                      const RigidBody &poly_B,
-                                      const EdgeColInfo &eab);
-  ContactManifold create_plane_contact(const RigidBody &poly,
-                                       const Plane &plane,
-                                       Debugger *debug = nullptr);
+  Manifold create_face_contact(const RigidBody &poly_A, const RigidBody &poly_B,
+                               const FaceColInfo &fa, const FaceColInfo &fb);
+  Manifold create_edge_contact(const RigidBody &poly_A, const RigidBody &poly_B,
+                               const EdgeColInfo &eab);
+  Manifold create_plane_contact(const RigidBody &poly, const Plane &plane,
+                                Debugger *debug = nullptr);
 
   bool is_minkowski_face(const glm::vec3 &a, const glm::vec3 &b,
                          const glm::vec3 &c, const glm::vec3 &d);

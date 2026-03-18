@@ -34,12 +34,7 @@ bool Gravitas::init() {
 
 void Gravitas::run() {
 
-  int frame_cnt = 0;
   while (!glfwWindowShouldClose(window)) {
-    CLOGI("FRAME[%d]\n", frame_cnt);
-    if (frame_cnt == 60) {
-    }
-
     debug.new_frame();
 
     // per-frame time logic
@@ -65,8 +60,6 @@ void Gravitas::run() {
 
     glfwSwapBuffers(window);
     // glfwSwapInterval(0); // VSYNC disabled; uncaps FPS
-
-    frame_cnt++;
   }
 }
 
@@ -208,8 +201,10 @@ void Gravitas::init_scene() {
   // 100 Cubes -- 144 FPS
   // 1000 Cubes -- 30 FPS
 
-  for (int i = 0; i < 3; i++) {
-    RigidBody cube(cube_model, 50.0, glm::vec3(0.0f, (i * 1.0f) - 50, 0.0f));
+  for (int i = 0; i < 5; i++) {
+    // density of water is 1000kg/m^3
+    RigidBody cube(cube_model, 1000.0f,
+                   glm::vec3(20.0f, (i * 1.0f) - 50, 20.0f));
     scene.add_rigid_body(std::move(cube));
   }
   /*

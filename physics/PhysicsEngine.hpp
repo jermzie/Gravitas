@@ -55,7 +55,7 @@ public:
   float global_friction;
   std::vector<RigidBody> bodies;
   std::vector<std::pair<int, int>> potential_collisions;
-  std::vector<ContactManifold> contacts;
+  std::vector<Manifold> contacts;
 
   void step(float dt);
   bool raycast(const Ray &ray, int &id, float &t);

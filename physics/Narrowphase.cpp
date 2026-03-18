@@ -7,8 +7,7 @@
 #include <glm/geometric.hpp>
 #include <limits>
 
-bool Narrowphase::poly_plane_collision(ContactManifold &out,
-                                       const RigidBody &poly,
+bool Narrowphase::poly_plane_collision(Manifold &out, const RigidBody &poly,
                                        const Plane &plane, Debugger *debug) {
 
   glm::vec3 axis_world = -plane.normal;
@@ -26,7 +25,7 @@ bool Narrowphase::poly_plane_collision(ContactManifold &out,
 
   if (debug) {
     for (int i = 0; i < out.num_points; ++i) {
-      debug->draw_vertex(out.points[i].pos, glm::vec4(1, 0, 0, 1));
+      debug->draw_vertex(out.points[i].pos, glm::vec4(0, 1, 0, 1));
     }
   }
 
@@ -35,8 +34,7 @@ bool Narrowphase::poly_plane_collision(ContactManifold &out,
 
 // O(n^2)
 // Gauss Map Optimization
-bool Narrowphase::poly_poly_collision(ContactManifold &out,
-                                      const RigidBody &poly_A,
+bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
                                       const RigidBody &poly_B,
                                       Debugger *debug) {
 
@@ -49,20 +47,19 @@ bool Narrowphase::poly_poly_collision(ContactManifold &out,
   const glm::mat4 A_to_B = inverse_B * matrix_A;
   const glm::mat4 B_to_A = inverse_A * matrix_B;
 
-  FaceColInfo fa = query_face_normals(poly_A, poly_B, A_to_B);
+  FaceColInfo fa = test_face_normals(poly_A, poly_B, A_to_B);
   // CLOGI("Poly A Normals: %.5f", fa.separation);
   if (fa.separation > 0.0f) {
     return false;
   }
 
-  FaceColInfo fb = query_face_normals(poly_B, poly_A, B_to_A);
+  FaceColInfo fb = test_face_normals(poly_B, poly_A, B_to_A);
   // CLOGI("Poly B Normals: %.5f", fb.separation);
   if (fb.separation > 0.0f) {
     return false;
   }
 
-  EdgeColInfo eab =
-      query_edge_combos(poly_A, poly_B, matrix_A, matrix_B, A_to_B);
+  EdgeColInfo eab = test_edge_combos(poly_A, poly_B, A_to_B);
   // CLOGI("Edge Cross Product: %.5f", eab.separation);
   if (eab.separation > 0.0f) {
     return false;
@@ -72,18 +69,14 @@ bool Narrowphase::poly_poly_collision(ContactManifold &out,
       (fa.separation > eab.separation) || (fb.separation > eab.separation);
   if (is_face_contact) {
     out = create_face_contact(poly_A, poly_B, fa, fb);
-
     // CLOGI("FACE CONTACT -- %lu CONTACTS", out.num_points);
 
     if (debug) {
-      std::vector<glm::vec3> pts;
       for (int i = 0; i < out.num_points; i++) {
         debug->draw_vertex(out.points[i].pos, glm::vec4(1, 0, 0, 1));
-        pts.push_back(out.points[i].pos);
         // CLOGI("CONTACT[%d] -- PENETRATION: %.5f", (int)i,
         // out.points[i].pen_depth);
       }
-      debug->draw_unordered_polygon(pts, glm::vec4(1, 0, 0, 1));
     }
 
   } else {
@@ -94,20 +87,20 @@ bool Narrowphase::poly_poly_collision(ContactManifold &out,
     if (debug) {
       const ConvexMesh &mesh_A = poly_A.get_mesh();
       const ConvexMesh &mesh_B = poly_B.get_mesh();
-      const glm::mat4 transform_A = poly_A.get_physics_matrix();
-      const glm::mat4 transform_B = poly_B.get_physics_matrix();
+      const glm::mat4 xfrm_A = poly_A.get_physics_matrix();
+      const glm::mat4 xfrm_B = poly_B.get_physics_matrix();
       const auto verts_A =
           mesh_A.get_half_edge_vertices(mesh_A.half_edges[eab.edge_idx.first]);
       const auto verts_B =
           mesh_B.get_half_edge_vertices(mesh_B.half_edges[eab.edge_idx.second]);
 
       debug->draw_line(
-          glm::vec3(transform_A * glm::vec4(mesh_A.vertices[verts_A[0]], 1.0f)),
-          glm::vec3(transform_A * glm::vec4(mesh_A.vertices[verts_A[1]], 1.0f)),
+          glm::vec3(xfrm_A * glm::vec4(mesh_A.vertices[verts_A[0]], 1.0f)),
+          glm::vec3(xfrm_A * glm::vec4(mesh_A.vertices[verts_A[1]], 1.0f)),
           glm::vec4(1, 0, 0, 1));
       debug->draw_line(
-          glm::vec3(transform_B * glm::vec4(mesh_B.vertices[verts_B[0]], 1.0f)),
-          glm::vec3(transform_B * glm::vec4(mesh_B.vertices[verts_B[1]], 1.0f)),
+          glm::vec3(xfrm_B * glm::vec4(mesh_B.vertices[verts_B[0]], 1.0f)),
+          glm::vec3(xfrm_B * glm::vec4(mesh_B.vertices[verts_B[1]], 1.0f)),
           glm::vec4(1, 0, 0, 1));
       debug->draw_vertex(out.points[0].pos, glm::vec4(1, 0, 0, 1));
     }
@@ -116,9 +109,9 @@ bool Narrowphase::poly_poly_collision(ContactManifold &out,
   return true;
 }
 
-FaceColInfo Narrowphase::query_face_normals(const RigidBody &poly_A,
-                                            const RigidBody &poly_B,
-                                            glm::mat4 A_to_B) {
+FaceColInfo Narrowphase::test_face_normals(const RigidBody &poly_A,
+                                           const RigidBody &poly_B,
+                                           glm::mat4 A_to_B) {
 
   glm::mat3 norm_matrix = get_normal_matrix(A_to_B);
 
@@ -147,11 +140,9 @@ FaceColInfo Narrowphase::query_face_normals(const RigidBody &poly_A,
   return FaceColInfo(max_separation, max_idx);
 }
 
-EdgeColInfo Narrowphase::query_edge_combos(const RigidBody &poly_A,
-                                           const RigidBody &poly_B,
-                                           glm::mat4 matrix_A,
-                                           glm::mat4 matrix_B,
-                                           glm::mat4 A_to_B) {
+EdgeColInfo Narrowphase::test_edge_combos(const RigidBody &poly_A,
+                                          const RigidBody &poly_B,
+                                          glm::mat4 A_to_B) {
 
   const glm::mat3 norm_matrix_A = get_normal_matrix(A_to_B);
   glm::vec3 centroid_A = glm::vec3(
@@ -185,7 +176,7 @@ EdgeColInfo Narrowphase::query_edge_combos(const RigidBody &poly_A,
         glm::vec3(A_to_B * glm::vec4(mesh_A.vertices[he_verts_A[1]], 1.0f));
     glm::vec3 edge_A = q1 - p1;
 
-    // Ttransform A's face normals into B's local space
+    // Transform A's face normals into B's local space
     const glm::vec3 norm_A =
         glm::normalize(norm_matrix_A * mesh_A.faces[he_A.face].plane.normal);
     const glm::vec3 norm_B = glm::normalize(
@@ -218,6 +209,7 @@ EdgeColInfo Narrowphase::query_edge_combos(const RigidBody &poly_A,
         continue;
       }
       glm::vec3 cross = glm::cross(edge_A, edge_B);
+      // WARNING: uses sqrt() to compute len
       float cross_len = glm::length(cross);
       if (cross_len < EPSILON) {
         continue;
@@ -240,10 +232,10 @@ EdgeColInfo Narrowphase::query_edge_combos(const RigidBody &poly_A,
   return EdgeColInfo(max_separation, max_idx);
 }
 
-ContactManifold Narrowphase::create_face_contact(const RigidBody &poly_A,
-                                                 const RigidBody &poly_B,
-                                                 const FaceColInfo &fa,
-                                                 const FaceColInfo &fb) {
+Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
+                                          const RigidBody &poly_B,
+                                          const FaceColInfo &fa,
+                                          const FaceColInfo &fb) {
 
   // Choose reference/incident bodies
   auto [ref_body, inc_body, ref_face_idx] =
@@ -314,7 +306,7 @@ ContactManifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   const std::vector<ContactPoint> reduced_contacts =
       reduce_manifold(candidates, ref_plane.normal);
 
-  ContactManifold out;
+  Manifold out;
   out.norm = ref_plane.normal;
   out.max_pen_depth = max_pen;
   out.num_points = std::min<size_t>(4, reduced_contacts.size());
@@ -326,9 +318,9 @@ ContactManifold Narrowphase::create_face_contact(const RigidBody &poly_A,
 }
 
 // find closest points on two colliding edges (midpoint????)
-ContactManifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
-                                                 const RigidBody &poly_B,
-                                                 const EdgeColInfo &eab) {
+Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
+                                          const RigidBody &poly_B,
+                                          const EdgeColInfo &eab) {
 
   const ConvexMesh &mesh_A = poly_A.get_mesh();
   const ConvexMesh &mesh_B = poly_B.get_mesh();
@@ -395,7 +387,7 @@ ContactManifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
     axis = -axis;
   }
 
-  ContactManifold out;
+  Manifold out;
   out.num_points = 1;
   out.norm = axis;
   out.max_pen_depth = dist;
@@ -411,9 +403,9 @@ ContactManifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
   return out;
 }
 
-ContactManifold Narrowphase::create_plane_contact(const RigidBody &poly,
-                                                  const Plane &plane,
-                                                  Debugger *debug) {
+Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
+                                           const Plane &plane,
+                                           Debugger *debug) {
 
   glm::mat4 xfrm = poly.get_physics_matrix();
   const auto &local_verts = poly.get_mesh().vertices;
@@ -444,12 +436,12 @@ ContactManifold Narrowphase::create_plane_contact(const RigidBody &poly,
   }
 
   if (candidates.empty()) {
-    return ContactManifold{};
+    return Manifold{};
   }
 
   const auto reduced = reduce_manifold(candidates, plane.normal);
 
-  ContactManifold out;
+  Manifold out;
   out.norm = plane.normal;
   out.max_pen_depth = max_pen;
   out.num_points = std::min<size_t>(4, reduced.size());

@@ -50,7 +50,7 @@ void PhysicsEngine::step(float dt) {
   auto t1 = clock::now();
 
   // 2. Broadphase
-  potential_collisions = bvh.update(bodies, debug);
+  potential_collisions = bvh.update(bodies);
 
   auto t2 = clock::now();
 
@@ -58,8 +58,8 @@ void PhysicsEngine::step(float dt) {
   contacts.clear();
   for (auto &b : bodies) {
     for (int i = 0; i < 6; i++) {
-      ContactManifold manifold;
-      if (sat.poly_plane_collision(manifold, b, bounds[i], nullptr)) {
+      Manifold manifold;
+      if (sat.poly_plane_collision(manifold, b, bounds[i], debug)) {
 
         manifold.a = &b;
         manifold.b = nullptr;
@@ -75,7 +75,7 @@ void PhysicsEngine::step(float dt) {
   // 3b. Narrowphase
   for (auto pair : potential_collisions) {
 
-    ContactManifold manifold;
+    Manifold manifold;
     if (sat.poly_poly_collision(manifold, bodies[pair.first],
                                 bodies[pair.second], debug)) {
 
