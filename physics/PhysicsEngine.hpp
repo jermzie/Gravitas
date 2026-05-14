@@ -9,14 +9,12 @@
 #include "Broadphase.hpp"
 #include "CollisionGeometry.hpp"
 #include "Config.hpp"
+#include "ConstraintSolver.hpp"
 #include "Debugger.hpp"
 #include "Model.hpp"
+#include "Narrowphase.hpp"
 #include "Plane.hpp"
 #include "RigidBody.hpp"
-// DOESNT WORK
-// #include "BoundingSphere.hpp"
-#include "ConstraintSolver.hpp"
-#include "Narrowphase.hpp"
 
 class PhysicsEngine {
 private:

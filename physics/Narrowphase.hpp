@@ -83,8 +83,8 @@ private:
   std::vector<glm::vec3>
   clip_polygon_against_plane(const std::vector<glm::vec3> &polygon,
                              const Plane &plane);
-  std::vector<ContactPoint> reduce_manifold(std::vector<ContactPoint> contacts,
-                                            glm::vec3 ref_norm);
+  std::vector<Contact> reduce_manifold(std::vector<Contact> contacts,
+                                       glm::vec3 ref_norm);
 
   inline float get_signed_triangle_area(const glm::vec3 &a, const glm::vec3 &b,
                                         const glm::vec3 &c,

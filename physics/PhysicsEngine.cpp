@@ -89,7 +89,7 @@ void PhysicsEngine::step(float dt) {
           0.0f) {
         manifold.norm = -manifold.norm;
         for (int i = 0; i < manifold.num_points; i++)
-          manifold.points[i].norm = manifold.norm;
+          manifold.contacts[i].norm = manifold.norm;
       }
       contacts.push_back(manifold);
     }

@@ -7,6 +7,11 @@
 #include <glm/geometric.hpp>
 #include <limits>
 
+struct ClipVertex {
+  glm::vec3 pos_world;
+  uint32_t id;
+};
+
 bool Narrowphase::poly_plane_collision(Manifold &out, const RigidBody &poly,
                                        const Plane &plane, Debugger *debug) {
 
@@ -25,7 +30,7 @@ bool Narrowphase::poly_plane_collision(Manifold &out, const RigidBody &poly,
 
   if (debug) {
     for (int i = 0; i < out.num_points; ++i) {
-      debug->draw_vertex(out.points[i].pos, glm::vec4(0, 1, 0, 1));
+      debug->draw_vertex(out.contacts[i].pos_world, glm::vec4(0, 1, 0, 1));
     }
   }
 
@@ -73,7 +78,7 @@ bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
 
     if (debug) {
       for (int i = 0; i < out.num_points; i++) {
-        debug->draw_vertex(out.points[i].pos, glm::vec4(1, 0, 0, 1));
+        debug->draw_vertex(out.contacts[i].pos_world, glm::vec4(1, 0, 0, 1));
         // CLOGI("CONTACT[%d] -- PENETRATION: %.5f", (int)i,
         // out.points[i].pen_depth);
       }
@@ -102,7 +107,7 @@ bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
           glm::vec3(xfrm_B * glm::vec4(mesh_B.vertices[verts_B[0]], 1.0f)),
           glm::vec3(xfrm_B * glm::vec4(mesh_B.vertices[verts_B[1]], 1.0f)),
           glm::vec4(1, 0, 0, 1));
-      debug->draw_vertex(out.points[0].pos, glm::vec4(1, 0, 0, 1));
+      debug->draw_vertex(out.contacts[0].pos_world, glm::vec4(1, 0, 0, 1));
     }
   }
 
@@ -237,21 +242,22 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
                                           const FaceColInfo &fa,
                                           const FaceColInfo &fb) {
 
-  // Choose reference/incident bodies
+  // Bias reference/incident bodies
   auto [ref_body, inc_body, ref_face_idx] =
       bias_reference_face(poly_A, poly_B, fa, fb);
 
   const ConvexMesh &ref_mesh = ref_body->get_mesh();
   const ConvexMesh &inc_mesh = inc_body->get_mesh();
-  const glm::mat4 ref_transform = ref_body->get_physics_matrix();
-  const glm::mat4 inc_transform = inc_body->get_physics_matrix();
-  const glm::mat3 ref_norm_matrix = ref_body->transform.get_normal_matrix();
+
+  const glm::mat4 ref_xfrm = ref_body->get_physics_matrix();
+  const glm::mat4 inc_xfrm = inc_body->get_physics_matrix();
+  const glm::mat3 ref_norm_mat = ref_body->transform.get_normal_matrix();
 
   const ConvexMesh::Face &ref_face = ref_mesh.faces[ref_face_idx];
   glm::vec3 ref_norm_world =
-      glm::normalize(ref_norm_matrix * ref_face.plane.normal);
+      glm::normalize(ref_norm_mat * ref_face.plane.normal);
 
-  // Find incident face
+  // Find incident face (most anti-parallel face)
   size_t inc_face_idx = find_incident_face(ref_norm_world, *inc_body);
   const ConvexMesh::Face &inc_face = inc_mesh.faces[inc_face_idx];
 
@@ -259,25 +265,24 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   std::vector<glm::vec3> inc_polygon;
   for (size_t idx : inc_mesh.get_face_vertices(inc_face)) {
     inc_polygon.push_back(
-        glm::vec3(inc_transform * glm::vec4(inc_mesh.vertices[idx], 1.0f)));
+        glm::vec3(inc_xfrm * glm::vec4(inc_mesh.vertices[idx], 1.0f)));
   }
 
   // Build world-space reference plane
   Plane ref_plane;
   ref_plane.normal = ref_norm_world;
-  ref_plane.point =
-      glm::vec3(ref_transform * glm::vec4(ref_face.plane.point, 1.0f));
+  ref_plane.point = glm::vec3(ref_xfrm * glm::vec4(ref_face.plane.point, 1.0f));
   ref_plane.distance = -glm::dot(ref_plane.normal, ref_plane.point);
 
   // Clip incident polygon against reference face side planes
-  clip_against_reference_face(inc_polygon, ref_mesh, ref_transform, ref_face,
+  clip_against_reference_face(inc_polygon, ref_mesh, ref_xfrm, ref_face,
                               ref_plane);
 
   const uint64_t body_id = pack_id(ref_body->id, inc_body->id);
   const uint64_t feature_id = pack_id(static_cast<uint32_t>(ref_face_idx),
                                       static_cast<uint32_t>(inc_face_idx));
 
-  std::vector<ContactPoint> candidates;
+  std::vector<Contact> candidates;
   float max_pen = -std::numeric_limits<float>::max();
 
   for (const auto &point : inc_polygon) {
@@ -288,11 +293,11 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
       continue;
     }
 
-    ContactPoint c;
-    c.cid.body_id = pack_id(ref_body->id, inc_body->id);
-    c.cid.feature_id = pack_id(ref_face_idx, inc_face_idx);
-    // c.pos = point;
-    c.pos = point - separation * ref_plane.normal;
+    Contact c;
+    // c.cid.body_id = pack_id(ref_body->id, inc_body->id);
+    // c.cid.feature_id = pack_id(ref_face_idx, inc_face_idx);
+    //  c.pos = point;
+    c.pos_world = point - separation * ref_plane.normal;
     c.norm = ref_plane.normal;
     c.pen_depth = -separation; // store penetration as positive value
 
@@ -303,7 +308,7 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   }
 
   // Reduce manifold to at most 4 points
-  const std::vector<ContactPoint> reduced_contacts =
+  const std::vector<Contact> reduced_contacts =
       reduce_manifold(candidates, ref_plane.normal);
 
   Manifold out;
@@ -311,7 +316,7 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   out.max_pen_depth = max_pen;
   out.num_points = std::min<size_t>(4, reduced_contacts.size());
   for (int i = 0; i < out.num_points; ++i) {
-    out.points[i] = reduced_contacts[i];
+    out.contacts[i] = reduced_contacts[i];
   }
 
   return out;
@@ -392,13 +397,14 @@ Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
   out.norm = axis;
   out.max_pen_depth = dist;
 
-  out.points[0].cid.body_id = pack_id(poly_A.id, poly_B.id);
-  out.points[0].cid.feature_id =
-      pack_id(static_cast<uint32_t>(eab.edge_idx.first),
-              static_cast<uint32_t>(eab.edge_idx.second));
-  out.points[0].pos = 0.5f * (closest_A + closest_B);
-  out.points[0].norm = axis;
-  out.points[0].pen_depth = dist;
+  // CID for frame coherence
+  uint64_t body_id = pack_id(poly_A.id, poly_B.id);
+  uint64_t feature_id = pack_id(static_cast<uint32_t>(eab.edge_idx.first),
+                                static_cast<uint32_t>(eab.edge_idx.second));
+  out.contacts[0].pos_world = 0.5f * (closest_A + closest_B);
+  out.contacts[0].norm = axis;
+  out.contacts[0].pen_depth = dist;
+  out.contacts[0].cid = {body_id, feature_id};
 
   return out;
 }
@@ -410,7 +416,7 @@ Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
   glm::mat4 xfrm = poly.get_physics_matrix();
   const auto &local_verts = poly.get_mesh().vertices;
 
-  std::vector<ContactPoint> candidates;
+  std::vector<Contact> candidates;
   float max_pen = -std::numeric_limits<float>::max();
 
   for (size_t i = 0; i < local_verts.size(); i++) {
@@ -422,10 +428,10 @@ Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
     if (separation > 0.0f) {
       continue;
     }
-    ContactPoint c;
-    c.cid.body_id = static_cast<uint64_t>(poly.id);
-    c.cid.feature_id = static_cast<uint64_t>(i);
-    c.pos = world;
+    Contact c;
+    // c.cid.body_id = static_cast<uint64_t>(poly.id);
+    // c.cid.feature_id = static_cast<uint64_t>(i);
+    c.pos_world = world;
     c.norm = plane.normal;
     c.pen_depth = -separation; // store penetration as positive
     candidates.push_back(c);
@@ -446,7 +452,7 @@ Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
   out.max_pen_depth = max_pen;
   out.num_points = std::min<size_t>(4, reduced.size());
   for (size_t i = 0; i < out.num_points; i++) {
-    out.points[i] = reduced[i];
+    out.contacts[i] = reduced[i];
   }
 
   return out;
@@ -570,6 +576,48 @@ Narrowphase::clip_polygon_against_plane(const std::vector<glm::vec3> &polygon,
   return out;
 }
 
+/*
+std::vector<ClipVertex>
+Narrowphase::clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
+                                        const Plane &plane, uint32_t clip_id) {
+
+  std::vector<ClipVertex> out;
+  if (polygon.empty()) {
+    return out;
+  }
+
+  ClipVertex v1 = polygon.back();
+  float d1 = get_signed_distance_to_plane(v1.pos_world, plane);
+
+  for (const auto &v2 : polygon) {
+    float d2 = get_signed_distance_to_plane(v2.pos_world, plane);
+
+    // Case: Edge crosses the plane
+    if ((d1 > 0 && d2 <= 0) || (d1 <= 0 && d2 > 0)) {
+      float t = d1 / (d1 - d2);
+      ClipVertex intersection;
+      intersection.pos_world = v1.pos_world + t * (v2.pos_world - v1.pos_world);
+
+      // The intersection point is created by the edge (v1, v2)
+      // being cut by the clipping_side_id.
+      // We use a simplified hash or your pack_id logic here.
+      intersection.id = clip_id;
+      out.push_back(intersection);
+    }
+
+    // Case: Current vertex is inside
+    if (d2 <= 0) {
+      out.push_back(v2);
+    }
+
+    v1 = v2;
+    d1 = d2;
+  }
+
+  return out;
+}
+*/
+
 size_t Narrowphase::find_incident_face(const glm::vec3 &ref_norm_world,
                                        const RigidBody &poly) {
 
@@ -622,14 +670,13 @@ inline float Narrowphase::get_signed_triangle_area(const glm::vec3 &a,
   return glm::dot(cross, normal);
 }
 
-std::vector<ContactPoint>
-Narrowphase::reduce_manifold(std::vector<ContactPoint> contacts,
-                             glm::vec3 ref_norm) {
+std::vector<Contact> Narrowphase::reduce_manifold(std::vector<Contact> contacts,
+                                                  glm::vec3 ref_norm) {
   if (contacts.size() <= 4) {
     return contacts;
   }
 
-  std::vector<ContactPoint> out;
+  std::vector<Contact> out;
   out.reserve(4);
 
   // 1. find deepest support point
@@ -653,7 +700,8 @@ Narrowphase::reduce_manifold(std::vector<ContactPoint> contacts,
       continue;
     }
 
-    float dist2 = glm::distance2(contacts[i].pos, contacts[deepest_idx].pos);
+    float dist2 =
+        glm::distance2(contacts[i].pos_world, contacts[deepest_idx].pos_world);
     if (dist2 > max_dist2) {
       max_dist2 = dist2;
       farthest_idx = i;
@@ -674,9 +722,9 @@ Narrowphase::reduce_manifold(std::vector<ContactPoint> contacts,
       continue;
     }
 
-    float area = get_signed_triangle_area(contacts[deepest_idx].pos,
-                                          contacts[farthest_idx].pos,
-                                          contacts[i].pos, ref_norm);
+    float area = get_signed_triangle_area(contacts[deepest_idx].pos_world,
+                                          contacts[farthest_idx].pos_world,
+                                          contacts[i].pos_world, ref_norm);
 
     if (area > max_area) {
       max_area = area;
@@ -699,19 +747,19 @@ Narrowphase::reduce_manifold(std::vector<ContactPoint> contacts,
     }
 
     // Edge 0: deepest -> farthest
-    float area0 = get_signed_triangle_area(contacts[deepest_idx].pos,
-                                           contacts[farthest_idx].pos,
-                                           contacts[i].pos, ref_norm);
+    float area0 = get_signed_triangle_area(contacts[deepest_idx].pos_world,
+                                           contacts[farthest_idx].pos_world,
+                                           contacts[i].pos_world, ref_norm);
 
     // Edge 1: farthest -> third
-    float area1 = get_signed_triangle_area(contacts[farthest_idx].pos,
-                                           contacts[third_idx].pos,
-                                           contacts[i].pos, ref_norm);
+    float area1 = get_signed_triangle_area(contacts[farthest_idx].pos_world,
+                                           contacts[third_idx].pos_world,
+                                           contacts[i].pos_world, ref_norm);
 
     // Edge 2: third -> deepest
-    float area2 = get_signed_triangle_area(contacts[third_idx].pos,
-                                           contacts[deepest_idx].pos,
-                                           contacts[i].pos, ref_norm);
+    float area2 = get_signed_triangle_area(contacts[third_idx].pos_world,
+                                           contacts[deepest_idx].pos_world,
+                                           contacts[i].pos_world, ref_norm);
 
     // Keep the most negative area across all three edges
     float min_area = std::min({area0, area1, area2});

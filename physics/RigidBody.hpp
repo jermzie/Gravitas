@@ -35,16 +35,6 @@ struct CollisionData {
   }
 };
 
-/*
-typedef enum {
-  SPHERE,
-  CONE,
-  CYLINDER,
-  CAPSULE,
-  POLYHEDRON,
-} rb_type_t;
-*/
-
 typedef enum { STEEL, RUBBER, WOOD, GLASS, ICE } materials_t;
 
 typedef struct {

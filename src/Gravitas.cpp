@@ -1,5 +1,6 @@
 ﻿#include "Gravitas.hpp"
 #include "RigidBody.hpp"
+#include <GLFW/glfw3.h>
 #include <memory>
 #include <random>
 #include <unordered_map>
@@ -251,6 +252,9 @@ void Gravitas::process_inputs() {
     camera.process_keyboard(RIGHT, dt);
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     camera.process_keyboard(UP, dt);
+  if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS &&
+      glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    camera.process_keyboard(UP, dt);
 }
 
 // UPDATE
@@ -303,32 +307,6 @@ void Gravitas::update() {
 
     // check initial object selection
     else {
-
-      // BRUTE FORCE -- SLOW
-      // check ray-hull intersections for all bodies
-      // should use Broadphase to raycast bvh first
-      /*
-      for (int i = 0; i < scene.bodies.size(); ++i) {
-
-        float t;
-        if (scene.bodies[i].raycast(ray, t)) {
-
-          glm::vec3 hit_point = ray.origin + ray.direction * t;
-          selected_object = i;
-          scene.bodies[i].disable();
-
-          std::cout << "PICKED RIGID BODY " << scene.bodies[i].id << std::endl;
-          // record initial object pos
-          old_position = hit_point;
-
-          // define drag plane
-          drag_plane.normal = -camera.front_vector;
-          drag_plane.point = hit_point;
-
-          break;
-        }
-      }
-      */
 
       float t;
       int id;

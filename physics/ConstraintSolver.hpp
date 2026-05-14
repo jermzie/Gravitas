@@ -144,14 +144,15 @@ public:
   glm::vec3 ra = glm::vec3(0.0f);
   glm::vec3 rb = glm::vec3(0.0f);
 
-  ContactConstraint(RigidBody *a, RigidBody *b, ContactPoint cp) {
+  ContactConstraint(RigidBody *a, RigidBody *b, Contact cp) {
     this->a = a;
     this->b = b;
 
     normal = cp.norm;
     penetration = cp.pen_depth;
-    ra = cp.pos - a->get_centre_of_mass();
-    rb = (b != nullptr) ? cp.pos - b->get_centre_of_mass() : glm::vec3(0.0f);
+    ra = cp.pos_world - a->get_centre_of_mass();
+    rb = (b != nullptr) ? cp.pos_world - b->get_centre_of_mass()
+                        : glm::vec3(0.0f);
 
     compute_jacobian();
 
@@ -160,7 +161,11 @@ public:
     impulse_max[0] = 1e10f;
     effective_mass[0] = compute_effective_mass(0);
 
-    // Relative closing velicity between bodies
+    /* Relative velicity between bodies
+     *
+     * Negative relative velocity means bodies are penetrating.
+     * Positive relative velocity means bodies are separating.
+     */
     glm::vec3 rel_velocity = -a->lin_velocity - glm::cross(a->ang_velocity, ra);
     if (b != nullptr) {
       rel_velocity += b->lin_velocity + glm::cross(b->ang_velocity, rb);
@@ -192,8 +197,8 @@ public:
       restitution = a->restitution_coeff;
     }
 
-    float slop = std::min(initial_closing_velocity + slop_restitution, 0.0f);
-    return restitution * slop;
+    float slop = std::max(initial_closing_velocity - slop_restitution, 0.0f);
+    return -restitution * slop;
   }
 
   void resolve_impulse() {
@@ -381,17 +386,17 @@ public:
     for (auto &m : contacts) {
       for (int i = 0; i < m.num_points; i++) {
 
-        contact_constraints.emplace_back(m.a, m.b, m.points[i]);
+        contact_constraints.emplace_back(m.a, m.b, m.contacts[i]);
       }
     }
 
     size_t index = 0;
     for (auto &m : contacts) {
       for (int i = 0; i < m.num_points; i++) {
-        const auto &cp = m.points[i];
-        glm::vec3 ra = cp.pos - m.a->get_centre_of_mass();
+        const auto &cp = m.contacts[i];
+        glm::vec3 ra = cp.pos_world - m.a->get_centre_of_mass();
         glm::vec3 rb =
-            m.b ? cp.pos - m.b->get_centre_of_mass() : glm::vec3(0.f);
+            m.b ? cp.pos_world - m.b->get_centre_of_mass() : glm::vec3(0.f);
         friction_constraints.emplace_back(m.a, m.b, cp.norm, ra, rb,
                                           &contact_constraints[index++]);
       }
