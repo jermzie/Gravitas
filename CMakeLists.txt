@@ -28,10 +28,10 @@ target_include_directories(${EXECUTABLE_NAME} PUBLIC
           ${CMAKE_SOURCE_DIR}/physics
 )
 
-set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 20)
 
 # path for cmake config files
-# set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/build/vcpkg_installed/x64-windows/share")
+#set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/build/vcpkg_installed/x64-windows/share")
 
 find_package(assimp REQUIRED)
 find_package(ZLIB REQUIRED)
