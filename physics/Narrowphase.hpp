@@ -20,6 +20,11 @@
  * bodies. Implements Gauss map optimized Separating Axis Theorem.
  */
 
+struct ClipVertex {
+  glm::vec3 pos_world;
+  uint32_t id;
+};
+
 struct FaceColInfo {
   float separation = 0.0f;
   size_t face_idx;
@@ -58,9 +63,10 @@ private:
                                glm::mat4 A_to_B);
 
   Manifold create_face_contact(const RigidBody &poly_A, const RigidBody &poly_B,
-                               const FaceColInfo &fa, const FaceColInfo &fb);
+                               const FaceColInfo &fa, const FaceColInfo &fb,
+                               const glm::mat4 &inv_A);
   Manifold create_edge_contact(const RigidBody &poly_A, const RigidBody &poly_B,
-                               const EdgeColInfo &eab);
+                               const EdgeColInfo &eab, const glm::mat4 &inv_A);
   Manifold create_plane_contact(const RigidBody &poly, const Plane &plane,
                                 Debugger *debug = nullptr);
 
@@ -74,15 +80,19 @@ private:
                                       const FaceColInfo &fa,
                                       const FaceColInfo &fb);
 
-  void clip_against_reference_face(std::vector<glm::vec3> &polygon,
+  void clip_against_reference_face(std::vector<ClipVertex> &polygon,
                                    const ConvexMesh &ref_mesh,
                                    const glm::mat4 &ref_transform,
                                    const ConvexMesh::Face &ref_face,
                                    const Plane &ref_plane);
 
-  std::vector<glm::vec3>
-  clip_polygon_against_plane(const std::vector<glm::vec3> &polygon,
-                             const Plane &plane);
+  std::vector<ClipVertex>
+  clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
+                             const Plane &plane, uint32_t clip_id);
+
+  // High bit set on vertex_id indicates a clipping-plane intersection;
+  // lower 31 bits store the reference side-plane half-edge index.
+  static constexpr uint32_t CLIP_INTERSECTION_FLAG = 0x80000000u;
   std::vector<Contact> reduce_manifold(std::vector<Contact> contacts,
                                        glm::vec3 ref_norm);
 

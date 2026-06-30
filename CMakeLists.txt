@@ -19,6 +19,7 @@ add_executable (${EXECUTABLE_NAME}
           physics/QuickHull.cpp
           physics/RigidBody.cpp
           physics/Broadphase.cpp
+          physics/Contacts.cpp
           physics/Narrowphase.cpp
           physics/PhysicsEngine.cpp
 )

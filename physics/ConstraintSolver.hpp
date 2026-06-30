@@ -7,7 +7,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_cross_product.hpp" // glm::matrixCross3()
 
-#define NUM_ITERATIONS 70
+#define NUM_ITERATIONS 10
 
 typedef enum {
   DISTANCE,
@@ -383,10 +383,15 @@ public:
     contact_constraints.reserve(total_points);
     friction_constraints.reserve(total_points);
 
+    // WARMSTART CONTACTS
     for (auto &m : contacts) {
       for (int i = 0; i < m.num_points; i++) {
-
         contact_constraints.emplace_back(m.a, m.b, m.contacts[i]);
+        // Warm start: seed accumulated impulse and apply it immediately so
+        // the solver starts from a good initial state rather than zero.
+        auto &cc = contact_constraints.back();
+        cc.impulse_accum[0] = m.contacts[i].norm_impulse;
+        cc.apply_impulse_mag(0, cc.impulse_accum[0]);
       }
     }
 
@@ -399,6 +404,31 @@ public:
             m.b ? cp.pos_world - m.b->get_centre_of_mass() : glm::vec3(0.f);
         friction_constraints.emplace_back(m.a, m.b, cp.norm, ra, rb,
                                           &contact_constraints[index++]);
+        // Warm start friction: clamp cached impulse to the current friction
+        // cone (normal impulse may differ slightly from last frame).
+        auto &fc = friction_constraints.back();
+        fc.update_friction_clamping();
+        float f0 = std::clamp(cp.tangent_impulse[0], fc.impulse_min[0], fc.impulse_max[0]);
+        float f1 = std::clamp(cp.tangent_impulse[1], fc.impulse_min[1], fc.impulse_max[1]);
+        fc.impulse_accum[0] = f0;
+        fc.impulse_accum[1] = f1;
+        fc.apply_impulse_mag(0, f0);
+        fc.apply_impulse_mag(1, f1);
+      }
+    }
+  }
+
+  // Flushes final accumulated impulses back into each contact so ContactCache
+  // can store them for the next frame's warm start.
+  void write_back(std::vector<Manifold> &manifolds) {
+    size_t ci = 0, fi = 0;
+    for (auto &m : manifolds) {
+      for (size_t i = 0; i < m.num_points; i++) {
+        m.contacts[i].norm_impulse = contact_constraints[ci].impulse_accum[0];
+        m.contacts[i].tangent_impulse[0] = friction_constraints[fi].impulse_accum[0];
+        m.contacts[i].tangent_impulse[1] = friction_constraints[fi].impulse_accum[1];
+        ci++;
+        fi++;
       }
     }
   }

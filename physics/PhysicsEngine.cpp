@@ -35,6 +35,7 @@ void PhysicsEngine::step(float dt) {
   }
 
   /*
+  DEBUG: STATE LOGGING
   for (auto &b : bodies) {
     CLOGI("body[%d] pos=(%.3f, %.3f, %.3f) linear=(%.3f, %.3f, %.3f)
   angular=(%.3f, %.3f, %.3f)\n", b.id, b.position.x, b.position.y, b.position.z,
@@ -98,8 +99,11 @@ void PhysicsEngine::step(float dt) {
   auto t4 = clock::now();
 
   // 4. Solver
+  contact_cache.warm_start(contacts);
   solver.build_constraints(contacts);
   solver.solve_constraints(dt);
+  solver.write_back(contacts);
+  contact_cache.update(contacts);
 
   auto t5 = clock::now();
 

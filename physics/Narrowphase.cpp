@@ -7,11 +7,6 @@
 #include <glm/geometric.hpp>
 #include <limits>
 
-struct ClipVertex {
-  glm::vec3 pos_world;
-  uint32_t id;
-};
-
 bool Narrowphase::poly_plane_collision(Manifold &out, const RigidBody &poly,
                                        const Plane &plane, Debugger *debug) {
 
@@ -73,7 +68,7 @@ bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
   const bool is_face_contact =
       (fa.separation > eab.separation) || (fb.separation > eab.separation);
   if (is_face_contact) {
-    out = create_face_contact(poly_A, poly_B, fa, fb);
+    out = create_face_contact(poly_A, poly_B, fa, fb, inverse_A);
     // CLOGI("FACE CONTACT -- %lu CONTACTS", out.num_points);
 
     if (debug) {
@@ -85,7 +80,7 @@ bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
     }
 
   } else {
-    out = create_edge_contact(poly_A, poly_B, eab);
+    out = create_edge_contact(poly_A, poly_B, eab, inverse_A);
 
     // CLOGI("EDGE CONTACT -- PENETRATION: %.5f", out.points[0].pen_depth);
 
@@ -240,7 +235,8 @@ EdgeColInfo Narrowphase::test_edge_combos(const RigidBody &poly_A,
 Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
                                           const RigidBody &poly_B,
                                           const FaceColInfo &fa,
-                                          const FaceColInfo &fb) {
+                                          const FaceColInfo &fb,
+                                          const glm::mat4 &inv_A) {
 
   // Bias reference/incident bodies
   auto [ref_body, inc_body, ref_face_idx] =
@@ -261,11 +257,13 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   size_t inc_face_idx = find_incident_face(ref_norm_world, *inc_body);
   const ConvexMesh::Face &inc_face = inc_mesh.faces[inc_face_idx];
 
-  // Build world-space incident polygon
-  std::vector<glm::vec3> inc_polygon;
+  // Build world-space incident polygon; each vertex carries its mesh index as ID.
+  std::vector<ClipVertex> inc_polygon;
   for (size_t idx : inc_mesh.get_face_vertices(inc_face)) {
-    inc_polygon.push_back(
-        glm::vec3(inc_xfrm * glm::vec4(inc_mesh.vertices[idx], 1.0f)));
+    inc_polygon.push_back({
+        glm::vec3(inc_xfrm * glm::vec4(inc_mesh.vertices[idx], 1.0f)),
+        static_cast<uint32_t>(idx)
+    });
   }
 
   // Build world-space reference plane
@@ -274,19 +272,18 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   ref_plane.point = glm::vec3(ref_xfrm * glm::vec4(ref_face.plane.point, 1.0f));
   ref_plane.distance = -glm::dot(ref_plane.normal, ref_plane.point);
 
-  // Clip incident polygon against reference face side planes
+  // Clip incident polygon; intersection vertices get IDs from the clip plane.
   clip_against_reference_face(inc_polygon, ref_mesh, ref_xfrm, ref_face,
                               ref_plane);
 
-  const uint64_t body_id = pack_id(ref_body->id, inc_body->id);
-  const uint64_t feature_id = pack_id(static_cast<uint32_t>(ref_face_idx),
-                                      static_cast<uint32_t>(inc_face_idx));
+  const uint64_t body_id = pack_id(static_cast<uint32_t>(poly_A.id),
+                                   static_cast<uint32_t>(poly_B.id));
 
   std::vector<Contact> candidates;
   float max_pen = -std::numeric_limits<float>::max();
 
-  for (const auto &point : inc_polygon) {
-    float separation = get_signed_distance_to_plane(point, ref_plane);
+  for (const auto &cv : inc_polygon) {
+    float separation = get_signed_distance_to_plane(cv.pos_world, ref_plane);
 
     // above reference plane - discard candidate
     if (separation >= 0.0f) {
@@ -294,12 +291,12 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
     }
 
     Contact c;
-    // c.cid.body_id = pack_id(ref_body->id, inc_body->id);
-    // c.cid.feature_id = pack_id(ref_face_idx, inc_face_idx);
-    //  c.pos = point;
-    c.pos_world = point - separation * ref_plane.normal;
+    c.pos_world = cv.pos_world - separation * ref_plane.normal;
     c.norm = ref_plane.normal;
     c.pen_depth = -separation; // store penetration as positive value
+    c.body_id = body_id;
+    c.vertex_id = cv.id;
+    c.a_pos_local = glm::vec3(inv_A * glm::vec4(c.pos_world, 1.0f));
 
     candidates.push_back(c);
     if (c.pen_depth > max_pen) {
@@ -325,7 +322,8 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
 // find closest points on two colliding edges (midpoint????)
 Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
                                           const RigidBody &poly_B,
-                                          const EdgeColInfo &eab) {
+                                          const EdgeColInfo &eab,
+                                          const glm::mat4 &inv_A) {
 
   const ConvexMesh &mesh_A = poly_A.get_mesh();
   const ConvexMesh &mesh_B = poly_B.get_mesh();
@@ -397,14 +395,18 @@ Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
   out.norm = axis;
   out.max_pen_depth = dist;
 
-  // CID for frame coherence
-  uint64_t body_id = pack_id(poly_A.id, poly_B.id);
-  uint64_t feature_id = pack_id(static_cast<uint32_t>(eab.edge_idx.first),
-                                static_cast<uint32_t>(eab.edge_idx.second));
+  uint64_t body_id = pack_id(static_cast<uint32_t>(poly_A.id),
+                             static_cast<uint32_t>(poly_B.id));
+  // Pack the two half-edge indices into 32 bits (each clamped to 16 bits).
+  uint32_t vertex_id = (static_cast<uint32_t>(eab.edge_idx.first  & 0xFFFF) << 16) |
+                        static_cast<uint32_t>(eab.edge_idx.second & 0xFFFF);
   out.contacts[0].pos_world = 0.5f * (closest_A + closest_B);
   out.contacts[0].norm = axis;
   out.contacts[0].pen_depth = dist;
-  out.contacts[0].cid = {body_id, feature_id};
+  out.contacts[0].body_id = body_id;
+  out.contacts[0].vertex_id = vertex_id;
+  out.contacts[0].a_pos_local =
+      glm::vec3(inv_A * glm::vec4(out.contacts[0].pos_world, 1.0f));
 
   return out;
 }
@@ -429,11 +431,12 @@ Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
       continue;
     }
     Contact c;
-    // c.cid.body_id = static_cast<uint64_t>(poly.id);
-    // c.cid.feature_id = static_cast<uint64_t>(i);
     c.pos_world = world;
     c.norm = plane.normal;
     c.pen_depth = -separation; // store penetration as positive
+    c.body_id = static_cast<uint64_t>(poly.id);
+    c.vertex_id = static_cast<uint32_t>(i);
+    c.a_pos_local = local_verts[i]; // already in poly's local space
     candidates.push_back(c);
 
     if (c.pen_depth > max_pen) {
@@ -499,7 +502,7 @@ glm::vec3 Narrowphase::find_support_point(glm::vec3 axis,
   return result;
 }
 
-void Narrowphase::clip_against_reference_face(std::vector<glm::vec3> &polygon,
+void Narrowphase::clip_against_reference_face(std::vector<ClipVertex> &polygon,
                                               const ConvexMesh &ref_mesh,
                                               const glm::mat4 &ref_transform,
                                               const ConvexMesh::Face &ref_face,
@@ -531,42 +534,46 @@ void Narrowphase::clip_against_reference_face(std::vector<glm::vec3> &polygon,
       side_normal = -side_normal;
     }
 
-    // Produces new polygon for each clip operation
-    polygon = clip_polygon_against_plane(polygon, Plane(side_normal, e0));
+    polygon = clip_polygon_against_plane(polygon, Plane(side_normal, e0),
+                                         static_cast<uint32_t>(idx));
   }
 }
 
-std::vector<glm::vec3>
-Narrowphase::clip_polygon_against_plane(const std::vector<glm::vec3> &polygon,
-                                        const Plane &plane) {
-  std::vector<glm::vec3> out;
+std::vector<ClipVertex>
+Narrowphase::clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
+                                        const Plane &plane, uint32_t clip_id) {
+  std::vector<ClipVertex> out;
 
   if (polygon.empty())
     return out;
 
   size_t vertex_count = polygon.size();
   for (size_t i = 0; i < vertex_count; i++) {
-    const glm::vec3 &first = polygon[i];
-    const glm::vec3 &second = polygon[(i + 1) % vertex_count];
+    const ClipVertex &first  = polygon[i];
+    const ClipVertex &second = polygon[(i + 1) % vertex_count];
 
-    float first_distance = get_signed_distance_to_plane(first, plane);
-    float second_distance = get_signed_distance_to_plane(second, plane);
+    float first_distance  = get_signed_distance_to_plane(first.pos_world,  plane);
+    float second_distance = get_signed_distance_to_plane(second.pos_world, plane);
 
     // Current vertex is inside (or on) the plane
     if (first_distance <= 0) {
       out.push_back(first);
 
-      // Edge crosses from inside to outside - add intersection
+      // Edge crosses from inside to outside — emit intersection vertex.
       if (second_distance > 0) {
         float t = first_distance / (first_distance - second_distance);
-        glm::vec3 intersection = first + (second - first) * t;
+        ClipVertex intersection;
+        intersection.pos_world = first.pos_world + (second.pos_world - first.pos_world) * t;
+        intersection.id = CLIP_INTERSECTION_FLAG | clip_id;
         out.push_back(intersection);
       }
     }
-    // Current vertex is outside, next vertex is inside - add intersection only
+    // Current vertex is outside, next is inside — emit intersection only.
     else if (second_distance <= 0) {
       float t = first_distance / (first_distance - second_distance);
-      glm::vec3 intersection = first + (second - first) * t;
+      ClipVertex intersection;
+      intersection.pos_world = first.pos_world + (second.pos_world - first.pos_world) * t;
+      intersection.id = CLIP_INTERSECTION_FLAG | clip_id;
       out.push_back(intersection);
     }
 

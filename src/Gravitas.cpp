@@ -60,7 +60,7 @@ void Gravitas::run() {
     gui.render();
 
     glfwSwapBuffers(window);
-    // glfwSwapInterval(0); // VSYNC disabled; uncaps FPS
+    glfwSwapInterval(1); // VSYNC disabled; uncaps FPS
   }
 }
 

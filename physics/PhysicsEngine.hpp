@@ -21,6 +21,7 @@ private:
   Debugger *debug = nullptr;
   Narrowphase sat;
   Broadphase bvh;
+  ContactCache contact_cache;
   ConstraintSolver solver;
 
   Plane bounds[8];
