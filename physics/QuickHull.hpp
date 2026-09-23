@@ -23,33 +23,28 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Mesh.hpp"
-#include "Model.hpp"
-#include "Plane.hpp"
+#include "Config.hpp"
+#include "HalfEdgeMesh.hpp"
+#include "QuickHullMesh.hpp"
 #include "Ray.hpp"
-#include "Shader.hpp"
-// #include "CollisionGeometry.hpp"
-#include "ConvexMesh.hpp"
-#include "ConvexMeshBuilder.hpp"
 
 /*
 *****************************************************************************
-Build Convex Hull w/ QuickHull Algorithm
+Build Convex Hull From Point Could using QuickHull
+Dirk Gregorius: https://gdcvault.com/play/1020061/Physics-for-Game-Programmers
 
-Steps:
-1. Build initial polyhedron
--- setupInitialTetrahedron(); getExtremeValues();
-2. Build conflict lists (assign points to each face if outside/above face plane)
--- partitionPoints(); addPointToFace();
-3a. Select face w/ nonempty conflict list
-3b. Pick point furthest from selected face
-3c. Determine set of all faces
-visible from point (dot-product & dfs) 3d. Compute horizon (boundary loop of
-edges visible from point) 3e. Delete set of all visible faces 3f. Form new
-triangular faces, connecting point to horizon edges 3g. Reassign Points (assign
-points from deleted faces to new faces) 4.	Repeat step 3. until all
-'outside' sets are empty
-****************************************************************************
+High-level Steps:
+1. Build initial polyhedron -- setupInitialTetrahedron(); getExtremeValues();
+2. Partition Remaining Points (assign points to each face if 'outside')
+3a. Select any face w/ nonempty 'outside' set
+3b. Pick point farthest from selected face
+3c. Determine set of all faces visible from point (dot-product & dfs)
+3d. Compute horizon (boundary loop of edges visible from point)
+3e. Delete set of all visible faces
+3f. Form new triangular faces, connecting point to horizon edges
+3g. Reassign Points (assign points from deleted faces to new faces)
+4.	Repeat step 3. until all 'outside' sets are empty
+*****************************************************************************
 */
 
 class QuickHull {
@@ -57,14 +52,14 @@ private:
   float epsilon, epsilon_squared, scale;
   bool is_planar;
 
-  ConvexMeshBuilder mesh;
+  QuickHullMesh mesh;
 
   std::vector<glm::vec3> vertex_data;
   std::array<size_t, 6> extrema_indices;
   std::vector<glm::vec3> temp_planar_vertices;
   std::vector<std::unique_ptr<std::vector<size_t>>> conflict_list_pool;
 
-  // Temporary variables used during iteration process
+  // Temporary data structures used during iteration process
   std::vector<size_t> new_faces;
   std::vector<size_t> new_half_edges;
   std::vector<std::unique_ptr<std::vector<size_t>>> disabled_conflict_lists;
@@ -73,16 +68,18 @@ private:
 
   struct FaceData {
     size_t face_index;
-    size_t entered_from_half_edge; // Mark as horizon edge if face is not visible
+    size_t entered_from_half_edge; // Mark as horizon edge if not visible
 
     FaceData() = default;
-    FaceData(size_t face, size_t he) : face_index(face), entered_from_half_edge(he) {}
+    FaceData(size_t face, size_t he)
+        : face_index(face), entered_from_half_edge(he) {}
   };
 
   std::vector<FaceData> possible_visible_faces;
   std::deque<size_t> face_stack;
 
-  void build_mesh(const std::vector<glm::vec3> &point_cloud, float default_epsilon = 0.0001f);
+  void build_mesh(const std::vector<glm::vec3> &point_cloud,
+                  float default_epsilon = 0.0001f);
 
   void setup_initial_tetrahedron();
 
@@ -94,7 +91,7 @@ private:
 
   float compute_point_cloud_scale();
 
-  bool add_point_to_face(ConvexMeshBuilder::Face &face, size_t point_index);
+  bool add_point_to_face(QuickHullMesh::Face &face, size_t point_index);
 
   inline std::unique_ptr<std::vector<size_t>> get_conflict_list();
 
@@ -103,22 +100,24 @@ private:
   // Face merging
   Plane compute_newell_plane(const std::vector<size_t> &vertex_indices);
 
-  bool test_face_convexity(const size_t &face1_index, const size_t &face2_index);
+  bool test_face_convexity(const size_t &face1_index,
+                           const size_t &face2_index);
 
   void resolve_topological_errors(const size_t &shared_edge_index);
 
-  void merge_nonconvex_faces(
-      const size_t &absorbing_face_index, const size_t &deleted_face_index, const size_t &shared_edge_index);
+  void merge_nonconvex_faces(const size_t &absorbing_face_index,
+                             const size_t &deleted_face_index,
+                             const size_t &shared_edge_index);
 
   void merge_new_faces(const std::vector<size_t> &new_faces);
 
 public:
   QuickHull() = default;
 
-  ConvexMesh build_convex_mesh(const std::vector<glm::vec3> &point_cloud,
-      bool is_counter_clock_wise = true,
-      bool use_original_indices = false,
-      float epsilon = 0.0001f);
+  HalfEdgeMesh build_convex_mesh(const std::vector<glm::vec3> &point_cloud,
+                                 bool is_counter_clock_wise = true,
+                                 bool use_original_indices = false,
+                                 float epsilon = 0.0001f);
 
   std::array<float, 6> get_extrema_vertices();
 };

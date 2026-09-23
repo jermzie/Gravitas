@@ -9,8 +9,8 @@
 #include "CollisionGeometry.hpp"
 #include "Config.hpp"
 #include "Contacts.hpp"
-#include "ConvexMesh.hpp"
-#include "ConvexMeshBuilder.hpp"
+#include "HalfEdgeMesh.hpp"
+#include "QuickHullMesh.hpp"
 #include "Debugger.hpp"
 #include "Plane.hpp"
 #include "RigidBody.hpp"
@@ -81,9 +81,9 @@ private:
                                       const FaceColInfo &fb);
 
   void clip_against_reference_face(std::vector<ClipVertex> &polygon,
-                                   const ConvexMesh &ref_mesh,
+                                   const HalfEdgeMesh &ref_mesh,
                                    const glm::mat4 &ref_transform,
-                                   const ConvexMesh::Face &ref_face,
+                                   const HalfEdgeMesh::Face &ref_face,
                                    const Plane &ref_plane);
 
   std::vector<ClipVertex>

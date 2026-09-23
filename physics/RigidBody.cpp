@@ -14,6 +14,8 @@ bool RigidBody::raycast(const Ray &world_ray, float &t) const {
       glm::vec3(inv_transform * glm::vec4(world_ray.direction, 0.0f));
 
   // glm::vec3 local_hit_point;
+
+  // TODO: Let ConvexPrimitive class handle ray intersection calculations
   int hit = collider.hull.raycast(local_ray, t);
 
   if (hit != 0) {
@@ -45,7 +47,7 @@ glm::mat4 RigidBody::get_physics_matrix() const {
   return transform.get_matrix(); // Local COM space -> World space
 }
 
-const ConvexMesh &RigidBody::get_mesh() const {
+const HalfEdgeMesh &RigidBody::get_mesh() const {
   return collider.hull.get_mesh();
 }
 
@@ -60,7 +62,7 @@ RigidBody::RigidBody(const std::shared_ptr<Model> &model, const float &density,
   this->is_static = is_static;
 
   // 1. Build collision geometry
-  ConvexMesh mesh = CollisionGeometry::get_mesh_cache(
+  HalfEdgeMesh mesh = CollisionGeometry::get_mesh_cache(
       render_model->file_name, render_model->get_vertex_data());
 
   // 2. Compute mass properties

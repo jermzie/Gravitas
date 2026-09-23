@@ -1,5 +1,5 @@
 #include "Narrowphase.hpp"
-#include "ConvexMesh.hpp"
+#include "HalfEdgeMesh.hpp"
 #include "RigidBody.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -85,8 +85,8 @@ bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
     // CLOGI("EDGE CONTACT -- PENETRATION: %.5f", out.points[0].pen_depth);
 
     if (debug) {
-      const ConvexMesh &mesh_A = poly_A.get_mesh();
-      const ConvexMesh &mesh_B = poly_B.get_mesh();
+      const HalfEdgeMesh &mesh_A = poly_A.get_mesh();
+      const HalfEdgeMesh &mesh_B = poly_B.get_mesh();
       const glm::mat4 xfrm_A = poly_A.get_physics_matrix();
       const glm::mat4 xfrm_B = poly_B.get_physics_matrix();
       const auto verts_A =
@@ -148,8 +148,8 @@ EdgeColInfo Narrowphase::test_edge_combos(const RigidBody &poly_A,
   glm::vec3 centroid_A = glm::vec3(
       A_to_B * glm::vec4(poly_A.get_local_geometric_centroid(), 1.0f));
 
-  const ConvexMesh &mesh_A = poly_A.get_mesh();
-  const ConvexMesh &mesh_B = poly_B.get_mesh();
+  const HalfEdgeMesh &mesh_A = poly_A.get_mesh();
+  const HalfEdgeMesh &mesh_B = poly_B.get_mesh();
 
   size_t edge_count_A = mesh_A.half_edges.size();
   size_t edge_count_B = mesh_B.half_edges.size();
@@ -242,28 +242,28 @@ Manifold Narrowphase::create_face_contact(const RigidBody &poly_A,
   auto [ref_body, inc_body, ref_face_idx] =
       bias_reference_face(poly_A, poly_B, fa, fb);
 
-  const ConvexMesh &ref_mesh = ref_body->get_mesh();
-  const ConvexMesh &inc_mesh = inc_body->get_mesh();
+  const HalfEdgeMesh &ref_mesh = ref_body->get_mesh();
+  const HalfEdgeMesh &inc_mesh = inc_body->get_mesh();
 
   const glm::mat4 ref_xfrm = ref_body->get_physics_matrix();
   const glm::mat4 inc_xfrm = inc_body->get_physics_matrix();
   const glm::mat3 ref_norm_mat = ref_body->transform.get_normal_matrix();
 
-  const ConvexMesh::Face &ref_face = ref_mesh.faces[ref_face_idx];
+  const HalfEdgeMesh::Face &ref_face = ref_mesh.faces[ref_face_idx];
   glm::vec3 ref_norm_world =
       glm::normalize(ref_norm_mat * ref_face.plane.normal);
 
   // Find incident face (most anti-parallel face)
   size_t inc_face_idx = find_incident_face(ref_norm_world, *inc_body);
-  const ConvexMesh::Face &inc_face = inc_mesh.faces[inc_face_idx];
+  const HalfEdgeMesh::Face &inc_face = inc_mesh.faces[inc_face_idx];
 
-  // Build world-space incident polygon; each vertex carries its mesh index as ID.
+  // Build world-space incident polygon; each vertex carries its mesh index as
+  // ID.
   std::vector<ClipVertex> inc_polygon;
   for (size_t idx : inc_mesh.get_face_vertices(inc_face)) {
-    inc_polygon.push_back({
-        glm::vec3(inc_xfrm * glm::vec4(inc_mesh.vertices[idx], 1.0f)),
-        static_cast<uint32_t>(idx)
-    });
+    inc_polygon.push_back(
+        {glm::vec3(inc_xfrm * glm::vec4(inc_mesh.vertices[idx], 1.0f)),
+         static_cast<uint32_t>(idx)});
   }
 
   // Build world-space reference plane
@@ -325,8 +325,8 @@ Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
                                           const EdgeColInfo &eab,
                                           const glm::mat4 &inv_A) {
 
-  const ConvexMesh &mesh_A = poly_A.get_mesh();
-  const ConvexMesh &mesh_B = poly_B.get_mesh();
+  const HalfEdgeMesh &mesh_A = poly_A.get_mesh();
+  const HalfEdgeMesh &mesh_B = poly_B.get_mesh();
   const glm::mat4 xfrm_A = poly_A.get_physics_matrix();
   const glm::mat4 xfrm_B = poly_B.get_physics_matrix();
 
@@ -393,16 +393,19 @@ Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
   Manifold out;
   out.num_points = 1;
   out.norm = axis;
-  out.max_pen_depth = dist;
+  out.max_pen_depth = -eab.separation;
 
   uint64_t body_id = pack_id(static_cast<uint32_t>(poly_A.id),
                              static_cast<uint32_t>(poly_B.id));
   // Pack the two half-edge indices into 32 bits (each clamped to 16 bits).
-  uint32_t vertex_id = (static_cast<uint32_t>(eab.edge_idx.first  & 0xFFFF) << 16) |
-                        static_cast<uint32_t>(eab.edge_idx.second & 0xFFFF);
+  uint32_t vertex_id =
+      (static_cast<uint32_t>(eab.edge_idx.first & 0xFFFF) << 16) |
+      static_cast<uint32_t>(eab.edge_idx.second & 0xFFFF);
   out.contacts[0].pos_world = 0.5f * (closest_A + closest_B);
   out.contacts[0].norm = axis;
-  out.contacts[0].pen_depth = dist;
+  // eab.separation is the signed overlap on this axis (negative = penetrating);
+  // negate it to store as a positive penetration depth for Baumgarte.
+  out.contacts[0].pen_depth = -eab.separation;
   out.contacts[0].body_id = body_id;
   out.contacts[0].vertex_id = vertex_id;
   out.contacts[0].a_pos_local =
@@ -431,7 +434,8 @@ Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
       continue;
     }
     Contact c;
-    c.pos_world = world;
+    c.pos_world =
+        world - separation * plane.normal; // project onto plane surface
     c.norm = plane.normal;
     c.pen_depth = -separation; // store penetration as positive
     c.body_id = static_cast<uint64_t>(poly.id);
@@ -502,11 +506,10 @@ glm::vec3 Narrowphase::find_support_point(glm::vec3 axis,
   return result;
 }
 
-void Narrowphase::clip_against_reference_face(std::vector<ClipVertex> &polygon,
-                                              const ConvexMesh &ref_mesh,
-                                              const glm::mat4 &ref_transform,
-                                              const ConvexMesh::Face &ref_face,
-                                              const Plane &ref_plane) {
+void Narrowphase::clip_against_reference_face(
+    std::vector<ClipVertex> &polygon, const HalfEdgeMesh &ref_mesh,
+    const glm::mat4 &ref_transform, const HalfEdgeMesh::Face &ref_face,
+    const Plane &ref_plane) {
 
   // Get reference face center for side plane orientation
   glm::vec3 ref_center(0.0f);
@@ -549,11 +552,12 @@ Narrowphase::clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
 
   size_t vertex_count = polygon.size();
   for (size_t i = 0; i < vertex_count; i++) {
-    const ClipVertex &first  = polygon[i];
+    const ClipVertex &first = polygon[i];
     const ClipVertex &second = polygon[(i + 1) % vertex_count];
 
-    float first_distance  = get_signed_distance_to_plane(first.pos_world,  plane);
-    float second_distance = get_signed_distance_to_plane(second.pos_world, plane);
+    float first_distance = get_signed_distance_to_plane(first.pos_world, plane);
+    float second_distance =
+        get_signed_distance_to_plane(second.pos_world, plane);
 
     // Current vertex is inside (or on) the plane
     if (first_distance <= 0) {
@@ -563,7 +567,8 @@ Narrowphase::clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
       if (second_distance > 0) {
         float t = first_distance / (first_distance - second_distance);
         ClipVertex intersection;
-        intersection.pos_world = first.pos_world + (second.pos_world - first.pos_world) * t;
+        intersection.pos_world =
+            first.pos_world + (second.pos_world - first.pos_world) * t;
         intersection.id = CLIP_INTERSECTION_FLAG | clip_id;
         out.push_back(intersection);
       }
@@ -572,7 +577,8 @@ Narrowphase::clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
     else if (second_distance <= 0) {
       float t = first_distance / (first_distance - second_distance);
       ClipVertex intersection;
-      intersection.pos_world = first.pos_world + (second.pos_world - first.pos_world) * t;
+      intersection.pos_world =
+          first.pos_world + (second.pos_world - first.pos_world) * t;
       intersection.id = CLIP_INTERSECTION_FLAG | clip_id;
       out.push_back(intersection);
     }

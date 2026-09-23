@@ -17,7 +17,7 @@
 
 #include "AABB.hpp"
 #include "CollisionGeometry.hpp"
-#include "ConvexMesh.hpp"
+#include "HalfEdgeMesh.hpp"
 #include "Debugger.hpp"
 #include "MassProperties.hpp"
 #include "Mesh.hpp"
@@ -95,7 +95,7 @@ public:
 
   glm::mat4 get_physics_matrix() const;
 
-  const ConvexMesh &get_mesh() const;
+  const HalfEdgeMesh &get_mesh() const;
 
   RigidBody(const std::shared_ptr<Model> &model, const float &density,
             const glm::vec3 &position,

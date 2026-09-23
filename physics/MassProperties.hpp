@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Config.hpp"
-#include "ConvexMesh.hpp"
+#include "HalfEdgeMesh.hpp"
 #include <stdio.h>
 
 struct MassProperties {
@@ -12,7 +12,7 @@ struct MassProperties {
   glm::mat3 inertia_tensor; // At COM
   glm::mat3 inv_inertia_tensor;
 
-  static MassProperties compute(const ConvexMesh &mesh, float density) {
+  static MassProperties compute(const HalfEdgeMesh &mesh, float density) {
 
     float mass;
     float inv_mass;

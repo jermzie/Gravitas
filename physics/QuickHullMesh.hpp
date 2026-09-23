@@ -11,10 +11,11 @@
 
 #include "Plane.hpp"
 
-// Container for half-edge representation of polygon mesh
-// Makes iterating over edges & faces easier
-// FIXED: Now supports both triangular AND polygonal faces
-class ConvexMeshBuilder {
+/*
+Internal half-edge mesh used during Convex Hull construction.
+*/
+
+class QuickHullMesh {
 public:
   struct HalfEdge {
 
@@ -25,7 +26,9 @@ public:
     size_t prev;
 
     void disable() { vert = std::numeric_limits<size_t>::max(); }
-    bool is_disabled() const { return vert == std::numeric_limits<size_t>::max(); }
+    bool is_disabled() const {
+      return vert == std::numeric_limits<size_t>::max();
+    }
   };
 
   struct Face {
@@ -39,17 +42,21 @@ public:
 
     std::uint8_t is_visible_on_current_iteration : 1;
     std::uint8_t in_face_stack : 1;
-    std::uint8_t horizon_edges_on_current_iteration : 3; // Bit for each half edge assigned to this face, each being 0
-                                                         // or 1 depending on whether the edge belongs to horizon edge
+    std::uint8_t horizon_edges_on_current_iteration
+        : 3; // Bit for each half edge assigned to this face, each being 0
+             // or 1 depending on whether the edge belongs to horizon edge
     std::unique_ptr<std::vector<size_t>> points_above_plane;
 
     Face()
-        : he(std::numeric_limits<size_t>::max()), farthest_point(0), farthest_distance(0),
-          visibility_checked_on_iteration(0), is_visible_on_current_iteration(0), in_face_stack(0),
+        : he(std::numeric_limits<size_t>::max()), farthest_point(0),
+          farthest_distance(0), visibility_checked_on_iteration(0),
+          is_visible_on_current_iteration(0), in_face_stack(0),
           horizon_edges_on_current_iteration(0) {}
 
     void disable() { he = std::numeric_limits<size_t>::max(); }
-    bool is_disabled() const { return he == std::numeric_limits<size_t>::max(); }
+    bool is_disabled() const {
+      return he == std::numeric_limits<size_t>::max();
+    }
   };
 
   // Mesh data
@@ -60,7 +67,7 @@ public:
   // For future reusage (no vector reallocations)
   std::vector<size_t> disabled_faces, disabled_half_edges;
 
-  ConvexMeshBuilder() = default;
+  QuickHullMesh() = default;
 
   /**
    * @brief Build initial tetrahedron from vertex indices
@@ -198,7 +205,8 @@ public:
   }
 
   /**
-   * @brief Add new face to hull. Reuses memory if disabled faces exist, otherwise allocated new memory
+   * @brief Add new face to hull. Reuses memory if disabled faces exist,
+   * otherwise allocated new memory
    * @return face index
    */
   size_t add_face() {
@@ -229,7 +237,8 @@ public:
   }
 
   /**
-   * @brief Add new edge to hull. Reuses memory if disabled edges exist, otherwise allocate new memory
+   * @brief Add new edge to hull. Reuses memory if disabled edges exist,
+   * otherwise allocate new memory
    * @return edge index
    */
   size_t add_half_edge() {
@@ -334,8 +343,11 @@ public:
 
   // Deprecated - assumes triangular faces
   std::array<size_t, 3> get_face_half_edges_tri(const Face &f) const {
-    return {f.he, half_edges[f.he].next, half_edges[half_edges[f.he].next].next};
+    return {f.he, half_edges[f.he].next,
+            half_edges[half_edges[f.he].next].next};
   }
 
-  std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const { return {half_edges[he.twin].vert, he.vert}; }
+  std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const {
+    return {half_edges[he.twin].vert, he.vert};
+  }
 };

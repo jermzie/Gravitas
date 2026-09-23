@@ -8,9 +8,8 @@
 #include <iostream>
 #include <vector>
 
-// #include "Gui.hpp"
 #include "AABB.hpp"
-#include "ConvexMesh.hpp"
+#include "HalfEdgeMesh.hpp"
 #include "Mesh.hpp"
 #include "Model.hpp"
 #include "Plane.hpp"
@@ -114,12 +113,12 @@ public:
   }
 
   // draw mesh with no triangles
-  void draw_mesh(const ConvexMesh &mesh, const glm::mat4 &transform,
+  void draw_mesh(const HalfEdgeMesh &mesh, const glm::mat4 &transform,
                  const glm::vec4 &color) {
 
     std::unordered_set<size_t> visited_edges;
 
-    for (const ConvexMesh::HalfEdge &he : mesh.half_edges) {
+    for (const HalfEdgeMesh::HalfEdge &he : mesh.half_edges) {
 
       if (visited_edges.count(he.twin)) {
         continue;

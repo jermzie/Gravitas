@@ -5,14 +5,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ConvexMeshBuilder.hpp"
+#include "QuickHullMesh.hpp"
 
 /*
-Half-edge mesh representation of convex hull,
-
+Half-edge mesh representation of Convex Hull
 */
 
-class ConvexMesh {
+class HalfEdgeMesh {
 public:
   struct HalfEdge {
     size_t vert;
@@ -31,10 +30,11 @@ public:
   std::vector<Face> faces;
   std::vector<HalfEdge> half_edges;
 
-  ConvexMesh() = default;
+  HalfEdgeMesh() = default;
 
-  // Build half-edge mesh representation of convex hull
-  ConvexMesh(const ConvexMeshBuilder &mesh_builder, const std::vector<glm::vec3> &point_cloud) {
+  // Build half-edge data structure from internal QuickHullMesh object
+  HalfEdgeMesh(const QuickHullMesh &mesh_builder,
+               const std::vector<glm::vec3> &point_cloud) {
 
     std::unordered_map<size_t, size_t> face_map;
     std::unordered_map<size_t, size_t> half_edge_map;
@@ -45,7 +45,8 @@ public:
 
       if (!f.is_disabled()) {
 
-        faces.push_back({static_cast<size_t>(f.he), static_cast<Plane>(f.plane)});
+        faces.push_back(
+            {static_cast<size_t>(f.he), static_cast<Plane>(f.plane)});
         // faces.push_back({ static_cast<size_t>(f.he) });
         face_map[i] = faces.size() - 1;
 
@@ -67,11 +68,10 @@ public:
     for (const auto &he : mesh_builder.half_edges) {
       if (!he.is_disabled()) {
 
-        half_edges.push_back({static_cast<size_t>(he.vert),
-            static_cast<size_t>(he.twin),
-            static_cast<size_t>(he.face),
-            static_cast<size_t>(he.next),
-            static_cast<size_t>(he.prev)});
+        half_edges.push_back(
+            {static_cast<size_t>(he.vert), static_cast<size_t>(he.twin),
+             static_cast<size_t>(he.face), static_cast<size_t>(he.next),
+             static_cast<size_t>(he.prev)});
         half_edge_map[i] = half_edges.size() - 1;
       }
       i++;
@@ -151,10 +151,13 @@ public:
 
   // Deprecated - assumes triangular faces
   std::array<size_t, 3> get_face_half_edges_tri(const Face &f) const {
-    return {f.he, half_edges[f.he].next, half_edges[half_edges[f.he].next].next};
+    return {f.he, half_edges[f.he].next,
+            half_edges[half_edges[f.he].next].next};
   }
 
-  std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const { return {half_edges[he.twin].vert, he.vert}; }
+  std::array<size_t, 2> get_half_edge_vertices(const HalfEdge &he) const {
+    return {half_edges[he.twin].vert, he.vert};
+  }
 
   glm::vec3 compute_geometric_centroid() const {
 
@@ -179,8 +182,9 @@ public:
   const std::array<float, 6> get_extrema() const {
 
     std::array<size_t, 6> extrema_indices{0, 0, 0, 0, 0, 0};
-    std::array<float, 6> extrema_vertices{
-        vertices[0].x, vertices[0].x, vertices[0].y, vertices[0].y, vertices[0].z, vertices[0].z};
+    std::array<float, 6> extrema_vertices{vertices[0].x, vertices[0].x,
+                                          vertices[0].y, vertices[0].y,
+                                          vertices[0].z, vertices[0].z};
 
     for (size_t i = 1; i < vertices.size(); i++) {
 
