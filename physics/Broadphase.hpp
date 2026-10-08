@@ -3,6 +3,7 @@
 #include <cassert>
 #include <glm/glm.hpp>
 
+#include <functional>
 #include <queue>
 #include <stack>
 #include <unordered_map>
@@ -12,7 +13,6 @@
 #include "Config.hpp"
 #include "Debugger.hpp"
 #include "Ray.hpp"
-#include "RigidBody.hpp"
 
 const int NULL_INDEX = -1;
 
@@ -25,7 +25,7 @@ struct Node {
 
   AABB box; // for object movement (leaves only)
 
-  int body_id = NULL_INDEX;
+  int entity_id = NULL_INDEX;
   bool is_leaf() const { return left == NULL_INDEX && right == NULL_INDEX; };
 };
 
@@ -36,7 +36,6 @@ private:
   int free_node = NULL_INDEX; // head of free list
   int node_count = 0;
   int root_idx = NULL_INDEX;
-  // float fat_margin = 0.05f;
   float fat_margin = 0.5f;
 
   /**
@@ -58,7 +57,7 @@ private:
     if (free_node != NULL_INDEX) {
       int idx = free_node;
       free_node = nodes[idx].parent; // point to next free node
-      nodes[idx] = Node();           /// reset node
+      nodes[idx] = Node();
       nodes[idx].height = 1;
       node_count++;
       return idx;
@@ -102,8 +101,24 @@ public:
   std::vector<int> query_node(const AABB &box) const;
   void insert(AABB box, int body_id);
   void remove(int body_id);
-  std::vector<std::pair<int, int>> update(const std::vector<RigidBody> &bodies,
+
+  // current tight aabb of entity (in world-space)
+  using AABBFn = std::function<AABB(int entity_id)>;
+
+  // ray test against entity geometry
+  using RayFn = std::function<RayHit(int entity_id, float t_max)>;
+
+  /**
+   * @brief rebuild bvh to follow object movement
+   * @return potential collision pairs (entity ids)
+   */
+  std::vector<std::pair<int, int>> update(const AABBFn &get_aabb,
                                           Debugger *debug = nullptr);
-  bool raycast(const std::vector<RigidBody> &bodies, const Ray &ray, int &id,
-               float &t, float tmax = 500.0f);
+
+  /**
+   * @brief world-space closest-hit ray query against bvh tree leaves
+   * @return true if any leaf was hit; id & hit hold the closest one
+   */
+  bool raycast(const Ray &ray, const RayFn &on_leaf, int &id, RayHit &hit,
+               float t_max = 500.0f) const;
 };

@@ -1,5 +1,4 @@
 #include "Broadphase.hpp"
-#include "RigidBody.hpp"
 
 /**
  * @brief Implements Branch and Bound algo to optimize global search for sibling
@@ -208,7 +207,7 @@ void Broadphase::validate(int idx) {
   const Node &n = nodes.at(idx);
   if (n.is_leaf()) {
     assert(n.left == NULL_INDEX && n.right == NULL_INDEX);
-    assert(n.body_id >= 0);
+    assert(n.entity_id >= 0);
     assert(n.height == 1);
     return;
   }
@@ -303,8 +302,8 @@ std::vector<std::pair<int, int>> Broadphase::query_tree_pairs() {
     if (a_leaf && b_leaf) {
 
       // make sure not same node
-      if (a_node.body_id != b_node.body_id) {
-        collision_list.push_back({a_node.body_id, b_node.body_id});
+      if (a_node.entity_id != b_node.entity_id) {
+        collision_list.push_back({a_node.entity_id, b_node.entity_id});
       }
     }
 
@@ -375,7 +374,7 @@ std::vector<int> Broadphase::query_node(const AABB &box) const {
     }
 
     if (node.is_leaf()) {
-      collision_list.push_back(node.body_id);
+      collision_list.push_back(node.entity_id);
     } else {
       stack.push(node.left);
       stack.push(node.right);
@@ -398,7 +397,7 @@ void Broadphase::insert(AABB box, int body_id) {
 
   // WARNING: why is this bad again?
   // Node &leaf = nodes[leaf_idx];
-  nodes[leaf_idx].body_id = body_id;
+  nodes[leaf_idx].entity_id = body_id;
   nodes[leaf_idx].height = 1;
   nodes[leaf_idx].box = fatten(box, fat_margin); // store leaf aabb as fat box
 
@@ -518,8 +517,8 @@ void Broadphase::remove(int body_id) {
 }
 
 //  rebuild bvh to follow object movement
-std::vector<std::pair<int, int>>
-Broadphase::update(const std::vector<RigidBody> &bodies, Debugger *debug) {
+std::vector<std::pair<int, int>> Broadphase::update(const AABBFn &get_aabb,
+                                                    Debugger *debug) {
   std::vector<int> moved_leaves;
   std::vector<int> change_leaves;
 
@@ -539,13 +538,7 @@ Broadphase::update(const std::vector<RigidBody> &bodies, Debugger *debug) {
       continue;
     }
 
-    int id = nodes[i].body_id;
-    if (id < 0 || id >= bodies.size()) {
-      continue;
-    }
-
-    AABB new_tight_box =
-        bodies[id].collider.get_world_aabb(bodies[id].transform);
+    AABB new_tight_box = get_aabb(nodes[i].entity_id);
 
     if (!nodes[i].box.contains(new_tight_box)) {
 
@@ -578,7 +571,7 @@ Broadphase::update(const std::vector<RigidBody> &bodies, Debugger *debug) {
   }
 
   for (int leaf_idx : moved_leaves) {
-    int body_id = nodes[leaf_idx].body_id;
+    int body_id = nodes[leaf_idx].entity_id;
     AABB leaf_box = nodes[leaf_idx].box;
     remove(body_id);
     insert(leaf_box, body_id);
@@ -587,35 +580,33 @@ Broadphase::update(const std::vector<RigidBody> &bodies, Debugger *debug) {
   return query_tree_pairs();
 }
 
-bool Broadphase::raycast(const std::vector<RigidBody> &bodies, const Ray &ray,
-                         int &id, float &t, float tmax) {
+bool Broadphase::raycast(const Ray &ray, const RayFn &on_leaf, int &id,
+                         RayHit &hit, float t_max) const {
   if (root_idx == NULL_INDEX) {
     return false;
   }
 
+  bool found = false;
   std::stack<int> stack;
   stack.push(root_idx);
   while (!stack.empty()) {
 
-    int idx = stack.top();
+    const Node &node = nodes[stack.top()];
     stack.pop();
 
-    Node &node = nodes[idx];
-
-    // AABB ray test
-    if (!node.box.ray_intersect(ray)) {
+    // ray-aabb test - also culls subtrees beyond the closest hit so far
+    if (!node.box.ray_intersect(ray, 0.0f, t_max)) {
       continue;
     }
 
     if (node.is_leaf()) {
 
-      int object_id = node.body_id;
-
-      // ConvexHull ray test
-      // FIXME:
-      if (bodies[object_id].raycast(ray, t)) {
-        id = object_id;
-        return true;
+      RayHit query = on_leaf(node.entity_id, t_max);
+      if (query.is_hit && query.hit_dist <= t_max) {
+        id = node.entity_id;
+        hit = query;
+        t_max = query.hit_dist;
+        found = true;
       }
 
     } else {
@@ -624,5 +615,5 @@ bool Broadphase::raycast(const std::vector<RigidBody> &bodies, const Ray &ray,
       stack.push(node.right);
     }
   }
-  return false;
+  return found;
 }

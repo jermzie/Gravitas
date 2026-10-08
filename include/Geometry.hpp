@@ -80,7 +80,7 @@ public:
     auto slab = std::make_shared<Polyhedron>();
     slab->scale({width / 2, thickness / 2, depth / 2})
         .translate({0.0f, -thickness / 2, 0.0f});
-    plane.add_child(slab);
+    plane->add_child(slab);
 
     return plane;
   }
