@@ -24,7 +24,7 @@ enum PrimitiveType {
 
 class Primitive {
 protected:
-  Transform local_xfrm;              // placement within the parent Geometry
+  Transform local_xfrm; // placement within the parent Geometry object
   std::shared_ptr<Model> base_model; // untransformed base model
 
   // untransformed base frame centered at origin (local space)
@@ -85,6 +85,9 @@ public:
   virtual MassProperties compute_mass_properties(float density) const override;
 
   const HalfEdgeMesh &get_mesh() const { return topology; }
+
+  // topology with parent * local_xfrm baked into vertices & face planes
+  HalfEdgeMesh geom_mesh(const glm::mat4 &parent = glm::mat4(1.0f)) const;
 
   // hardcoded primitive definitions
   void generate_cube();
@@ -156,15 +159,31 @@ public:
                         float r_top = 0.5f, float half_height = 1.0f);
 };
 
-// TODO: no impl for base_aabb/base_raycast/base_support and
-// compute_mass_properties
+// capsule along +Y: every point within radius of the segment (0, +-h, 0)
 class Capsule : public Primitive {
 private:
   float radius = 0.5f;
-  float half_height = 0.5f; // of the cylindrical section, excluding the caps
+  float half_height = 0.5f; // of cylindrical section, excluding caps
+
+protected:
+  virtual AABB base_aabb() const override {
+    float y_max = half_height + radius;
+    return AABB(glm::vec3(-radius, -y_max, -radius),
+                glm::vec3(radius, y_max, radius));
+  }
+  virtual RayHit base_raycast(const Ray &r, float t_max) const override;
+  virtual glm::vec3 base_support(glm::vec3 dir) const override;
 
 public:
-  PrimitiveType get_type() const override { return CAPSULE; }
+  Capsule() { generate_capsule(); }
+  Capsule(float radius, float half_height);
+
+  // uniform radial scale (x == z) - otherwise cross-section becomes an ellipse
+  // y stretches the cylinder and turns the caps into half-spheroids
+  virtual Primitive &scale(glm::vec3 factor) override;
+
+  virtual PrimitiveType get_type() const override { return CAPSULE; }
+  virtual MassProperties compute_mass_properties(float density) const override;
 
   float get_radius() const { return radius; }
   float get_half_height() const { return half_height; }

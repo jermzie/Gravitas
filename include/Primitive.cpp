@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-namespace {
+namespace constant {
 constexpr float epsilon = 1e-6f;
 constexpr float inv_sqrt3 = 0.57735027f; // tetrahedron face normal components
-} // namespace
+} // namespace constant
 
 namespace mesh {
 inline Vertex make_vertex(const glm::vec3 &p, const glm::vec3 &n,
@@ -226,11 +226,13 @@ inline HalfEdgeMesh check_cache(const std::string &file_name,
 } // namespace hull
 
 AABB Primitive::geom_aabb() const {
-  return AABB().transform_arvo(base_aabb(), local_xfrm.get_matrix());
+  return transform_arvo(base_aabb(), local_xfrm.get_matrix());
 }
 
 RayHit Primitive::geom_raycast(const Ray &r, float t_max) const {
-  Ray local = world_to_local_ray(local_xfrm, r);
+  Ray local = ray_inv_xfrm(local_xfrm, r);
+
+  // local-space ray-primitive test
   RayHit res = base_raycast(local, t_max);
   if (res.is_hit) {
     res.hit_point = r.origin + r.direction * res.hit_dist;
@@ -255,10 +257,8 @@ Polyhedron::Polyhedron(const std::shared_ptr<Model> &model) {
   topology = hull::check_cache(model->file_name, model->get_vertex_data());
 }
 
-/*
- Graphics Gems II:
- https://github.com/erich666/GraphicsGems/blob/master/gemsii/RayCPhdron.c
-*/
+// ray-cpolyhedron intersection test (local-space) (Graphics Gems II)
+// https://github.com/erich666/GraphicsGems/blob/master/gemsii/RayCPhdron.c
 RayHit Polyhedron::base_raycast(const Ray &ray, float t_max) const {
 
   RayHit res = {};
@@ -280,7 +280,7 @@ RayHit Polyhedron::base_raycast(const Ray &ray, float t_max) const {
     vd = glm::dot(ray.direction, plane.normal);
     vn = glm::dot(ray.origin, plane.normal) + plane.distance;
 
-    if (std::abs(vd) < epsilon) {
+    if (std::abs(vd) < constant::epsilon) {
       // ray parallel to plane - check if ray inside plane's half-space
       if (vn > 0.0) {
         // ray outside plane half-space
@@ -324,7 +324,7 @@ RayHit Polyhedron::base_raycast(const Ray &ray, float t_max) const {
   }
 
   // pass tests
-  if (t_near >= epsilon) {
+  if (t_near >= constant::epsilon) {
     // outside - hitting front face
 
     t = t_near;
@@ -334,8 +334,8 @@ RayHit Polyhedron::base_raycast(const Ray &ray, float t_max) const {
     res.surface_norm = topology.faces[front_norm].plane.normal;
     return res;
   } else {
-    if (t_far < t_max) {
-      // inside - hitting back face
+    if (t_far >= constant::epsilon && t_far < t_max) {
+      // inside - hitting back face (t_far < 0 means polyhedron behind ray)
 
       t = t_far;
       res.is_hit = true;
@@ -352,36 +352,43 @@ RayHit Polyhedron::base_raycast(const Ray &ray, float t_max) const {
   }
 }
 
-MassProperties Polyhedron::compute_mass_properties(float density) const {
-  HalfEdgeMesh xfrm_mesh = topology;
-  const glm::mat4 model = local_xfrm.get_matrix();
-  const glm::mat3 norm = local_xfrm.get_normal_matrix();
+// convert topology from local-space -> geometry-space
+HalfEdgeMesh Polyhedron::geom_mesh(const glm::mat4 &parent) const {
+  HalfEdgeMesh geom_mesh = topology;
 
-  for (glm::vec3 &v : xfrm_mesh.vertices) {
+  const glm::mat4 model = parent * local_xfrm.get_matrix();
+  const glm::mat3 norm = glm::transpose(glm::inverse(glm::mat3(model)));
+
+  for (glm::vec3 &v : geom_mesh.vertices) {
     v = glm::vec3(model * glm::vec4(v, 1.0f));
   }
   // preserve face normals under non-uniform scale
-  for (HalfEdgeMesh::Face &face : xfrm_mesh.faces) {
+  for (HalfEdgeMesh::Face &face : geom_mesh.faces) {
     glm::vec3 n = glm::normalize(norm * face.plane.normal);
     glm::vec3 p = glm::vec3(model * glm::vec4(face.plane.point, 1.0f));
     face.plane = Plane(n, p);
   }
 
-  return MassProperties::compute(xfrm_mesh, density);
+  return geom_mesh;
+}
+
+MassProperties Polyhedron::compute_mass_properties(float density) const {
+  // mass properties rely on position/orientation in finalized geometry-space
+  return MassProperties::compute(geom_mesh(), density);
 }
 
 glm::vec3 Polyhedron::base_support(glm::vec3 dir) const {
-  // brute-force scan for the vertex furthest along dir
+  // iterate vertices for furthest along dir
   float max_proj = -std::numeric_limits<float>::max();
-  glm::vec3 result(0.0f);
+  glm::vec3 res(0.0f);
   for (const auto &v : topology.vertices) {
     float proj = glm::dot(v, dir);
     if (proj > max_proj) {
       max_proj = proj;
-      result = v;
+      res = v;
     }
   }
-  return result;
+  return res;
 }
 
 // Hardcoded half-edge topology
@@ -472,7 +479,7 @@ const HalfEdgeMesh &Polyhedron::get_tetrahedron_hull() {
       std::array<size_t, 3> loop;
       glm::vec3 normal;
     };
-    const float n = inv_sqrt3;
+    const float n = constant::inv_sqrt3;
     const Face tri_faces[4] = {
         {{0, 1, 2}, {n, n, -n}},
         {{0, 3, 1}, {n, -n, n}},
@@ -570,6 +577,7 @@ std::shared_ptr<Model> Polyhedron::get_cube_model() {
 std::shared_ptr<Model> Polyhedron::get_tetrahedron_model() {
   static std::shared_ptr<Model> cached = [] {
     using namespace mesh;
+    using namespace constant;
 
     const glm::vec3 n0(inv_sqrt3, inv_sqrt3, -inv_sqrt3);
     const glm::vec3 n1(inv_sqrt3, -inv_sqrt3, inv_sqrt3);
@@ -614,7 +622,7 @@ void Polyhedron::generate_tetrahedron() {
 Sphere::Sphere(float radius) { generate_sphere(16, 32, radius); }
 
 /*
- Ray vs. Sphere centered at origin.
+ ray-sphere intersection test (local-space)
  solve |O + D * t|^2 - R^2 = 0 for t
 */
 RayHit Sphere::base_raycast(const Ray &ray, float t_max) const {
@@ -626,7 +634,7 @@ RayHit Sphere::base_raycast(const Ray &ray, float t_max) const {
   float c = glm::dot(ray.origin, ray.origin) - radius * radius; // O^2 - R^2
 
   float discriminant = b * b - a * c;
-  if (a < epsilon || discriminant < 0.0f) {
+  if (a < constant::epsilon || discriminant < 0.0f) {
     // degenerate ray or ray misses sphere
     res.is_hit = false;
     return res;
@@ -638,10 +646,10 @@ RayHit Sphere::base_raycast(const Ray &ray, float t_max) const {
   float t_far = (-b + sqrtd) / a;
   float t;
 
-  if (t_near >= epsilon) {
+  if (t_near >= constant::epsilon) {
     // front face - outside sphere
     t = t_near;
-  } else if (t_far >= epsilon) {
+  } else if (t_far >= constant::epsilon) {
     // back face - inside sphere
     t = t_far;
   } else {
@@ -663,8 +671,8 @@ RayHit Sphere::base_raycast(const Ray &ray, float t_max) const {
 }
 
 Primitive &Sphere::scale(glm::vec3 factor) {
-  if (std::abs(factor.x - factor.y) > epsilon ||
-      std::abs(factor.x - factor.z) > epsilon) {
+  if (std::abs(factor.x - factor.y) > constant::epsilon ||
+      std::abs(factor.x - factor.z) > constant::epsilon) {
     CLOGW("Sphere only supports uniform scale - ignoring (%f, %f, %f)",
           factor.x, factor.y, factor.z);
     return *this;
@@ -693,7 +701,7 @@ MassProperties Sphere::compute_mass_properties(float density) const {
 
 glm::vec3 Sphere::base_support(glm::vec3 dir) const {
   float len = glm::length(dir);
-  if (len < epsilon) {
+  if (len < constant::epsilon) {
     return glm::vec3(radius, 0.0f, 0.0f);
   }
   return dir * (radius / len);
@@ -759,7 +767,7 @@ Frustum::Frustum(float r_bot, float r_top, float half_height) {
 }
 
 Primitive &Frustum::scale(glm::vec3 factor) {
-  if (std::abs(factor.x - factor.z) > epsilon) {
+  if (std::abs(factor.x - factor.z) > constant::epsilon) {
     CLOGW("Frustum only supports uniform radial scale (x == z) - ignoring "
           "(%f, %f, %f)",
           factor.x, factor.y, factor.z);
@@ -770,13 +778,15 @@ Primitive &Frustum::scale(glm::vec3 factor) {
 }
 
 /*
- Ray vs. frustum centered at origin, axis +Y.
- side: x^2 + z^2 = (alpha * y + beta)^2 for |y| <= h, where
-       r(y) = alpha * y + beta interpolates r_bottom (y = -h) to r_top (y = +h)
- caps: planes y = +-h, clipped to their disc
- Takes the nearest valid hit, so a ray starting inside hits the back face.
+ ray-frustum intersection test (local-space)
+ side: x^2 + z^2 = r(y)^2 for |y| <= h
+ where: r(y) = \alpha * y + \beta
+ r(y) interpolates r_bot (y = -h) to r_top (y = +h)
+
+ caps: planes y = +-h, clipped to disc r = r_top, r = r_bot
 */
 RayHit Frustum::base_raycast(const Ray &ray, float t_max) const {
+  using namespace constant;
 
   RayHit res = {};
   res.is_hit = false;
@@ -805,7 +815,7 @@ RayHit Frustum::base_raycast(const Ray &ray, float t_max) const {
   const float b = p.x * v.x + p.z * v.z - q * w;
   const float c = p.x * p.x + p.z * p.z - q * q;
 
-  auto consider_side = [&](float t) {
+  auto side_candidate = [&](float t) {
     glm::vec3 x = p + v * t;
     if (std::abs(x.y) > half_height) {
       return;
@@ -825,17 +835,17 @@ RayHit Frustum::base_raycast(const Ray &ray, float t_max) const {
     float disc = b * b - a * c;
     if (disc >= 0.0f) {
       float sqrt_disc = std::sqrt(disc);
-      consider_side((-b - sqrt_disc) / a);
-      consider_side((-b + sqrt_disc) / a);
+      side_candidate((-b - sqrt_disc) / a);
+      side_candidate((-b + sqrt_disc) / a);
     }
   } else if (std::abs(b) > epsilon) {
     // ray parallel to a slant line of the cone - single root
-    consider_side(-c / (2.0f * b));
+    side_candidate(-c / (2.0f * b));
   }
 
   // caps
   if (std::abs(v.y) > epsilon) {
-    auto consider_cap = [&](float y, float radius, float ny) {
+    auto cap_candidate = [&](float y, float radius, float ny) {
       if (radius <= 0.0f) {
         return;
       }
@@ -845,8 +855,8 @@ RayHit Frustum::base_raycast(const Ray &ray, float t_max) const {
         consider(t, glm::vec3(0.0f, ny, 0.0f));
       }
     };
-    consider_cap(half_height, r_top, 1.0f);
-    consider_cap(-half_height, r_bot, -1.0f);
+    cap_candidate(half_height, r_top, 1.0f);
+    cap_candidate(-half_height, r_bot, -1.0f);
   }
 
   if (res.is_hit) {
@@ -858,7 +868,7 @@ RayHit Frustum::base_raycast(const Ray &ray, float t_max) const {
 }
 
 /*
- Frustum is the convex hull of its two cap discs, so the support point is
+ frustum is the convex hull of its two cap discs, so the support point is
  the furthest point of whichever disc reaches further along dir.
 */
 glm::vec3 Frustum::base_support(glm::vec3 dir) const {
@@ -866,7 +876,7 @@ glm::vec3 Frustum::base_support(glm::vec3 dir) const {
   float len = glm::length(d_xz);
 
   // dir parallel to the axis - every cap point ties, take the cap centre
-  glm::vec2 radial = (len < epsilon) ? glm::vec2(0.0f) : d_xz / len;
+  glm::vec2 radial = (len < constant::epsilon) ? glm::vec2(0.0f) : d_xz / len;
 
   glm::vec3 top(r_top * radial.x, half_height, r_top * radial.y);
   glm::vec3 bot(r_bot * radial.x, -half_height, r_bot * radial.y);
@@ -1035,6 +1045,157 @@ void Frustum::generate_frustum(int slices, float r_bottom, float r_top,
   }
 
   base_model = std::make_shared<Model>(Model({Mesh(vertices, indices)}));
+}
+
+Capsule::Capsule(float radius, float half_height) {
+  generate_capsule(8, 32, radius, half_height);
+}
+
+Primitive &Capsule::scale(glm::vec3 factor) {
+  if (std::abs(factor.x - factor.z) > constant::epsilon) {
+    CLOGW("Capsule only supports uniform radial scale (x == z) - ignoring "
+          "(%f, %f, %f)",
+          factor.x, factor.y, factor.z);
+    return *this;
+  }
+  local_xfrm.set_scale(factor);
+  return *this;
+}
+
+/*
+ ray-capsule intersection test
+ side: x^2 + z^2 = r^2 for |y| <= h
+ caps: spheres of radius r centered at (0, +/-h, 0), clipped to y >= h, y <= -h
+*/
+RayHit Capsule::base_raycast(const Ray &ray, float t_max) const {
+  using namespace constant;
+
+  RayHit res = {};
+  res.is_hit = false;
+
+  const glm::vec3 &p = ray.origin;
+  const glm::vec3 &v = ray.direction;
+
+  float t_best = t_max;
+  glm::vec3 n_best(0.0f);
+
+  auto side_candidate = [&](float t, const glm::vec3 &n) {
+    if (t >= epsilon && t <= t_best) {
+      t_best = t;
+      n_best = n;
+      res.is_hit = true;
+    }
+  };
+
+  // side - substitute p + tv into x^2 + z^2 - r^2 = 0
+  // a t^2 + 2 b t + c = 0
+  // a ray parallel to the axis can only enter through the caps
+  const float a = v.x * v.x + v.z * v.z;
+  if (a > epsilon) {
+    const float b = p.x * v.x + p.z * v.z;
+    const float c = p.x * p.x + p.z * p.z - radius * radius;
+    float disc = b * b - a * c;
+    if (disc >= 0.0f) {
+      float sqrt_disc = std::sqrt(disc);
+      for (float t : {(-b - sqrt_disc) / a, (-b + sqrt_disc) / a}) {
+        glm::vec3 x = p + v * t;
+        if (std::abs(x.y) <= half_height) {
+          side_candidate(t, glm::vec3(x.x, 0.0f, x.z) / radius);
+        }
+      }
+    }
+  }
+
+  // caps - substitute p + tv into |x - centre|^2 - r^2 = 0
+  auto cap_candidate = [&](float sign) {
+    const glm::vec3 centre(0.0f, sign * half_height, 0.0f);
+    const glm::vec3 o = p - centre;
+    const float a = glm::dot(v, v);
+    const float b = glm::dot(o, v);
+    const float c = glm::dot(o, o) - radius * radius;
+    float disc = b * b - a * c;
+    if (a < epsilon || disc < 0.0f) {
+      return;
+    }
+    float sqrt_disc = std::sqrt(disc);
+    for (float t : {(-b - sqrt_disc) / a, (-b + sqrt_disc) / a}) {
+      glm::vec3 x = p + v * t;
+      // only the outer hemisphere belongs to the surface
+      if (sign * x.y >= half_height) {
+        side_candidate(t, (x - centre) / radius);
+      }
+    }
+  };
+  cap_candidate(1.0f);
+  cap_candidate(-1.0f);
+
+  if (res.is_hit) {
+    res.hit_point = p + v * t_best;
+    res.hit_dist = t_best;
+    res.surface_norm = n_best;
+  }
+  return res;
+}
+
+/*
+ Capsule is the segment (0, +-h, 0) swept by a sphere, so the support point is
+ the segment's support point pushed out by radius along dir.
+*/
+glm::vec3 Capsule::base_support(glm::vec3 dir) const {
+  float len = glm::length(dir);
+  if (len < constant::epsilon) {
+    return glm::vec3(radius, 0.0f, 0.0f);
+  }
+  glm::vec3 end(0.0f, dir.y >= 0.0f ? half_height : -half_height, 0.0f);
+  return end + dir * (radius / len);
+}
+
+/*
+ Cylinder of radius R, half-height a, plus a half-spheroid cap at each end with
+ equatorial radius R and polar semi-axis c (c = R when unscaled; a y scale
+ stretches the caps along the axis along with the cylinder):
+
+   m_cyl  = density pi R^2 (2a)
+   m_cap  = density 2/3 pi R^2 c                 (each)
+   I_axis = m_cyl R^2 / 2 + 2 * 2/5 m_cap R^2
+   I_perp = m_cyl (R^2 / 4 + a^2 / 3)
+          + 2 m_cap ((R^2 + c^2) / 5 + a^2 + 3ac / 4)
+
+ (each cap: its inertia about the flat face's diameter, (R^2 + c^2) / 5, moved
+ to its own COM at 3c/8 from the face, then out to the capsule centre at
+ a + 3c/8 with the parallel axis theorem.) Symmetric, so COM is the origin.
+*/
+MassProperties Capsule::compute_mass_properties(float density) const {
+  // radial scale is guaranteed uniform by Capsule::scale() override
+  const glm::vec3 s = glm::abs(local_xfrm.get_scale());
+  const float R = radius * s.x;
+  const float a = half_height * s.y;
+  const float c = radius * s.y;
+
+  const float pi = glm::pi<float>();
+
+  float m_cyl = density * pi * R * R * 2.0f * a;
+  float m_cap = density * 2.0f / 3.0f * pi * R * R * c;
+  float mass = m_cyl + 2.0f * m_cap;
+
+  float i_axis = 0.5f * m_cyl * R * R + 0.8f * m_cap * R * R;
+  float i_perp =
+      m_cyl * (0.25f * R * R + a * a / 3.0f) +
+      2.0f * m_cap * ((R * R + c * c) / 5.0f + a * a + 0.75f * a * c);
+
+  // principal axes are the local frame - rotate into the parent frame
+  const glm::mat3 rot = glm::mat3_cast(local_xfrm.get_orientation());
+  glm::mat3 inertia_local(0.0f);
+  inertia_local[0][0] = i_perp;
+  inertia_local[1][1] = i_axis;
+  inertia_local[2][2] = i_perp;
+  glm::mat3 inertia = rot * inertia_local * glm::transpose(rot);
+
+  return MassProperties{.mass = mass,
+                        .inv_mass = 1.0f / mass,
+                        .centre_of_mass = local_xfrm.get_position(),
+                        .inertia_tensor = inertia,
+                        .inv_inertia_tensor = glm::inverse(inertia)};
 }
 
 /*
