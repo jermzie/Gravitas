@@ -40,64 +40,71 @@ struct MassProperties {
 
       // get face vertices
       auto v = mesh.get_face_vertices(face);
-      glm::vec3 v0 = mesh.vertices[v[0]];
-      glm::vec3 v1 = mesh.vertices[v[1]];
-      glm::vec3 v2 = mesh.vertices[v[2]];
-
-      // get edges and cross products
-      // glm::vec3 n = glm::normalize(getTriangleNormal(v1, v2, v0));
-      glm::vec3 e1 = v1 - v0;
-      glm::vec3 e2 = v2 - v0;
-      glm::vec3 n = glm::cross(e1, e2);
-
-      glm::vec3 face_center = (v0 + v1 + v2) / 3.0f;
-      glm::vec3 outward_direction = face_center - mesh_centroid;
-
-      // flip normal
-      if (glm::dot(n, outward_direction) < 0.0f) {
-        n = -n;
-        flipped_faces++;
+      if (v.size() < 3) {
+        continue;
       }
 
-      // surface integral shortcuts
+      // fan-triangulate convex face: (v0, vk, vk+1)
+      for (size_t k = 1; k + 1 < v.size(); k++) {
+        glm::vec3 v0 = mesh.vertices[v[0]];
+        glm::vec3 v1 = mesh.vertices[v[k]];
+        glm::vec3 v2 = mesh.vertices[v[k + 1]];
 
-      // x-components
-      float fX, fSqX, fCuX, gX0, gX1, gX2;
-      compute_subexpressions(v0.x, v1.x, v2.x, fX, fSqX, fCuX, gX0, gX1, gX2);
+        // get edges and cross products
+        // glm::vec3 n = glm::normalize(getTriangleNormal(v1, v2, v0));
+        glm::vec3 e1 = v1 - v0;
+        glm::vec3 e2 = v2 - v0;
+        glm::vec3 n = glm::cross(e1, e2);
 
-      // y-components
-      float fY, fSqY, fCuY, gY0, gY1, gY2;
-      compute_subexpressions(v0.y, v1.y, v2.y, fY, fSqY, fCuY, gY0, gY1, gY2);
+        glm::vec3 face_center = (v0 + v1 + v2) / 3.0f;
+        glm::vec3 outward_direction = face_center - mesh_centroid;
 
-      // z-components
-      float fZ, fSqZ, fCuZ, gZ0, gZ1, gZ2;
-      compute_subexpressions(v0.z, v1.z, v2.z, fZ, fSqZ, fCuZ, gZ0, gZ1, gZ2);
+        // flip normal
+        if (glm::dot(n, outward_direction) < 0.0f) {
+          n = -n;
+          flipped_faces++;
+        }
 
-      // DEBUG: Check contribution
-      float face_volume_contrib = n.x * fX;
-      total_volume_contrib += face_volume_contrib;
-      if (face_volume_contrib < 0) {
-        negative_contrib++;
+        // surface integral shortcuts
+
+        // x-components
+        float fX, fSqX, fCuX, gX0, gX1, gX2;
+        compute_subexpressions(v0.x, v1.x, v2.x, fX, fSqX, fCuX, gX0, gX1, gX2);
+
+        // y-components
+        float fY, fSqY, fCuY, gY0, gY1, gY2;
+        compute_subexpressions(v0.y, v1.y, v2.y, fY, fSqY, fCuY, gY0, gY1, gY2);
+
+        // z-components
+        float fZ, fSqZ, fCuZ, gZ0, gZ1, gZ2;
+        compute_subexpressions(v0.z, v1.z, v2.z, fZ, fSqZ, fCuZ, gZ0, gZ1, gZ2);
+
+        // DEBUG: Check contribution
+        float face_volume_contrib = n.x * fX;
+        total_volume_contrib += face_volume_contrib;
+        if (face_volume_contrib < 0) {
+          negative_contrib++;
+        }
+
+        // update integrals
+        // 1
+        intg[0] += n.x * fX;
+
+        // x, y, z
+        intg[1] += n.x * fSqX;
+        intg[2] += n.y * fSqY;
+        intg[3] += n.z * fSqZ;
+
+        // x^2. y^2, z^2
+        intg[4] += n.x * fCuX;
+        intg[5] += n.y * fCuY;
+        intg[6] += n.z * fCuZ;
+
+        // xy, yz, zx
+        intg[7] += n.x * (v0.y * gX0 + v1.y * gX1 + v2.y * gX2);
+        intg[8] += n.y * (v0.z * gY0 + v1.z * gY1 + v2.z * gY2);
+        intg[9] += n.z * (v0.x * gZ0 + v1.x * gZ1 + v2.x * gZ2);
       }
-
-      // update integrals
-      // 1
-      intg[0] += n.x * fX;
-
-      // x, y, z
-      intg[1] += n.x * fSqX;
-      intg[2] += n.y * fSqY;
-      intg[3] += n.z * fSqZ;
-
-      // x^2. y^2, z^2
-      intg[4] += n.x * fCuX;
-      intg[5] += n.y * fCuY;
-      intg[6] += n.z * fCuZ;
-
-      // xy, yz, zx
-      intg[7] += n.x * (v0.y * gX0 + v1.y * gX1 + v2.y * gX2);
-      intg[8] += n.y * (v0.z * gY0 + v1.z * gY1 + v2.z * gY2);
-      intg[9] += n.z * (v0.x * gZ0 + v1.x * gZ1 + v2.x * gZ2);
     }
 
     // DEBUG OUTPUT
@@ -117,14 +124,12 @@ struct MassProperties {
     float vol = intg[0];
     // CLOGI("volume: %.5f", vol);
 
-    // Volume should be positive!
     if (vol <= 0) {
       CLOGI(
-          "ERROR: Non-positive volume! Mesh likely has wrong winding order.\n");
-      // You might want to flip all normals and try again
+          "ERROR: Non-positive volume. Mesh likely has wrong winding order.\n");
+      // flip all normals and try again
     }
 
-    // float vol = intg[0];
     mass = density * vol;
     // CLOGI("mass: %.5f", mass);
 
