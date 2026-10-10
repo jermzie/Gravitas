@@ -1,16 +1,7 @@
 #include "PhysicsEngine.hpp"
-#include "RigidBody.hpp"
 
 void PhysicsEngine::step(float dt) {
   using clock = std::chrono::high_resolution_clock;
-
-  if (debug) {
-    for (int i = 0; i < 6; i++) {
-      // debug->draw_plane(bounds[i], bounds_size, glm::vec3(1, 1, 1));
-      debug->draw_plane(bounds[i], bounds_size, glm::vec4(1, 1, 1, 1),
-                        glm::vec4(1, 1, 1, 0.1));
-    }
-  }
 
   // Physics Loop
   // 1. Integrate forces - apply external forces & update velocities (violates
@@ -22,68 +13,64 @@ void PhysicsEngine::step(float dt) {
 
   auto t0 = clock::now();
 
-  // 1. Integrate forces
-  for (auto &b : bodies) {
-    if (!b.is_static) {
-      b.integrate_velocities(dt);
-
-      // WARNING: TEMP TEST
-      b.baumgarte_factor = global_beta;
-      b.restitution_coeff = global_restitution;
-      b.friction_coeff = global_friction;
+  if (debug) {
+    for (const Plane &face : bound_faces) {
+      // fill the floor only - the walls are border + grid
+      const float fill_alpha = (face.normal.y > 0.5f) ? 0.1f : 0.0f;
+      debug->draw_plane(face, bounds_size, glm::vec4(1, 1, 1, 1),
+                        glm::vec4(1, 1, 1, fill_alpha));
     }
   }
 
   /*
-  DEBUG: STATE LOGGING
-  for (auto &b : bodies) {
-    CLOGI("body[%d] pos=(%.3f, %.3f, %.3f) linear=(%.3f, %.3f, %.3f)
-  angular=(%.3f, %.3f, %.3f)\n", b.id, b.position.x, b.position.y, b.position.z,
-        b.lin_velocity.x,
-        b.lin_velocity.y,
-        b.lin_velocity.z,
-        b.ang_velocity.x,
-        b.ang_velocity.y,
-        b.ang_velocity.z);
+  // 1. Integrate forces + reset pseudo velocities for all bodies
+  for (auto &entity : entities) {
+
+    // auto body = entity.body;
+    auto &body = entity.body;
+
+    if (!entity.is_static) {
+      body->integrate_velocities(dt);
+
+      // Reset here so bodies that lose contact this frame don't carry stale
+      // pseudo velocity from the previous frame into integrate_positions.
+      body->psuedo_lin_velocity = glm::vec3(0.0f);
+      body->psuedo_ang_velocity = glm::vec3(0.0f);
+    }
   }
   */
 
   auto t1 = clock::now();
 
   // 2. Broadphase
-  potential_collisions = bvh.update(bodies);
+
+  // callback fnc
+  auto get_aabb = [&](int id) {
+    return entities[id2idx_map.at(id)].get_aabb();
+  };
+  potential_collisions = bvh.update(get_aabb, debug);
 
   auto t2 = clock::now();
 
-  // 3a. Plane collisions
+  /*
+  // 3. Narrowphase
+  // TODO: once Narrowphase ported to take Entity param - map pair ids through
+  id2idx_map and
+  // skip static-static pairs (sandbox slabs overlap at the corners)
   contacts.clear();
-  for (auto &b : bodies) {
-    for (int i = 0; i < 6; i++) {
-      Manifold manifold;
-      if (sat.poly_plane_collision(manifold, b, bounds[i], debug)) {
-
-        manifold.a = &b;
-        manifold.b = nullptr;
-        if (manifold.num_points > 0) {
-          contacts.push_back(manifold);
-        }
-      }
-    }
-  }
-
-  auto t3 = clock::now();
-
-  // 3b. Narrowphase
   for (auto pair : potential_collisions) {
 
     Manifold manifold;
-    if (sat.poly_poly_collision(manifold, bodies[pair.first],
-                                bodies[pair.second], debug)) {
+    if (sat.poly_poly_collision(manifold, entities[pair.first],
+                                entities[pair.second], debug)) {
 
-      manifold.a = &bodies[pair.first];
-      manifold.b = &bodies[pair.second];
+      manifold.a = &entities[pair.first];
+      manifold.b = &entities[pair.second];
 
       // WARNING:
+      // TODO: orient the normal (B -> A) inside Narrowphase instead - a slab's
+      // COM is far off to the side, so this COM heuristic breaks for edge
+      // contacts near the walls
       // OLD: if (glm::dot(manifold.normal, manifold.b->position -
       // manifold.a->position) < 0.0f) {
       if (glm::dot(manifold.norm, manifold.b->position - manifold.a->position) >
@@ -99,78 +86,110 @@ void PhysicsEngine::step(float dt) {
   auto t4 = clock::now();
 
   // 4. Solver
-  contact_cache.warm_start(contacts);
+  cache.warm_start(contacts);
   solver.build_constraints(contacts);
   solver.solve_constraints(dt);
   solver.write_back(contacts);
-  contact_cache.update(contacts);
+  cache.update(contacts);
 
   auto t5 = clock::now();
 
   // 5. Integrate position
-  for (auto &b : bodies) {
-    if (!b.is_static) {
-      b.integrate_positions(dt);
+  for (auto &entity : entities) {
+    auto &body = entity.body;
+    if (!entity.is_static) {
+      body->integrate_positions(dt);
     }
   }
+  */
 
   auto t6 = clock::now();
+}
 
-  /*
-  for (auto &b : bodies) {
-    CLOGI("RIGID BODY - ID: %d", b.id);
-    b.log_kinematic_state();
+bool PhysicsEngine::raycast(const Ray &ray, size_t &idx, RayHit &hit) {
+
+  // callback fnc
+  auto on_leaf = [&](int id, float t_max) {
+    const Entity &entity = entities[id2idx_map.at(id)];
+    // static bodies (sandbox slabs) aren't pickable - let rays pass through
+    if (entity.is_static) {
+      return RayHit{};
+    }
+    return entity.raycast(ray, t_max);
+  };
+
+  int id;
+  if (!bvh.raycast(ray, on_leaf, id, hit)) {
+    return false;
   }
-  */
-
-  /*
-  CLOGI("potential pairs: %zu\n", potential_collisions.size());
-  CLOGI("force integration: %ldus\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count());
-  CLOGI("broadphase:%ldus\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
-  CLOGI("plane cols: %ldus\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count());
-  CLOGI("narrowphase: %ldus\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count());
-  CLOGI("solver: %ldus\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count());
-  CLOGI("position integration: %ldus\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count());
-  */
+  idx = id2idx_map.at(id);
+  return true;
 }
 
-bool PhysicsEngine::raycast(const Ray &ray, int &id, float &t) {
-  return bvh.raycast(bodies, ray, id, t);
-}
-
-void PhysicsEngine::add_rigid_body(RigidBody &&body) {
+void PhysicsEngine::add_entity(Entity &&entity) {
   int id = next_id++;
-  int idx = bodies.size();
-  id_to_index[id] = idx;
+  int idx = entities.size();
+  id2idx_map[id] = idx;
 
-  body.id = id;
-  bodies.push_back(std::move(body));
-  bvh.insert(bodies.back().collider.aabb, id);
+  entity.id = id;
+  entities.push_back(std::move(entity));
+  bvh.insert(entities.back().get_aabb(), id);
 
-  CLOGI("ADDED RIGID BODY - ID: %d", id);
-  bodies.back().log_initial_state();
+  CLOGI("ADDED ENTITY - ID: %d", id);
 }
 
 // Swap and pop to avoid shifting elements
-void PhysicsEngine::remove_rigid_body(int id) {
-  int idx = id_to_index[id];
-  int last_idx = bodies.size() - 1;
+void PhysicsEngine::remove_entity(int id) {
+  int idx = id2idx_map[id];
+  int last_idx = entities.size() - 1;
 
   if (idx != last_idx) {
 
-    std::swap(bodies[idx], bodies[last_idx]); // Swap with last body
-    id_to_index[bodies[idx].id] = idx; // Update swapped body's index in map
+    std::swap(entities[idx], entities[last_idx]); // Swap with last body
+    id2idx_map[entities[idx].id] = idx; // Update swapped body's index in map
   }
 
-  bodies.pop_back();
-  id_to_index.erase(id);
+  entities.pop_back();
+  id2idx_map.erase(id);
   bvh.remove(id);
 }
 
-void PhysicsEngine::remove_all_bodies() { bodies.clear(); }
+void PhysicsEngine::remove_all_entities() { entities.clear(); }
+
+// Slabs are thick so SAT can't resolve a deep penetration out through the far
+// face (thin slabs tunnel once penetration > thickness / 2), but not so thick
+// that vertex precision suffers. They sit outside the interior and overlap at
+// the edges/corners so there are no seams.
+void PhysicsEngine::add_bounds(float half_extent, float thickness) {
+  bounds_size = half_extent;
+  bound_faces.clear();
+
+  const glm::vec3 axes[] = {
+      {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+  for (int i = 0; i < 6; i++) {
+    // points into the sandbox
+    const glm::vec3 normal = (i < 3) ? axes[i % 3] : -axes[i % 3];
+    const glm::vec3 along = glm::abs(normal);
+    const glm::vec3 half_extents =
+        along * (0.5f * thickness) + (1.0f - along) * (half_extent + thickness);
+
+    // unit cube spans [-1, 1]
+    auto slab = std::make_shared<Polyhedron>();
+    slab->scale(half_extents);
+    auto geom = std::make_unique<Geometry>();
+    geom->add_child(slab);
+
+    // static - density only feeds mass properties that make_static discards
+    glm::vec3 com_offset;
+    MassProperties props = geom->finalize(1.0f, com_offset);
+    const glm::vec3 centre = -normal * (half_extent + 0.5f * thickness);
+
+    Entity wall(std::make_unique<RigidBody>(props, 1.0f, centre),
+                std::move(geom));
+    wall.make_static();
+    wall.is_visible = false;
+    add_entity(std::move(wall));
+
+    bound_faces.emplace_back(normal, -normal * half_extent);
+  }
+}
