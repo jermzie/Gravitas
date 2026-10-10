@@ -17,7 +17,6 @@
 
 // Rendering
 #include "Camera.hpp"
-#include "Mesh.hpp"
 #include "Model.hpp"
 #include "Shader.hpp"
 
@@ -26,6 +25,7 @@
 #include "Gui.hpp"
 
 // Physics
+#include "Entity.hpp"
 #include "PhysicsEngine.hpp"
 #include "RigidBody.hpp"
 
@@ -60,7 +60,6 @@ private:
   // mouse picking/dragging
   struct MouseState {
     bool is_down = false;
-    bool first_mouse = true;
     float x, y, x_offset, y_offset;
   } left_mouse_btn, right_mouse_btn;
   Plane drag_plane;
@@ -68,22 +67,13 @@ private:
   bool is_rotating = false;
   int selected_object = -1;
   glm::vec3 old_position;
-  glm::vec3 new_position;
-
-  bool dragXZ = false;
-  bool dragYZ = false;
-  bool dragXY = false;
 
   // Physics
   PhysicsEngine scene;
   Gui gui;
   Debugger debug;
 
-  bool wireFrame = false;
-  bool defaultView = false;
-
   // shaders
-  Shader basicShader;
   Shader picking_shader;
   Shader outline_shader;
   Shader lighting_shader;

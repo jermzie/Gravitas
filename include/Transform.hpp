@@ -1,7 +1,5 @@
 #pragma once
 
-// NEEDS TESTING
-//
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -48,7 +46,9 @@ public:
     return cached_normal;
   }
 
-  glm::vec3 local_to_world(glm::vec3 local) const { return position + (orientation * (scale * local)); }
+  glm::vec3 local_to_world(glm::vec3 local) const {
+    return position + (orientation * (scale * local));
+  }
 
   glm::vec3 world_to_local(glm::vec3 world) const {
     glm::vec3 relative = world - position;
@@ -56,6 +56,10 @@ public:
   }
 
   Transform() = default;
+
+  const glm::vec3 &get_position() const { return position; }
+  const glm::quat &get_orientation() const { return orientation; }
+  const glm::vec3 &get_scale() const { return scale; }
 
   void set_position(glm::vec3 pos) {
     position = pos;

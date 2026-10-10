@@ -1,6 +1,7 @@
 #pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
+#include "Plane.hpp"
 #include "Transform.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
@@ -85,57 +86,45 @@ inline Ray screen_to_world_ray(float x_pos, float y_pos, int screen_width,
 
   glm::vec3 world_direction(world_end - world_start);
 
-  Ray out;
-  out.origin = glm::vec3(world_start);
-  out.direction = glm::normalize(world_direction);
-
-  return out;
+  return Ray(glm::vec3(world_start), glm::normalize(world_direction));
 }
 
-inline Ray local_to_world_ray(const Transform &transform, const Ray &ray) {
+// direction uses w = 0 (no translation) and is NOT re-normalized, so the ray
+// parameter t is identical in both spaces - hits and t_max pass through as-is
+inline Ray ray_xfrm(const Transform &xfrm, const Ray &r) {
 
-  glm::mat4 model_matrix = transform.get_matrix();
-  glm::vec4 world_origin = model_matrix * glm::vec4(ray.origin, 1.0f);
-  glm::vec4 world_direction = model_matrix * glm::vec4(ray.direction, 1.0f);
-
-  Ray out;
-  out.origin = glm::vec3(world_origin);
-  out.direction = glm::vec3(world_direction);
-
-  return out;
+  glm::mat4 mat = xfrm.get_matrix();
+  return Ray(glm::vec3(mat * glm::vec4(r.origin, 1.0f)),
+             glm::vec3(mat * glm::vec4(r.direction, 0.0f)));
 }
 
-inline Ray world_to_local_ray(const Transform &transform, const Ray &ray) {
-
-  glm::mat4 inverse_model_matrix = transform.get_inverse_matrix();
-  glm::vec4 local_origin = inverse_model_matrix * glm::vec4(ray.origin, 1.0f);
-  glm::vec4 local_direction =
-      inverse_model_matrix * glm::vec4(ray.direction, 1.0f);
-
-  Ray out;
-  out.origin = glm::vec3(local_origin);
-  out.direction = glm::vec3(local_direction);
-
-  return out;
+inline Ray ray_inv_xfrm(const Transform &xfrm, const Ray &r) {
+  glm::mat4 inv = xfrm.get_inverse_matrix();
+  return Ray(glm::vec3(inv * glm::vec4(r.origin, 1.0f)),
+             glm::vec3(inv * glm::vec4(r.direction, 0.0f)));
 }
 
 // Drag body along plane perpendicular to camera
+/*
 inline bool ray_plane_intersect(const Ray &ray, const glm::vec3 &normal,
                                 const glm::vec3 &point, float &t,
                                 float t_max = 500.0f) {
+*/
+inline bool ray_plane_intersect(const Ray &world, const Plane &plane,
+                                RayHit &query, float t_max = 500.0f) {
 
   // Calculate ray-plane intersection
-  float denom = glm::dot(normal, ray.direction);
+  float denom = glm::dot(plane.normal, world.direction);
 
   // Check if ray is not parallel to plane -- avoid zero division
   if (std::abs(denom) < 1e-6) {
     return false;
   }
 
-  t = glm::dot(normal, point - ray.origin) / denom;
+  float t = glm::dot(plane.normal, plane.point - world.origin) / denom;
 
-  // return t >= 0;
-
-  // min max intersect distances
-  return (t >= 0.1f && t < t_max);
+  query.hit_dist = t;
+  query.is_hit = (t >= 0.1f && t < t_max); // min max intersect distances
+  query.hit_point = world.origin + world.direction * t;
+  return query.is_hit;
 }

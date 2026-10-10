@@ -32,8 +32,8 @@ public:
   // model data
   vector<Texture> textures_loaded; // stores all the textures loaded so far
   vector<Mesh> meshes;
-  string directory;
   bool gamma_correction;
+  string directory;
   string file_name;
 
   Model() = default;
@@ -44,6 +44,9 @@ public:
     file_name = model_name;
     load_model(model_name);
   }
+
+  // constructor, simply copy mesh data
+  Model(vector<Mesh> meshes) : meshes(meshes) {}
 
   // draws the model, and thus all its meshes
   void draw(Shader &shader) {
