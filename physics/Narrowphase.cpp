@@ -7,31 +7,6 @@
 #include <glm/geometric.hpp>
 #include <limits>
 
-bool Narrowphase::poly_plane_collision(Manifold &out, const RigidBody &poly,
-                                       const Plane &plane, Debugger *debug) {
-
-  glm::vec3 axis_world = -plane.normal;
-  glm::vec3 axis_local = poly.transform.get_normal_matrix() * axis_world;
-  glm::vec3 vertex_local = find_support_point(axis_local, poly);
-  glm::vec3 vertex_world =
-      glm::vec3(poly.get_physics_matrix() * glm::vec4(vertex_local, 1.0f));
-
-  float separation = get_signed_distance_to_plane(vertex_world, plane);
-  if (separation > 0.0f) {
-    return false;
-  }
-
-  out = create_plane_contact(poly, plane);
-
-  if (debug) {
-    for (int i = 0; i < out.num_points; ++i) {
-      debug->draw_vertex(out.contacts[i].pos_world, glm::vec4(0, 1, 0, 1));
-    }
-  }
-
-  return true;
-}
-
 // O(n^2)
 // Gauss Map Optimization
 bool Narrowphase::poly_poly_collision(Manifold &out, const RigidBody &poly_A,
@@ -410,57 +385,6 @@ Manifold Narrowphase::create_edge_contact(const RigidBody &poly_A,
   out.contacts[0].vertex_id = vertex_id;
   out.contacts[0].a_pos_local =
       glm::vec3(inv_A * glm::vec4(out.contacts[0].pos_world, 1.0f));
-
-  return out;
-}
-
-Manifold Narrowphase::create_plane_contact(const RigidBody &poly,
-                                           const Plane &plane,
-                                           Debugger *debug) {
-
-  glm::mat4 xfrm = poly.get_physics_matrix();
-  const auto &local_verts = poly.get_mesh().vertices;
-
-  std::vector<Contact> candidates;
-  float max_pen = -std::numeric_limits<float>::max();
-
-  for (size_t i = 0; i < local_verts.size(); i++) {
-    const glm::vec3 world = glm::vec3(xfrm * glm::vec4(local_verts[i], 1.0f));
-
-    const float separation = get_signed_distance_to_plane(world, plane);
-
-    // Above plane - discard point
-    if (separation > 0.0f) {
-      continue;
-    }
-    Contact c;
-    c.pos_world =
-        world - separation * plane.normal; // project onto plane surface
-    c.norm = plane.normal;
-    c.pen_depth = -separation; // store penetration as positive
-    c.body_id = static_cast<uint64_t>(poly.id);
-    c.vertex_id = static_cast<uint32_t>(i);
-    c.a_pos_local = local_verts[i]; // already in poly's local space
-    candidates.push_back(c);
-
-    if (c.pen_depth > max_pen) {
-      max_pen = c.pen_depth;
-    }
-  }
-
-  if (candidates.empty()) {
-    return Manifold{};
-  }
-
-  const auto reduced = reduce_manifold(candidates, plane.normal);
-
-  Manifold out;
-  out.norm = plane.normal;
-  out.max_pen_depth = max_pen;
-  out.num_points = std::min<size_t>(4, reduced.size());
-  for (size_t i = 0; i < out.num_points; i++) {
-    out.contacts[i] = reduced[i];
-  }
 
   return out;
 }

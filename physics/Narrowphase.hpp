@@ -6,13 +6,12 @@
 #include <limits>
 #include <numeric>
 
-#include "CollisionGeometry.hpp"
 #include "Config.hpp"
 #include "Contacts.hpp"
-#include "HalfEdgeMesh.hpp"
-#include "QuickHullMesh.hpp"
 #include "Debugger.hpp"
+#include "HalfEdgeMesh.hpp"
 #include "Plane.hpp"
+#include "QuickHullMesh.hpp"
 #include "RigidBody.hpp"
 
 /**
@@ -51,8 +50,6 @@ struct FaceContactInfo {
 class Narrowphase {
 public:
   bool poly_sphere_collision(Manifold &out, const RigidBody &poly);
-  bool poly_plane_collision(Manifold &out, const RigidBody &poly,
-                            const Plane &plane, Debugger *debug = nullptr);
   bool poly_poly_collision(Manifold &out, const RigidBody &poly_A,
                            const RigidBody &poly_B, Debugger *debug = nullptr);
 
@@ -67,8 +64,6 @@ private:
                                const glm::mat4 &inv_A);
   Manifold create_edge_contact(const RigidBody &poly_A, const RigidBody &poly_B,
                                const EdgeColInfo &eab, const glm::mat4 &inv_A);
-  Manifold create_plane_contact(const RigidBody &poly, const Plane &plane,
-                                Debugger *debug = nullptr);
 
   bool is_minkowski_face(const glm::vec3 &a, const glm::vec3 &b,
                          const glm::vec3 &c, const glm::vec3 &d);
