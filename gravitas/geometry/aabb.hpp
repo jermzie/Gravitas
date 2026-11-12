@@ -1,7 +1,7 @@
 #pragma once
 
-#include "gravitas/geometry/ray.hpp"
-#include "gravitas/geometry/transform.hpp"
+#include "ray.hpp"
+#include "transform.hpp"
 
 #include <array>
 #include <glm/glm.hpp>

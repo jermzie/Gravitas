@@ -18,12 +18,12 @@
 #include "gui.hpp"
 
 // Physics
-#include "gravitas/physics/entity.hpp"
-#include "gravitas/physics/physics_engine.hpp"
-#include "gravitas/physics/rigid_body.hpp"
+#include "entity.hpp"
+#include "physics_engine.hpp"
+#include "rigid_body.hpp"
 
-#include "gravitas/geometry/plane.hpp"
-#include "gravitas/geometry/ray.hpp"
+#include "plane.hpp"
+#include "ray.hpp"
 
 class Demo {
 public:

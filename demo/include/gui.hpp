@@ -8,8 +8,8 @@
 #include <imgui_impl_opengl3.h>
 
 #include "debug.hpp"
-#include "gravitas/physics/physics_engine.hpp"
-#include "gravitas/physics/rigid_body.hpp"
+#include "physics_engine.hpp"
+#include "rigid_body.hpp"
 #include "shader.hpp"
 
 class Gui {

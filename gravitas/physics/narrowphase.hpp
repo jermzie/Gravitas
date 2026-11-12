@@ -7,17 +7,17 @@
 #include <memory>
 #include <numeric>
 
-#include "gravitas/core/log.hpp"
-#include "gravitas/physics/contacts.hpp"
-#include "gravitas/geometry/debug_draw.hpp"
-#include "gravitas/physics/entity.hpp"
-#include "gravitas/geometry/halfedge_mesh.hpp"
-#include "gravitas/geometry/plane.hpp"
-#include "gravitas/geometry/primitive.hpp"
-#include "gravitas/physics/rigid_body.hpp"
-#include "gravitas/geometry/transform.hpp"
+#include "config.hpp"
+#include "contacts.hpp"
+#include "debug_draw.hpp"
+#include "entity.hpp"
+#include "halfedge_mesh.hpp"
+#include "plane.hpp"
+#include "primitive.hpp"
+#include "rigid_body.hpp"
+#include "transform.hpp"
 
-#include "gravitas/physics/collide.hpp"
+#include "collide.hpp"
 
 /**
  * @brief Collision detection & contact generation between two entities.

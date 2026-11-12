@@ -1,4 +1,4 @@
-#include "gravitas/physics/broadphase.hpp"
+#include "broadphase.hpp"
 
 /**
  * @brief Implements Branch and Bound algo to optimize global search for sibling

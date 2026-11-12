@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "gravitas/physics/contacts.hpp"
-#include "gravitas/physics/rigid_body.hpp"
+#include "contacts.hpp"
+#include "rigid_body.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_cross_product.hpp> // glm::matrixCross3()

@@ -1,4 +1,4 @@
-#include "gravitas/physics/contacts.hpp"
+#include "contacts.hpp"
 
 void ContactCache::warm_start(std::vector<Manifold> &manifolds) {
   for (auto &m : manifolds) {

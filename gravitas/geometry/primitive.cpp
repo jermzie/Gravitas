@@ -1,6 +1,6 @@
-#include "gravitas/geometry/primitive.hpp"
-#include "gravitas/geometry/quickhull.hpp"
-#include "gravitas/geometry/ray.hpp"
+#include "primitive.hpp"
+#include "quickhull.hpp"
+#include "ray.hpp"
 #include <array>
 #include <cstring>
 #include <filesystem>

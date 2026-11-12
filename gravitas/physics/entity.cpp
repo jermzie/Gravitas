@@ -1,6 +1,6 @@
-#include "gravitas/physics/entity.hpp"
-#include "gravitas/geometry/geometry.hpp"
-#include "gravitas/geometry/transform.hpp"
+#include "entity.hpp"
+#include "geometry.hpp"
+#include "transform.hpp"
 #include <glm/geometric.hpp>
 
 void Entity::make_static() {

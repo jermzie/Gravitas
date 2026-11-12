@@ -4,9 +4,9 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-#include "gravitas/physics/contacts.hpp"
-#include "gravitas/geometry/primitive.hpp"
-#include "gravitas/geometry/transform.hpp"
+#include "contacts.hpp"
+#include "primitive.hpp"
+#include "transform.hpp"
 
 /*
   Pair routines between two child primitives. Arguments are ordered
@@ -16,7 +16,7 @@
 
 namespace col {
 
-struct ShapeProperties {
+struct CollideProperties {
   const Primitive *prim; // owned by the entity's Geometry
   // rigid body transform - cached matrix/inverse/normal shared across pairs.
   // child placement (local_xfrm) comes from prim, e.g.
@@ -26,8 +26,8 @@ struct ShapeProperties {
   size_t child_idx;
 };
 
-using PairFn = bool (*)(Manifold &, const ShapeProperties &,
-                        const ShapeProperties &);
+using PairFn = bool (*)(Manifold &, const CollideProperties &,
+                        const CollideProperties &);
 
 // Packs two 32-bit IDs into a single uint64 (upper | lower).
 inline uint64_t pack_id(uint32_t upper, uint32_t lower) {
@@ -35,8 +35,8 @@ inline uint64_t pack_id(uint32_t upper, uint32_t lower) {
 }
 
 // one-point manifold - normal B -> A, quadric contacts carry no topology id
-inline void set_single_contact(Manifold &m, const ShapeProperties &a,
-                               const ShapeProperties &b, glm::vec3 pos_world,
+inline void set_single_contact(Manifold &m, const CollideProperties &a,
+                               const CollideProperties &b, glm::vec3 pos_world,
                                glm::vec3 normal, float depth) {
   Contact &c = m.contacts[0];
   c.pos_world = pos_world;
@@ -53,25 +53,27 @@ inline void set_single_contact(Manifold &m, const ShapeProperties &a,
 }
 
 // sphere child resolved to world-space
-struct WorldSphere {
+struct CollideSphere {
   glm::vec3 centre;
   float radius;
 };
 
 // Quadric.cpp - collision table guarantees prim is a Sphere
-WorldSphere sphere_cast(const ShapeProperties &s);
+CollideSphere sphere_cast(const CollideProperties &s);
 
 // Poly.cpp
-bool poly2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b);
-bool poly_sphere(Manifold &m, const ShapeProperties &a,
-                 const ShapeProperties &b);
-bool poly_frustum(Manifold &m, const ShapeProperties &a,
-                  const ShapeProperties &b);
+bool poly2(Manifold &m, const CollideProperties &a, const CollideProperties &b);
+bool poly_sphere(Manifold &m, const CollideProperties &a,
+                 const CollideProperties &b);
+bool poly_frustum(Manifold &m, const CollideProperties &a,
+                  const CollideProperties &b);
 
 // Quadric.cpp
-bool sphere2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b);
-bool sphere_frustum(Manifold &m, const ShapeProperties &a,
-                    const ShapeProperties &b);
-bool frustum2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b);
+bool sphere2(Manifold &m, const CollideProperties &a,
+             const CollideProperties &b);
+bool sphere_frustum(Manifold &m, const CollideProperties &a,
+                    const CollideProperties &b);
+bool frustum2(Manifold &m, const CollideProperties &a,
+              const CollideProperties &b);
 
 } // namespace col

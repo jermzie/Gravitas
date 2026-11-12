@@ -1,4 +1,4 @@
-#include "gravitas/physics/collide.hpp"
+#include "collide.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -7,9 +7,9 @@
 #include <limits>
 #include <vector>
 
-#include "gravitas/geometry/halfedge_mesh.hpp"
-#include "gravitas/geometry/plane.hpp"
-#include "gravitas/geometry/primitive.hpp"
+#include "halfedge_mesh.hpp"
+#include "plane.hpp"
+#include "primitive.hpp"
 
 /**
  * @brief Polyhedron pair routines. Implements Gauss map optimized Separating
@@ -22,36 +22,36 @@
 
 namespace {
 
+using col::CollideProperties;
 using col::pack_id;
-using col::ShapeProperties;
 
 struct ClipVertex {
   glm::vec3 pos_world;
   uint32_t id; // mesh vertex index, or CLIP_INTERSECTION_FLAG | side half-edge
 };
 
-struct FaceCollision {
+struct CollideFace {
   float separation = 0.0f;
   size_t face = 0;
 
-  FaceCollision() = default;
-  FaceCollision(float separation, size_t index)
+  CollideFace() = default;
+  CollideFace(float separation, size_t index)
       : separation(separation), face(index) {}
 };
 
-struct EdgeCollision {
+struct CollideEdge {
   float separation = 0.0f;
   std::pair<size_t, size_t> edges = {0, 0};
   glm::vec3 axis = glm::vec3(0.0f); // B's geometry-space, pointing A -> B
 
-  EdgeCollision() = default;
-  EdgeCollision(float separation, std::pair<size_t, size_t> indices,
-                glm::vec3 axis)
+  CollideEdge() = default;
+  CollideEdge(float separation, std::pair<size_t, size_t> indices,
+              glm::vec3 axis)
       : separation(separation), edges(indices), axis(axis) {}
 };
 
-struct FaceContact {
-  const ShapeProperties *ref, *inc;
+struct ContactFace {
+  const CollideProperties *ref, *inc;
   size_t ref_face;
 };
 
@@ -62,21 +62,23 @@ constexpr float EPSILON = 1e-6f;
 constexpr float REFERENCE_BIAS = 0.01f;
 
 // dispatch table guarantees prim is a Polyhedron
-const HalfEdgeMesh &body_mesh(const ShapeProperties &s) {
+const HalfEdgeMesh &body_mesh(const CollideProperties &s) {
   return static_cast<const Polyhedron *>(s.prim)->get_geom_mesh();
 }
 
-FaceCollision poly2_face_normals(const ShapeProperties &a,
-                                 const ShapeProperties &b,
-                                 const glm::mat4 &a2b_xfrm);
-EdgeCollision poly2_edge_cross(const ShapeProperties &a,
-                               const ShapeProperties &b,
+CollideFace poly2_face_normals(const CollideProperties &a,
+                               const CollideProperties &b,
                                const glm::mat4 &a2b_xfrm);
+CollideEdge poly2_edge_cross(const CollideProperties &a,
+                             const CollideProperties &b,
+                             const glm::mat4 &a2b_xfrm);
 
-Manifold create_face_contact(const ShapeProperties &a, const ShapeProperties &b,
-                             const FaceCollision &fa, const FaceCollision &fb);
-Manifold create_edge_contact(const ShapeProperties &a, const ShapeProperties &b,
-                             const EdgeCollision &eab);
+Manifold create_face_contact(const CollideProperties &a,
+                             const CollideProperties &b, const CollideFace &fa,
+                             const CollideFace &fb);
+Manifold create_edge_contact(const CollideProperties &a,
+                             const CollideProperties &b,
+                             const CollideEdge &eab);
 
 bool is_minkowski_face(const glm::vec3 &a, const glm::vec3 &b,
                        const glm::vec3 &c, const glm::vec3 &d);
@@ -89,11 +91,10 @@ glm::vec3 closest_point_on_face(const HalfEdgeMesh &mesh,
                                 const glm::vec3 &x);
 
 size_t find_incident_face(const glm::vec3 &ref_norm_world,
-                          const ShapeProperties &inc);
-FaceContact bias_reference_face(const ShapeProperties &a,
-                                const ShapeProperties &b,
-                                const FaceCollision &fa,
-                                const FaceCollision &fb);
+                          const CollideProperties &inc);
+ContactFace bias_reference_face(const CollideProperties &a,
+                                const CollideProperties &b,
+                                const CollideFace &fa, const CollideFace &fb);
 
 void clip_against_reference_face(std::vector<ClipVertex> &polygon,
                                  const HalfEdgeMesh &ref_mesh,
@@ -115,7 +116,8 @@ namespace col {
 
 // O(n^2)
 // Gauss Map Optimization
-bool poly2(Manifold &out, const ShapeProperties &a, const ShapeProperties &b) {
+bool poly2(Manifold &out, const CollideProperties &a,
+           const CollideProperties &b) {
 
   // perform tests in other model's local space
   const glm::mat4 a2b_xfrm =
@@ -123,19 +125,19 @@ bool poly2(Manifold &out, const ShapeProperties &a, const ShapeProperties &b) {
   const glm::mat4 b2a_xfrm =
       a.xfrm->get_inverse_matrix() * b.xfrm->get_matrix();
 
-  FaceCollision a_test = poly2_face_normals(a, b, a2b_xfrm);
+  CollideFace a_test = poly2_face_normals(a, b, a2b_xfrm);
   // CLOGI("Poly A Normals: %.5f", fa.separation);
   if (a_test.separation > 0.0f) {
     return false;
   }
 
-  FaceCollision b_test = poly2_face_normals(b, a, b2a_xfrm);
+  CollideFace b_test = poly2_face_normals(b, a, b2a_xfrm);
   // CLOGI("Poly B Normals: %.5f", fb.separation);
   if (b_test.separation > 0.0f) {
     return false;
   }
 
-  EdgeCollision edge_test = poly2_edge_cross(a, b, a2b_xfrm);
+  CollideEdge edge_test = poly2_edge_cross(a, b, a2b_xfrm);
   // CLOGI("Edge Cross Product: %.5f", eab.separation);
   if (edge_test.separation > 0.0f) {
     return false;
@@ -165,10 +167,10 @@ bool poly2(Manifold &out, const ShapeProperties &a, const ShapeProperties &b) {
 }
 
 // sphere centre vs hull in A's body space - single contact point
-bool poly_sphere(Manifold &out, const ShapeProperties &a,
-                 const ShapeProperties &b) {
+bool poly_sphere(Manifold &out, const CollideProperties &a,
+                 const CollideProperties &b) {
   const HalfEdgeMesh &mesh = body_mesh(a);
-  const WorldSphere sphere = col::sphere_cast(b);
+  const CollideSphere sphere = col::sphere_cast(b);
 
   const glm::vec3 centre =
       glm::vec3(a.xfrm->get_inverse_matrix() * glm::vec4(sphere.centre, 1.0f));
@@ -241,8 +243,13 @@ bool poly_sphere(Manifold &out, const ShapeProperties &a,
 }
 
 // TODO
-bool poly_frustum(Manifold &out, const ShapeProperties &a,
-                  const ShapeProperties &b) {
+bool poly_frustum(Manifold &out, const CollideProperties &a,
+                  const CollideProperties &b) {
+  return false;
+}
+
+bool poly_capsule(Manifold &out, const CollideProperties &a,
+                  const CollideProperties &b) {
   return false;
 }
 
@@ -250,9 +257,9 @@ bool poly_frustum(Manifold &out, const ShapeProperties &a,
 
 namespace {
 
-FaceCollision poly2_face_normals(const ShapeProperties &a,
-                                 const ShapeProperties &b,
-                                 const glm::mat4 &a2b_xfrm) {
+CollideFace poly2_face_normals(const CollideProperties &a,
+                               const CollideProperties &b,
+                               const glm::mat4 &a2b_xfrm) {
 
   // a2b is rigid - rotation matrix alone maps normals
   const glm::mat3 a2b_rot = glm::mat3(a2b_xfrm);
@@ -277,12 +284,12 @@ FaceCollision poly2_face_normals(const ShapeProperties &a,
     }
   }
 
-  return FaceCollision(max_separation, max_index);
+  return CollideFace(max_separation, max_index);
 }
 
-EdgeCollision poly2_edge_cross(const ShapeProperties &a,
-                               const ShapeProperties &b,
-                               const glm::mat4 &a2b_xfrm) {
+CollideEdge poly2_edge_cross(const CollideProperties &a,
+                             const CollideProperties &b,
+                             const glm::mat4 &a2b_xfrm) {
 
   // a2b is rigid - rotation alone maps normals
   const glm::mat3 a2b_rot = glm::mat3(a2b_xfrm);
@@ -372,11 +379,12 @@ EdgeCollision poly2_edge_cross(const ShapeProperties &a,
     }
   }
 
-  return EdgeCollision(max_separation, max_index, max_axis);
+  return CollideEdge(max_separation, max_index, max_axis);
 }
 
-Manifold create_face_contact(const ShapeProperties &a, const ShapeProperties &b,
-                             const FaceCollision &fa, const FaceCollision &fb) {
+Manifold create_face_contact(const CollideProperties &a,
+                             const CollideProperties &b, const CollideFace &fa,
+                             const CollideFace &fb) {
 
   // Bias reference/incident bodies
   auto [ref, inc, ref_face_idx] = bias_reference_face(a, b, fa, fb);
@@ -457,8 +465,9 @@ Manifold create_face_contact(const ShapeProperties &a, const ShapeProperties &b,
 }
 
 // find closest points on two colliding edges (midpoint????)
-Manifold create_edge_contact(const ShapeProperties &a, const ShapeProperties &b,
-                             const EdgeCollision &eab) {
+Manifold create_edge_contact(const CollideProperties &a,
+                             const CollideProperties &b,
+                             const CollideEdge &eab) {
 
   const HalfEdgeMesh &mesh_A = body_mesh(a);
   const HalfEdgeMesh &mesh_B = body_mesh(b);
@@ -702,7 +711,7 @@ clip_polygon_against_plane(const std::vector<ClipVertex> &polygon,
 */
 
 size_t find_incident_face(const glm::vec3 &ref_norm_world,
-                          const ShapeProperties &inc) {
+                          const CollideProperties &inc) {
 
   // Transform reference normal from world space to inc's body space - rigid
   // inverse, so its rotation alone maps normals
@@ -727,10 +736,9 @@ size_t find_incident_face(const glm::vec3 &ref_norm_world,
 /**
  * Bias poly A as reference face for better frame coherence
  */
-FaceContact bias_reference_face(const ShapeProperties &a,
-                                const ShapeProperties &b,
-                                const FaceCollision &fa,
-                                const FaceCollision &fb) {
+ContactFace bias_reference_face(const CollideProperties &a,
+                                const CollideProperties &b,
+                                const CollideFace &fa, const CollideFace &fb) {
 
   bool a_bias =
       (std::abs(fa.separation - fb.separation) < REFERENCE_BIAS)

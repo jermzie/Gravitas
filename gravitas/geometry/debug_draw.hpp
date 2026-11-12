@@ -6,10 +6,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "gravitas/geometry/aabb.hpp"
-#include "gravitas/geometry/halfedge_mesh.hpp"
-#include "gravitas/geometry/plane.hpp"
-#include "gravitas/geometry/ray.hpp"
+#include "aabb.hpp"
+#include "halfedge_mesh.hpp"
+#include "plane.hpp"
+#include "ray.hpp"
 
 /*
   Renderer-agnostic debug geometry. The engine appends world-space lines,

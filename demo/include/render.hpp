@@ -8,12 +8,12 @@
 #include <vector>
 
 #include "debug.hpp"
-#include "gravitas/physics/entity.hpp"
+#include "entity.hpp"
 #include "mesh.hpp"
 #include "model.hpp"
-#include "gravitas/geometry/primitive.hpp"
+#include "primitive.hpp"
 #include "shader.hpp"
-#include "gravitas/geometry/surface_mesh.hpp"
+#include "surface_mesh.hpp"
 
 /*
   Maps physics primitives to GPU models. Procedural primitives are uploaded

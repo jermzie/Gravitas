@@ -1,5 +1,5 @@
-#include "gravitas/physics/physics_engine.hpp"
-#include "gravitas/physics/entity.hpp"
+#include "physics_engine.hpp"
+#include "entity.hpp"
 
 void PhysicsEngine::step(float dt) {
   using clock = std::chrono::high_resolution_clock;

@@ -1,11 +1,11 @@
-#include "gravitas/physics/narrowphase.hpp"
-#include "gravitas/geometry/aabb.hpp"
-#include "gravitas/physics/contacts.hpp"
-#include "gravitas/geometry/debug_draw.hpp"
+#include "narrowphase.hpp"
+#include "aabb.hpp"
+#include "contacts.hpp"
+#include "debug_draw.hpp"
 #include <utility>
 
+using col::CollideProperties;
 using col::PairFn;
-using col::ShapeProperties;
 
 const PairFn Narrowphase::collide_matrix[PRIM_COUNT][PRIM_COUNT] = {
     // POLYHEDRON
@@ -45,7 +45,7 @@ bool Narrowphase::collide(std::vector<Manifold> &out, const Entity &a,
   const auto &cb = b.geom->get_children();
 
   // collision functions only work with primitive shapes
-  std::vector<std::pair<ShapeProperties, ShapeProperties>> prim_collisions;
+  std::vector<std::pair<CollideProperties, CollideProperties>> prim_collisions;
   for (size_t i = 0; i < ca.size(); i++) {
     for (size_t j = 0; j < cb.size(); j++) {
       // query colliding pairs between all child primitives
@@ -55,8 +55,8 @@ bool Narrowphase::collide(std::vector<Manifold> &out, const Entity &a,
       if (aabb_intersect(a_world, b_world)) {
         // cheap AABB test
 
-        ShapeProperties a_shape = {ca[i].get(), &a_xfrm, a.id, i};
-        ShapeProperties b_shape = {cb[j].get(), &b_xfrm, b.id, j};
+        CollideProperties a_shape = {ca[i].get(), &a_xfrm, a.id, i};
+        CollideProperties b_shape = {cb[j].get(), &b_xfrm, b.id, j};
         prim_collisions.push_back({a_shape, b_shape});
       }
     }

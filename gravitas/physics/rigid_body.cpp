@@ -1,5 +1,5 @@
-#include "gravitas/physics/rigid_body.hpp"
-#include "gravitas/geometry/mass_properties.hpp"
+#include "rigid_body.hpp"
+#include "mass_properties.hpp"
 
 RigidBody::RigidBody(const MassProperties &properties, float density,
                      const glm::vec3 &position, const glm::quat &orientation) {

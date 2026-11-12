@@ -19,10 +19,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "gravitas/core/log.hpp"
-#include "gravitas/geometry/halfedge_mesh.hpp"
-#include "gravitas/geometry/quickhull_mesh.hpp"
-#include "gravitas/geometry/ray.hpp"
+#include "config.hpp"
+#include "halfedge_mesh.hpp"
+#include "quickhull_mesh.hpp"
+#include "ray.hpp"
 
 /*
 *****************************************************************************

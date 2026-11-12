@@ -1,10 +1,10 @@
-#include "gravitas/physics/collide.hpp"
+#include "collide.hpp"
 
 #include <cmath>
 
 namespace {
 
-using col::ShapeProperties;
+using col::CollideProperties;
 
 constexpr float EPSILON = 1e-6f;
 
@@ -12,24 +12,27 @@ constexpr float EPSILON = 1e-6f;
 
 namespace col {
 
-WorldSphere sphere_cast(const ShapeProperties &s) {
+CollideSphere sphere_cast(const CollideProperties &s) {
   assert(s.prim->get_type() == SPHERE);
   const auto *sphere = static_cast<const Sphere *>(s.prim);
   const Transform &local = sphere->get_local_xfrm();
 
-  // body matrix is rigid - only local_xfrm carries (uniform) scale, and
-  // Sphere::scale() leaves radius unscaled
+  // transform to world-space (dynamic_xfrm + local_xfrm)
   const glm::vec3 centre =
       glm::vec3(s.xfrm->get_matrix() * glm::vec4(local.get_position(), 1.0f));
+
+  // local_xfrm defines scale (rigid body cannot change scale)
   const float radius = sphere->get_radius() * std::abs(local.get_scale().x);
 
   return {centre, radius};
 }
 
 // centre distance vs sum of radii - single contact point
-bool sphere2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b) {
-  const WorldSphere sa = sphere_cast(a);
-  const WorldSphere sb = sphere_cast(b);
+bool sphere2(Manifold &m, const CollideProperties &a,
+             const CollideProperties &b) {
+
+  const CollideSphere sa = sphere_cast(a);
+  const CollideSphere sb = sphere_cast(b);
 
   const glm::vec3 d = sa.centre - sb.centre; // B -> A
   const float dist2 = glm::dot(d, d);
@@ -55,28 +58,30 @@ bool sphere2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b) {
 }
 
 // TODO
-bool sphere_capsule(Manifold &m, const ShapeProperties &a,
-                    const ShapeProperties &b) {
+bool sphere_capsule(Manifold &m, const CollideProperties &a,
+                    const CollideProperties &b) {
   return false;
 }
 
 // TODO
-bool sphere_frustum(Manifold &m, const ShapeProperties &a,
-                    const ShapeProperties &b) {
+bool sphere_frustum(Manifold &m, const CollideProperties &a,
+                    const CollideProperties &b) {
   return false;
 }
 
-bool capsule2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b) {
+bool capsule2(Manifold &m, const CollideProperties &a,
+              const CollideProperties &b) {
   return false;
 }
 
-bool capsule_frustum(Manifold &m, const ShapeProperties &a,
-                     const ShapeProperties &b) {
+bool capsule_frustum(Manifold &m, const CollideProperties &a,
+                     const CollideProperties &b) {
   return false;
 }
 
 // TODO
-bool frustum2(Manifold &m, const ShapeProperties &a, const ShapeProperties &b) {
+bool frustum2(Manifold &m, const CollideProperties &a,
+              const CollideProperties &b) {
   return false;
 }
 

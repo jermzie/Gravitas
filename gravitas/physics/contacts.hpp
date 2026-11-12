@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gravitas/physics/rigid_body.hpp"
+#include "rigid_body.hpp"
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <unordered_map>

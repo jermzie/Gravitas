@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-#include "gravitas/geometry/plane.hpp"
+#include "plane.hpp"
 
 /*
 Internal half-edge mesh used during Convex Hull construction.
