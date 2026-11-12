@@ -1,7 +1,4 @@
-﻿# CMakeList.txt : CMake project for Gravitas, include source and define
-# project specific logic here.
-#
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -9,49 +6,64 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project (Gravitas)
-set(EXECUTABLE_NAME gravitas)
-add_compile_definitions(PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+project(Gravitas LANGUAGES C CXX)
 
-add_executable (${EXECUTABLE_NAME} 
-          src/Gravitas.cpp 
-          src/stb_image.cpp 
-          physics/QuickHull.cpp
-          physics/RigidBody.cpp
-          physics/Broadphase.cpp
-          physics/Contacts.cpp
-          physics/Narrowphase.cpp
-          physics/PhysicsEngine.cpp
-)
-
-target_include_directories(${EXECUTABLE_NAME} PUBLIC
-          ${CMAKE_SOURCE_DIR}/include
-          ${CMAKE_SOURCE_DIR}/physics
-)
-
-set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 20)
-
-# path for cmake config files
-#set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/build/vcpkg_installed/x64-windows/share")
-
-find_package(assimp REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(BZip2 REQUIRED)
-find_package(EXPAT REQUIRED)
+find_package(assimp CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE
-  assimp::assimp
-  ZLIB::ZLIB
-  BZip2::BZip2
-  EXPAT::EXPAT
-  glad::glad
-  glm::glm
-  glfw
-  imgui::imgui
+# ---------------------------------------------------------------------------
+# gravitas: physics library (no rendering dependencies)
+# ---------------------------------------------------------------------------
+add_library(gravitas STATIC
+  gravitas/geometry/primitive.cpp
+  gravitas/geometry/quickhull.cpp
+  gravitas/physics/broadphase.cpp
+  gravitas/physics/collide_poly.cpp
+  gravitas/physics/collide_quadric.cpp
+  gravitas/physics/constraint_solver.cpp
+  gravitas/physics/contacts.cpp
+  gravitas/physics/entity.cpp
+  gravitas/physics/narrowphase.cpp
+  gravitas/physics/physics_engine.cpp
+  gravitas/physics/rigid_body.cpp
 )
 
-#target_include_directories(${EXECUTABLE_NAME} PRIVATE include)
+target_compile_features(gravitas PUBLIC cxx_std_20)
+
+target_include_directories(gravitas PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/gravitas/core
+  ${CMAKE_CURRENT_SOURCE_DIR}/gravitas/geometry
+  ${CMAKE_CURRENT_SOURCE_DIR}/gravitas/physics
+)
+
+target_link_libraries(gravitas PUBLIC
+  glm::glm
+)
+
+# ---------------------------------------------------------------------------
+# gravitas_demo: OpenGL sandbox app
+# ---------------------------------------------------------------------------
+add_executable(gravitas_demo
+  demo/main.cpp
+  demo/third_party/stb_image.cpp
+)
+
+target_compile_definitions(gravitas_demo PRIVATE
+  RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/demo/resources"
+)
+
+target_include_directories(gravitas_demo PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/demo/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/demo/third_party
+)
+
+target_link_libraries(gravitas_demo PRIVATE
+  gravitas
+  glad::glad
+  glfw
+  assimp::assimp
+  imgui::imgui
+)
