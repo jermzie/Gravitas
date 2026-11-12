@@ -1,8 +1,9 @@
 vcpkg/
 build/
-resources/cache/
+demo/resources/cache/
 CMakeCache.txt
 CMakeFiles/
 compile_commands.json
 .cache/
 .vs/
+CMakeUserPresets.json
