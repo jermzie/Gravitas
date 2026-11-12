@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "QuickHullMesh.hpp"
+#include "gravitas/geometry/quickhull_mesh.hpp"
 
 /*
 Half-edge mesh representation of Convex Hull

@@ -6,8 +6,8 @@
 
 #include <cstddef>
 
-#include "DebugDraw.hpp"
-#include "Shader.hpp"
+#include "gravitas/geometry/debug_draw.hpp"
+#include "shader.hpp"
 
 // OpenGL backend for DebugDraw - uploads & draws the buffered geometry
 class Debugger : public DebugDraw {

@@ -1,4 +1,4 @@
-#include "Shapes.hpp"
+#include "gravitas/physics/collide.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -7,9 +7,9 @@
 #include <limits>
 #include <vector>
 
-#include "HalfEdgeMesh.hpp"
-#include "Plane.hpp"
-#include "Primitive.hpp"
+#include "gravitas/geometry/halfedge_mesh.hpp"
+#include "gravitas/geometry/plane.hpp"
+#include "gravitas/geometry/primitive.hpp"
 
 /**
  * @brief Polyhedron pair routines. Implements Gauss map optimized Separating

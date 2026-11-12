@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Log.hpp"
-#include "HalfEdgeMesh.hpp"
+#include "gravitas/core/log.hpp"
+#include "gravitas/geometry/halfedge_mesh.hpp"
 #include <stdio.h>
 
 struct MassProperties {

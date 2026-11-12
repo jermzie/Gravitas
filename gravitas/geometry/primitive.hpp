@@ -6,13 +6,13 @@
 #include <string>
 #include <vector>
 
-#include "AABB.hpp"
-#include "Log.hpp"
-#include "HalfEdgeMesh.hpp"
-#include "MassProperties.hpp"
-#include "Ray.hpp"
-#include "SurfaceMesh.hpp"
-#include "Transform.hpp"
+#include "gravitas/geometry/aabb.hpp"
+#include "gravitas/core/log.hpp"
+#include "gravitas/geometry/halfedge_mesh.hpp"
+#include "gravitas/geometry/mass_properties.hpp"
+#include "gravitas/geometry/ray.hpp"
+#include "gravitas/geometry/surface_mesh.hpp"
+#include "gravitas/geometry/transform.hpp"
 
 /*
   Interface for defining & transforming basic convex primitive shapes.

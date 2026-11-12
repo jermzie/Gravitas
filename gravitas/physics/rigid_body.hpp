@@ -15,12 +15,8 @@
 
 #include <vector>
 
-#include "AABB.hpp"
-#include "HalfEdgeMesh.hpp"
-#include "MassProperties.hpp"
-#include "QuickHull.hpp"
-#include "Ray.hpp"
-#include "Transform.hpp"
+#include "gravitas/geometry/mass_properties.hpp"
+#include "gravitas/geometry/transform.hpp"
 
 // TODO: add different combinations of friction coeffs
 typedef enum {

@@ -9,10 +9,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "AABB.hpp"
-#include "Log.hpp"
-#include "DebugDraw.hpp"
-#include "Ray.hpp"
+#include "gravitas/geometry/aabb.hpp"
+#include "gravitas/core/log.hpp"
+#include "gravitas/geometry/debug_draw.hpp"
+#include "gravitas/geometry/ray.hpp"
 
 const int NULL_INDEX = -1;
 

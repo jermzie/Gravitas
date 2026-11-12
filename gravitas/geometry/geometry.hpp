@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AABB.hpp"
-#include "Primitive.hpp"
+#include "gravitas/geometry/aabb.hpp"
+#include "gravitas/geometry/primitive.hpp"
 #include <cassert>
 #include <memory>
 #include <vector>

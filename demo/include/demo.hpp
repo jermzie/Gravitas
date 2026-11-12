@@ -8,22 +8,22 @@
 #include <glm/gtc/type_ptr.hpp>
 
 // Rendering
-#include "Camera.hpp"
-#include "Model.hpp"
-#include "Render.hpp"
-#include "Shader.hpp"
+#include "camera.hpp"
+#include "model.hpp"
+#include "render.hpp"
+#include "shader.hpp"
 
 // Debugging
-#include "Debugger.hpp"
-#include "Gui.hpp"
+#include "debug.hpp"
+#include "gui.hpp"
 
 // Physics
-#include "Entity.hpp"
-#include "PhysicsEngine.hpp"
-#include "RigidBody.hpp"
+#include "gravitas/physics/entity.hpp"
+#include "gravitas/physics/physics_engine.hpp"
+#include "gravitas/physics/rigid_body.hpp"
 
-#include "Plane.hpp"
-#include "Ray.hpp"
+#include "gravitas/geometry/plane.hpp"
+#include "gravitas/geometry/ray.hpp"
 
 class Demo {
 public:

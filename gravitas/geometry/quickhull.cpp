@@ -1,5 +1,5 @@
-#include "QuickHull.hpp"
-#include "QuickHullMesh.hpp"
+#include "gravitas/geometry/quickhull.hpp"
+#include "gravitas/geometry/quickhull_mesh.hpp"
 
 /**
  * @brief Helper to build

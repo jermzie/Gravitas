@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Geometry.hpp"
-#include "Primitive.hpp"
-#include "RigidBody.hpp"
+#include "gravitas/geometry/geometry.hpp"
+#include "gravitas/geometry/primitive.hpp"
+#include "gravitas/physics/rigid_body.hpp"
 #include <memory>
 
 /*

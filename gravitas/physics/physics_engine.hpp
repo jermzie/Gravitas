@@ -5,15 +5,15 @@
 
 #include <algorithm>
 
-#include "AABB.hpp"
-#include "Broadphase.hpp"
-#include "Log.hpp"
-#include "ConstraintSolver.hpp"
-#include "DebugDraw.hpp"
-#include "Entity.hpp"
-#include "Narrowphase.hpp"
-#include "Plane.hpp"
-#include "RigidBody.hpp"
+#include "gravitas/geometry/aabb.hpp"
+#include "gravitas/physics/broadphase.hpp"
+#include "gravitas/core/log.hpp"
+#include "gravitas/physics/constraint_solver.hpp"
+#include "gravitas/geometry/debug_draw.hpp"
+#include "gravitas/physics/entity.hpp"
+#include "gravitas/physics/narrowphase.hpp"
+#include "gravitas/geometry/plane.hpp"
+#include "gravitas/physics/rigid_body.hpp"
 
 class PhysicsEngine {
 private:

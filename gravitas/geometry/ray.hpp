@@ -1,8 +1,8 @@
 #pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include "Plane.hpp"
-#include "Transform.hpp"
+#include "gravitas/geometry/plane.hpp"
+#include "gravitas/geometry/transform.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 

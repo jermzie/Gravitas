@@ -7,13 +7,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Debugger.hpp"
-#include "Entity.hpp"
-#include "Mesh.hpp"
-#include "Model.hpp"
-#include "Primitive.hpp"
-#include "Shader.hpp"
-#include "SurfaceMesh.hpp"
+#include "debug.hpp"
+#include "gravitas/physics/entity.hpp"
+#include "mesh.hpp"
+#include "model.hpp"
+#include "gravitas/geometry/primitive.hpp"
+#include "shader.hpp"
+#include "gravitas/geometry/surface_mesh.hpp"
 
 /*
   Maps physics primitives to GPU models. Procedural primitives are uploaded

@@ -4,9 +4,9 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-#include "Contacts.hpp"
-#include "Primitive.hpp"
-#include "Transform.hpp"
+#include "gravitas/physics/contacts.hpp"
+#include "gravitas/geometry/primitive.hpp"
+#include "gravitas/geometry/transform.hpp"
 
 /*
   Pair routines between two child primitives. Arguments are ordered

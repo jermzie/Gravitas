@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "Mesh.hpp"
-#include "Shader.hpp"
+#include "mesh.hpp"
+#include "shader.hpp"
 #include "stb_image.h"
 
 using namespace std;

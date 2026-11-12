@@ -1,4 +1,4 @@
-#include "ConstraintSolver.hpp"
+#include "gravitas/physics/constraint_solver.hpp"
 
 void ConstraintSolver::build_constraints(
     const std::vector<Manifold> &contacts) {

@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "Shader.hpp"
+#include "shader.hpp"
 
 using namespace std;
 

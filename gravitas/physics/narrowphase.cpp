@@ -1,7 +1,7 @@
-#include "Narrowphase.hpp"
-#include "AABB.hpp"
-#include "Contacts.hpp"
-#include "DebugDraw.hpp"
+#include "gravitas/physics/narrowphase.hpp"
+#include "gravitas/geometry/aabb.hpp"
+#include "gravitas/physics/contacts.hpp"
+#include "gravitas/geometry/debug_draw.hpp"
 #include <utility>
 
 using col::PairFn;

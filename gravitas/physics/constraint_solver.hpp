@@ -3,11 +3,12 @@
 #include <algorithm>
 #include <vector>
 
-#include "Contacts.hpp"
-#include "RigidBody.hpp"
+#include "gravitas/physics/contacts.hpp"
+#include "gravitas/physics/rigid_body.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/matrix_cross_product.hpp" // glm::matrixCross3()
+#include <glm/gtx/matrix_cross_product.hpp> // glm::matrixCross3()
+#include <glm/gtx/norm.hpp>                 // glm::length2()
 
 #define NUM_ITERATIONS 20
 

@@ -7,22 +7,22 @@
 #include <memory>
 #include <numeric>
 
-#include "Log.hpp"
-#include "Contacts.hpp"
-#include "DebugDraw.hpp"
-#include "Entity.hpp"
-#include "HalfEdgeMesh.hpp"
-#include "Plane.hpp"
-#include "Primitive.hpp"
-#include "RigidBody.hpp"
-#include "Transform.hpp"
+#include "gravitas/core/log.hpp"
+#include "gravitas/physics/contacts.hpp"
+#include "gravitas/geometry/debug_draw.hpp"
+#include "gravitas/physics/entity.hpp"
+#include "gravitas/geometry/halfedge_mesh.hpp"
+#include "gravitas/geometry/plane.hpp"
+#include "gravitas/geometry/primitive.hpp"
+#include "gravitas/physics/rigid_body.hpp"
+#include "gravitas/geometry/transform.hpp"
 
-#include "Shapes.hpp"
+#include "gravitas/physics/collide.hpp"
 
 /**
  * @brief Collision detection & contact generation between two entities.
  * Tests every overlapping pair of child primitives and dispatches each pair to
- * a routine in narrowphase:: (see narrowphase/Shapes.hpp).
+ * a routine in col:: (see gravitas/physics/collide.hpp).
  */
 class Narrowphase {
 public:

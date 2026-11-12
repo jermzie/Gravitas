@@ -7,10 +7,10 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include "Debugger.hpp"
-#include "PhysicsEngine.hpp"
-#include "RigidBody.hpp"
-#include "Shader.hpp"
+#include "debug.hpp"
+#include "gravitas/physics/physics_engine.hpp"
+#include "gravitas/physics/rigid_body.hpp"
+#include "shader.hpp"
 
 class Gui {
 private:

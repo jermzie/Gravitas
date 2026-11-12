@@ -1,8 +1,8 @@
-﻿#include "main.hpp"
-#include "Entity.hpp"
-#include "Geometry.hpp"
-#include "MassProperties.hpp"
-#include "Primitive.hpp"
+﻿#include "demo.hpp"
+#include "gravitas/physics/entity.hpp"
+#include "gravitas/geometry/geometry.hpp"
+#include "gravitas/geometry/mass_properties.hpp"
+#include "gravitas/geometry/primitive.hpp"
 #include <memory>
 
 Demo::Demo(unsigned int width, unsigned int height)
